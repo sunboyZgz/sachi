@@ -1,0 +1,47 @@
+{
+  "width": 1440,
+  "height": 901,
+  "time": "0",
+  "strength": "1.4",
+  "generatedBy": "Canvas2D SceneRenderer, raw scene bitmap without UI",
+  "encoding": "WebP quality 95",
+  "outputSha256": "be3344ea654a8124529f7ad17bf78d3732e457a41265c84a58992429b8d76687",
+  "sources": {
+    "src/lib/stage/types.ts": {
+      "sha256": "d167bee60fccaca14ad58bf5448243e3d7596fe2f055ca7de6b07e3198e0d60e"
+    },
+    "src/lib/stage/scene.ts": {
+      "sha256": "62fb61c3df66c1013515d8aebb29276c681a5768957cbf627d7ccf60e39cfff2"
+    },
+    "src/lib/stage/wind.ts": {
+      "sha256": "fbde000da09c3480e5cf158d1e2d3da4e03766d5c5400594680cc827cf0b759c"
+    },
+    "src/lib/stage/budget.ts": {
+      "sha256": "e481a8959c40ba3ed04854bc809e27348457fe7ed0eefafd2d08f2d1c9c67134"
+    },
+    "src/lib/stage/renderer.ts": {
+      "sha256": "e0fce28eab799c3f332e1562e4611dc376cfce70d42bf6b0152e00b9a78afffe"
+    },
+    "src/lib/stage/config.ts": {
+      "sha256": "d494241e112dd10ac2b571b00b25d8c7bf79f3c8233cd08b195766203b74d610"
+    },
+    "src/assets/stage/pine-plum.webp": {
+      "sha256": "073ea904fa38277ea81062ae85b5943e91577df762b2609b7e143416891635ce"
+    },
+    "src/assets/stage/wall-receiver.png": {
+      "sha256": "2fc1e6f1bf5f0e9467be2538755dd86c9e635ae71513f7878e333f144a75412d"
+    },
+    "src/assets/stage/floor-receiver.png": {
+      "sha256": "c9a299e14cc7163eaf4b922cd4cb534c0412f11064c1578b1af8f8983a1a422b"
+    },
+    "src/assets/stage/bamboo.webp": {
+      "sha256": "281f06895b3a6519d8e4223be252c823e858c33198e672728a5bd1f5d75c3a9b"
+    },
+    "src/assets/stage/desk-receiver.png": {
+      "sha256": "8a69e257748d9ccfcf40808a13db73a8f6d6f15dd52d005cdc45b48a381a91de"
+    },
+    "src/assets/stage/room-base.webp": {
+      "sha256": "53db8f52669728787fa2c75fc83b58bfb14bf4ec2b479a981c243a328024f5d8"
+    }
+  }
+}

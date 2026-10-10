@@ -1,0 +1,39 @@
+import type { Plan } from './plan';
+
+export function describePlan(plan: Plan): string {
+  const titles = (ids: string[]) => ids.map((id) => plan.manifest.entries.find((entry) => entry.id === id)?.title ?? id);
+  return [
+    `发布版本：${plan.manifest.releaseId}`,
+    `基于版本：${plan.manifest.baseReleaseId ?? '首次发布'}`,
+    `本次选择 ${plan.selected.length} 篇：${titles(plan.selected).join('、') || '无'}`,
+    `保留旧快照 ${plan.unchanged.length} 篇：${titles(plan.unchanged).join('、') || '无'}`,
+    `不纳入公开内容的本地文章：${plan.excluded.length} 篇`,
+    ...(plan.selectedSeries?.length ? [`本次系列资料：${plan.seriesChanges?.map((item) => item.title).join('、') || '资料未变'}`] : []),
+    `已撤回（含历史）：${plan.manifest.retired.map((entry) => entry.title).join('、') || '无'}`,
+    `全站代码/配置基线：${plan.baselineChanged ? '变化，执行前须单独接受' : '未变或首次建立'}`,
+  ].join('\n');
+}
+
+const stateNames: Record<string, string> = { draft: '草稿', published: '已发布', modified: '有未发布修改', withdrawn: '已撤回', missing: '线上存在、本地缺失', unverified: '未核实线上' };
+const statusNames: Record<string, string> = { PLANNED: '计划（未执行）', VALID: '检查通过', CACHED: '本地缓存（未核实线上）', VERIFIED: '已核实服务器', BUILD_ONLY: '本地构建完成（未上线）', DEPLOYED: '已上线', PUSHED: '冻结版本已推送（Pages 待核实上线）', PARTIAL_OR_FAILED: '部分目标失败，请查看两个钩子的结果', CREATED: '已创建', UPDATED: '已修改', READ: '文章信息', INITIALIZED: '配置已保存', RESTORED: '已恢复到新目录', SKIPPED: '已跳过', CHECKED: '环境检查', PREVIEW: '本地预览' };
+
+export function humanResult(command: string, status: string, data: unknown): string {
+  const heading = `${command}：${statusNames[status] ?? status}`;
+  if (typeof data === 'string') return `${heading}\n${data}`;
+  if (!data || typeof data !== 'object') return `${heading}\n${String(data)}`;
+  const record = data as Record<string, unknown>;
+  if (record.manifest && Array.isArray(record.selected) && Array.isArray(record.unchanged)) {
+    return `${heading}\n${describePlan(data as Plan)}\n${record.note ?? '未执行构建或上线。'}`;
+  }
+  if (Array.isArray(record.articles)) {
+    const articles = record.articles as { title: string; state: string; file: string }[];
+    return [heading, `当前版本：${record.releaseId ?? '无'}；核实时间：${record.checkedAt ?? '无'}；Git：${record.git}`,
+      ...articles.map((post) => `  ${stateNames[post.state] ?? post.state} · ${post.title}\n    ${post.file}`),
+      articles.length ? '' : '暂无正式文章。',
+      `内容问题：${JSON.stringify(record.issues)}`,
+      record.backup ? `备份状态：${JSON.stringify(record.backup)}` : '',
+      record.pages ? `Pages 状态：${JSON.stringify(record.pages)}` : '',
+    ].filter(Boolean).join('\n');
+  }
+  return `${heading}\n${JSON.stringify(data, null, 2)}`;
+}

@@ -1,0 +1,7 @@
+assets:
+  ./assets/desk.png:
+    preset: photo
+    widths: [320, 640]
+    quality: 85
+  ./assets/demo.mp4:
+    poster: ./assets/poster.png

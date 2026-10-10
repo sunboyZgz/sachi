@@ -1,0 +1,8 @@
+/* Import only this file for the widget. No selectors affect the host site's typography. */
+.mutou-rope-host { pointer-events:none; isolation:isolate; }
+.mutou-rope-canvas { position:absolute; inset:0; pointer-events:none; display:block; }
+.mutou-rope-host > .mutou-rope-handle { position:absolute; display:block; margin:0; padding:0; border:0; border-radius:0; background:none; appearance:none; pointer-events:auto; touch-action:none; cursor:grab; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; outline-offset:5px; }
+.mutou-rope-handle.is-dragging { cursor:grabbing; }
+.mutou-rope-handle:focus { outline:none; }
+.mutou-rope-handle:focus-visible { outline:1px solid #596b50; border-radius:8px; }
+.mutou-rope-sr { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }

@@ -1,0 +1,28 @@
+/* Confirmed light-only visual system. No font files or external font requests. */
+:root {
+  color-scheme: light;
+  --paper: #faf8f2;
+  --ink: #343a34;
+  --moss: #596b50;
+  --moss-dark: #43533d;
+  --muted: #6b7268;
+  --faint: #8b9385;
+  --rule: #d8dccf;
+  --tint: #e5e9dd;
+  --font-body: "Source Han Serif SC", "Noto Serif CJK SC", "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-ui: "Source Han Sans SC", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --page-width: 1216px;
+  --read-width: 720px;
+  --gutter: clamp(24px, 7.78vw, 112px);
+  --duration: 160ms;
+}

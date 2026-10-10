@@ -1,0 +1,91 @@
+{
+  "version": "1.0.0",
+  "sceneSize": [
+    1586,
+    992
+  ],
+  "sourceArtworkSize": [
+    1672,
+    941
+  ],
+  "desktopMinWidth": 1000,
+  "pageSize": 7,
+  "slots": [
+    {
+      "id": "slot-01",
+      "frame": "scroll-tall",
+      "rect": [
+        366.15,
+        136.06,
+        250.42,
+        455.31
+      ]
+    },
+    {
+      "id": "slot-02",
+      "frame": "album-tall",
+      "rect": [
+        640.28,
+        180.64,
+        245.68,
+        292.16
+      ]
+    },
+    {
+      "id": "slot-03",
+      "frame": "album-landscape",
+      "rect": [
+        911.57,
+        226.18,
+        257.06,
+        258.96
+      ]
+    },
+    {
+      "id": "slot-04",
+      "frame": "silk-portrait",
+      "rect": [
+        1203.73,
+        206.26,
+        177.38,
+        306.39
+      ]
+    },
+    {
+      "id": "slot-05",
+      "frame": "album-wide",
+      "rect": [
+        634.59,
+        534.46,
+        234.3,
+        194.46
+      ]
+    },
+    {
+      "id": "slot-06",
+      "frame": "album-portrait",
+      "rect": [
+        897.34,
+        532.56,
+        194.46,
+        213.43
+      ]
+    },
+    {
+      "id": "slot-07",
+      "frame": "album-small",
+      "rect": [
+        1106.97,
+        538.25,
+        220.07,
+        176.43
+      ]
+    }
+  ],
+  "mobile": {
+    "columns": 1,
+    "frame": "album-landscape",
+    "maxWidth": 360,
+    "note": "Mobile intentionally uses a readable stacked album rather than shrinking the entire wall."
+  }
+}

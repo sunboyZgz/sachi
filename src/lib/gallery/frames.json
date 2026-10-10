@@ -1,0 +1,380 @@
+[
+  {
+    "id": "scroll-tall",
+    "kind": "scroll",
+    "size": [
+      264,
+      480
+    ],
+    "frame": "assets/frames/scroll-tall.webp",
+    "png": "assets/frames/scroll-tall.png",
+    "silhouette": "assets/frames/scroll-tall-silhouette.png",
+    "coverMask": "assets/frames/scroll-tall-cover-mask.png",
+    "sourceRect": [
+      386,
+      96,
+      650,
+      576
+    ],
+    "cover": [
+      60,
+      154,
+      171,
+      228
+    ],
+    "number": [
+      64,
+      65,
+      70,
+      36
+    ],
+    "title": [
+      64,
+      117,
+      168,
+      28
+    ],
+    "header": [
+      63,
+      67,
+      169,
+      75
+    ],
+    "pivot": [
+      0.5,
+      0.03
+    ],
+    "shadow": {
+      "x": 4,
+      "y": 7,
+      "blur": 10,
+      "opacity": 0.13
+    },
+    "sourceNative": true,
+    "detailLimit": "Extracted raster, no invented high-resolution detail"
+  },
+  {
+    "id": "album-tall",
+    "kind": "album",
+    "size": [
+      259,
+      308
+    ],
+    "frame": "assets/frames/album-tall.webp",
+    "png": "assets/frames/album-tall.png",
+    "silhouette": "assets/frames/album-tall-silhouette.png",
+    "coverMask": "assets/frames/album-tall-cover-mask.png",
+    "sourceRect": [
+      675,
+      143,
+      934,
+      451
+    ],
+    "cover": [
+      41,
+      65,
+      192,
+      183
+    ],
+    "number": [
+      44,
+      19,
+      40,
+      34
+    ],
+    "title": [
+      91,
+      25,
+      141,
+      25
+    ],
+    "header": [
+      43,
+      17,
+      187,
+      34
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ],
+    "shadow": {
+      "x": 4,
+      "y": 7,
+      "blur": 10,
+      "opacity": 0.13
+    },
+    "sourceNative": true,
+    "detailLimit": "Extracted raster, no invented high-resolution detail"
+  },
+  {
+    "id": "album-landscape",
+    "kind": "album",
+    "size": [
+      271,
+      273
+    ],
+    "frame": "assets/frames/album-landscape.webp",
+    "png": "assets/frames/album-landscape.png",
+    "silhouette": "assets/frames/album-landscape-silhouette.png",
+    "coverMask": "assets/frames/album-landscape-cover-mask.png",
+    "sourceRect": [
+      961,
+      191,
+      1232,
+      464
+    ],
+    "cover": [
+      40,
+      64,
+      209,
+      150
+    ],
+    "number": [
+      43,
+      22,
+      40,
+      34
+    ],
+    "title": [
+      91,
+      27,
+      154,
+      25
+    ],
+    "header": [
+      42,
+      20,
+      204,
+      33
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ],
+    "shadow": {
+      "x": 4,
+      "y": 7,
+      "blur": 10,
+      "opacity": 0.13
+    },
+    "sourceNative": true,
+    "detailLimit": "Extracted raster, no invented high-resolution detail"
+  },
+  {
+    "id": "silk-portrait",
+    "kind": "silk",
+    "size": [
+      187,
+      323
+    ],
+    "frame": "assets/frames/silk-portrait.webp",
+    "png": "assets/frames/silk-portrait.png",
+    "silhouette": "assets/frames/silk-portrait-silhouette.png",
+    "coverMask": "assets/frames/silk-portrait-cover-mask.png",
+    "sourceRect": [
+      1269,
+      170,
+      1456,
+      493
+    ],
+    "cover": [
+      31,
+      110,
+      113,
+      158
+    ],
+    "number": [
+      42,
+      26,
+      75,
+      34
+    ],
+    "title": [
+      42,
+      74,
+      115,
+      25
+    ],
+    "header": [
+      41,
+      28,
+      102,
+      68
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ],
+    "shadow": {
+      "x": 4,
+      "y": 7,
+      "blur": 10,
+      "opacity": 0.13
+    },
+    "sourceNative": true,
+    "detailLimit": "Extracted raster, no invented high-resolution detail"
+  },
+  {
+    "id": "album-wide",
+    "kind": "album",
+    "size": [
+      247,
+      205
+    ],
+    "frame": "assets/frames/album-wide.webp",
+    "png": "assets/frames/album-wide.png",
+    "silhouette": "assets/frames/album-wide-silhouette.png",
+    "coverMask": "assets/frames/album-wide-cover-mask.png",
+    "sourceRect": [
+      669,
+      516,
+      916,
+      721
+    ],
+    "cover": [
+      37,
+      60,
+      184,
+      123
+    ],
+    "number": [
+      40,
+      19,
+      42,
+      32
+    ],
+    "title": [
+      92,
+      28,
+      131,
+      23
+    ],
+    "header": [
+      39,
+      18,
+      182,
+      31
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ],
+    "shadow": {
+      "x": 4,
+      "y": 7,
+      "blur": 10,
+      "opacity": 0.13
+    },
+    "sourceNative": true,
+    "detailLimit": "Extracted raster, no invented high-resolution detail"
+  },
+  {
+    "id": "album-portrait",
+    "kind": "album",
+    "size": [
+      205,
+      225
+    ],
+    "frame": "assets/frames/album-portrait.webp",
+    "png": "assets/frames/album-portrait.png",
+    "silhouette": "assets/frames/album-portrait-silhouette.png",
+    "coverMask": "assets/frames/album-portrait-cover-mask.png",
+    "sourceRect": [
+      946,
+      514,
+      1151,
+      739
+    ],
+    "cover": [
+      28,
+      62,
+      151,
+      140
+    ],
+    "number": [
+      32,
+      21,
+      39,
+      32
+    ],
+    "title": [
+      77,
+      30,
+      103,
+      23
+    ],
+    "header": [
+      31,
+      20,
+      148,
+      31
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ],
+    "shadow": {
+      "x": 4,
+      "y": 7,
+      "blur": 10,
+      "opacity": 0.13
+    },
+    "sourceNative": true,
+    "detailLimit": "Extracted raster, no invented high-resolution detail"
+  },
+  {
+    "id": "album-small",
+    "kind": "album",
+    "size": [
+      232,
+      186
+    ],
+    "frame": "assets/frames/album-small.webp",
+    "png": "assets/frames/album-small.png",
+    "silhouette": "assets/frames/album-small-silhouette.png",
+    "coverMask": "assets/frames/album-small-cover-mask.png",
+    "sourceRect": [
+      1167,
+      520,
+      1399,
+      706
+    ],
+    "cover": [
+      35,
+      60,
+      177,
+      108
+    ],
+    "number": [
+      38,
+      18,
+      42,
+      32
+    ],
+    "title": [
+      84,
+      26,
+      127,
+      23
+    ],
+    "header": [
+      37,
+      17,
+      174,
+      33
+    ],
+    "pivot": [
+      0.5,
+      0.5
+    ],
+    "shadow": {
+      "x": 4,
+      "y": 7,
+      "blur": 10,
+      "opacity": 0.13
+    },
+    "sourceNative": true,
+    "detailLimit": "Extracted raster, no invented high-resolution detail"
+  }
+]

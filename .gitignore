@@ -1,0 +1,22 @@
+node_modules/
+.next/
+.next-fixtures-dev/
+out/
+playwright-report/
+test-results/
+.DS_Store
+__pycache__/
+*.log
+*.tsbuildinfo
+.blog/
+.blog-store/
+# Real writing stays out of the public development branch; fixtures live under tests/.
+content/*/
+content/*.md
+.env*
+public/media/
+.playwright-cli/
+output/playwright/
+docs-site/.vitepress/cache/
+docs-site/.vitepress/.temp/
+docs-site/.vitepress/dist/

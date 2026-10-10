@@ -1,0 +1,152 @@
+[
+  {
+    "id": "demo-01",
+    "title": "竹影时钟",
+    "cover": "/gallery-samples/demo-01.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「竹影时钟」是本次展墙的第 1 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": "/gallery-samples/scene-motion-sample.mp4",
+    "videoLabel": "书斋风影测试片段（非本作品演示）",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-02",
+    "title": "山色配笺",
+    "cover": "/gallery-samples/demo-02.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「山色配笺」是本次展墙的第 2 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-03",
+    "title": "灯下记事",
+    "cover": "/gallery-samples/demo-03.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「灯下记事」是本次展墙的第 3 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-04",
+    "title": "一纸诗签",
+    "cover": "/gallery-samples/demo-04.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「一纸诗签」是本次展墙的第 4 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-05",
+    "title": "笔墨画板",
+    "cover": "/gallery-samples/demo-05.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「笔墨画板」是本次展墙的第 5 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-06",
+    "title": "檐雨白噪",
+    "cover": "/gallery-samples/demo-06.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「檐雨白噪」是本次展墙的第 6 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-07",
+    "title": "几何叠山",
+    "cover": "/gallery-samples/demo-07.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「几何叠山」是本次展墙的第 7 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-08",
+    "title": "花笺日历",
+    "cover": "/gallery-samples/demo-08.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「花笺日历」是本次展墙的第 8 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": "/gallery-samples/scene-motion-sample.mp4",
+    "videoLabel": "书斋风影测试片段（非本作品演示）",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-09",
+    "title": "字形尺规",
+    "cover": "/gallery-samples/demo-09.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「字形尺规」是本次展墙的第 9 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  },
+  {
+    "id": "demo-10",
+    "title": "小窗天气",
+    "cover": "/gallery-samples/demo-10.webp",
+    "coverFit": "contain",
+    "coverPosition": [
+      50,
+      50
+    ],
+    "description": "「小窗天气」是本次展墙的第 10 个界面示例，仅用于验证 10 件内容分卷、封面适配及换卷动效。它不是作者已经完成的项目。请在 items.json 替换为真实作品说明。",
+    "video": null,
+    "videoLabel": "界面示例，尚未接入真实演示视频",
+    "projectUrl": null,
+    "demoOnly": true
+  }
+]

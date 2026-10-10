@@ -1,0 +1,8 @@
+{
+  "outDuration": 400,
+  "inDuration": 690,
+  "outStagger": 70,
+  "inStagger": 70,
+  "bridge": 64,
+  "preloadTimeout": 7000
+}

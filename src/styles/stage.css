@@ -1,0 +1,16 @@
+.leisure-room { position: absolute; inset: 0; }
+.wind-scene-background { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; }
+.wind-scene-art { position: relative; flex-shrink: 0; width: max(100%, calc(var(--reveal-height) * 1.5987903226 + 1px)); aspect-ratio: 1586 / 992; overflow: hidden; pointer-events: none; }
+.wind-scene-still, .wind-scene-canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+.wind-scene-canvas[hidden] { display: none; }
+.leisure-reveal .leisure-reveal-return { min-height: 44px; padding: 0 6px; gap: 10px; color: var(--moss-dark); font: 14px/1.65 var(--font-body); letter-spacing: .08em; pointer-events: auto; }
+.leisure-reveal-return:hover .leisure-reveal-return-label,
+.leisure-reveal-return:focus-visible .leisure-reveal-return-label { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+.leisure-reveal-return:focus-visible { outline: none; }
+
+@media (max-width: 600px) {
+  .wind-scene-art { transform: translateX(calc((100% - var(--reveal-width)) * .15)); }
+}
+@media print {
+  .leisure-room { display: none !important; }
+}

@@ -1,0 +1,55 @@
+{
+  "date": "2026-09-30",
+  "scope": "Next.js + TypeScript migration in the sachi root project",
+  "projectBoundary": {
+    "applicationRoot": "/Users/sunboy/Documents/my-projects/sachi",
+    "referenceKit": "/Users/sunboy/Documents/my-projects/sachi/mutouren-ui-kit",
+    "referenceKitRestoredFromArchive": true,
+    "referenceManifestEntriesVerified": 118,
+    "referenceManifestMismatches": 0
+  },
+  "staticBuild": {
+    "fixturePages": 25,
+    "productionPages": 9,
+    "fixturesExcludedFromProduction": true,
+    "emptyDynamicRouteSentinelsAre404": true,
+    "result": "passed"
+  },
+  "automatedChecks": {
+    "eslint": "passed",
+    "typescriptStrict": "passed",
+    "vitestFiles": 2,
+    "vitestTests": 4,
+    "referenceKitCheck": "passed",
+    "result": "passed"
+  },
+  "browser": {
+    "surface": "Codex in-app browser",
+    "pretextRuntimeVerified": true,
+    "activeEngine": "pretext",
+    "wrappedTextComplete": true,
+    "keyboardMove": true,
+    "reset": true,
+    "plainLayout": true,
+    "mobileInlineLayout": true,
+    "mobileToc": true,
+    "paginationChangesContent": true,
+    "allImagesLoaded": true,
+    "viewports": [
+      "1440x900",
+      "1366x768",
+      "1024x768",
+      "768x1024",
+      "390x844",
+      "360x800"
+    ],
+    "horizontalOverflowFailures": 0,
+    "desktopSinglePageFailures": 0,
+    "result": "passed"
+  },
+  "playwrightCli": {
+    "testsAuthored": 4,
+    "runResult": "environment blocked",
+    "reason": "Playwright Chromium download timed out and then failed DNS resolution; no system Chrome was installed. Equivalent checks were completed in the in-app browser."
+  }
+}

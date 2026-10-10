@@ -1,0 +1,70 @@
+{
+  "name": "sachi-blog",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "请叫我木头人 — Next.js + TypeScript 静态博客",
+  "bin": {
+    "blog": "bin/blog.mjs"
+  },
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 4173",
+    "dev:fixtures": "INCLUDE_FIXTURES=true next dev -H 127.0.0.1 -p 4176",
+    "build": "tsx tools/blog-cli/build.ts",
+    "build:fixtures": "tsx tools/blog-cli/build.ts --fixtures",
+    "blog": "tsx tools/blog-cli/index.ts",
+    "docs:install": "npm --prefix docs-site ci",
+    "docs:dev": "npm run docs:examples && npm --prefix docs-site run dev",
+    "docs:build": "npm run docs:examples && npm run docs:check && npm --prefix docs-site run build",
+    "docs:examples": "tsx tools/docs/examples.ts",
+    "docs:preview": "npm --prefix docs-site run preview",
+    "docs:check": "tsx tools/docs/check.ts && npm --prefix docs-site run typecheck",
+    "docs:generate": "tsx tools/docs/generate.ts",
+    "preview": "node scripts/serve.mjs --out",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:cli:next": "tsx tools/blog-cli/smoke-next.ts",
+    "check": "npm run lint && npm run typecheck && npm run test"
+  },
+  "dependencies": {
+    "@chenglou/pretext": "0.0.9",
+    "@inquirer/checkbox": "^4.3.2",
+    "@inquirer/confirm": "^5.1.21",
+    "@inquirer/input": "^4.3.1",
+    "@inquirer/select": "^4.4.2",
+    "commander": "^14.0.3",
+    "execa": "^9.6.1",
+    "github-slugger": "^2.0.0",
+    "gray-matter": "^4.0.3",
+    "html-to-image": "1.11.13",
+    "mdast-util-to-string": "^4.0.0",
+    "next": "16.3.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "sharp": "^0.35.5",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.3.6",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
