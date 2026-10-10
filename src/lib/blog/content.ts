@@ -1,69 +1,19 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { parseDocument } from 'yaml';
-import type { Root } from 'mdast';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkGfm from 'remark-gfm';
-import { visit } from 'unist-util-visit';
 import { parseMarkdown } from '../markdown';
 import { isContour } from '../flow-geometry';
 import { BlogError, exists, safeFile, sha256, stableJson } from './files';
-import { categoryNames, categorySchema, flowSchema, mediaSchema, postSchema, type BlogConfig, type BlogPost, type Dependency, type MediaSpec } from './schema';
+import { categoryNames, mediaSchema, type BlogConfig, type BlogPost, type Dependency, type MediaSpec } from './schema';
 import { scanSeries, validateSeriesMembers } from './series';
+import { imageReferences, markdownReferences, postFromDocument, splitDocument } from './document';
+export { dayInTimezone, markdownReferences, splitDocument } from './document';
 
 export type SourcePost = {
   post: BlogPost; sourcePath: string; directory: string; raw: string;
   dependencies: Array<Dependency & { sourceFile: string }>;
   media: MediaSpec; revisionHash: string; warnings: string[]; links: string[];
 };
-export function splitDocument(source: string) {
-  const normalized = source.replace(/^\uFEFF/, '').replaceAll('\r\n', '\n');
-  if (!normalized.startsWith('---\n')) throw new BlogError('文章缺少 YAML frontmatter。');
-  const delimiter = /\n---(?:\n|$)/g; delimiter.lastIndex = 4;
-  const close = delimiter.exec(normalized);
-  if (!close) throw new BlogError('frontmatter 缺少结束分隔符。');
-  const end = close.index;
-  const document = parseDocument(normalized.slice(4, end));
-  if (document.errors.length) throw new BlogError(`YAML 无效：${document.errors[0].message}`);
-  const data = document.toJSON() as Record<string, unknown>;
-  if (!data || Array.isArray(data) || typeof data !== 'object') throw new BlogError('frontmatter 必须是字段对象。');
-  const originalOpening = /^(?:\uFEFF)?---\r?\n/.exec(source)!;
-  const originalDelimiter = /\r?\n---(?:\r?\n|$)/g; originalDelimiter.lastIndex = originalOpening[0].length;
-  const originalClose = originalDelimiter.exec(source)!;
-  return { document, data, body: normalized.slice(end + close[0].length).trim(), bodyRaw: source.slice(originalClose.index + originalClose[0].length) };
-}
-export function dayInTimezone(value: string, timezone: string) {
-  if (!Number.isFinite(Date.parse(value))) throw new BlogError(`时间无效：${value}`);
-  return new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
-}
-export function markdownReferences(body: string) {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
-  const definitions = new Map<string, string>();
-  visit(tree, 'definition', (node) => { definitions.set(node.identifier.toLowerCase(), node.url); });
-  const urls: string[] = [];
-  visit(tree, (node) => {
-    if (node.type === 'image' || node.type === 'link') urls.push(node.url);
-    if (node.type === 'imageReference' || node.type === 'linkReference') {
-      const url = definitions.get(node.identifier.toLowerCase());
-      if (!url) throw new BlogError(`未定义的 Markdown 引用：${node.identifier}`);
-      urls.push(url);
-    }
-    if (node.type === 'html') throw new BlogError('不支持原始 HTML；图片或短视频请使用 ![说明](./assets/文件)。');
-  });
-  return [...new Set(urls)].sort();
-}
-function imageReferences(body: string) {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
-  const definitions = new Map<string, string>();
-  visit(tree, 'definition', (node) => { definitions.set(node.identifier.toLowerCase(), node.url); });
-  const urls: string[] = [];
-  visit(tree, (node) => {
-    if (node.type === 'image') urls.push(node.url);
-    if (node.type === 'imageReference') { const url = definitions.get(node.identifier.toLowerCase()); if (url) urls.push(url); }
-  });
-  return urls;
-}
 const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.svg', '.mp4', '.webm', '.mov', '.m4v', '.pdf', '.txt', '.md', '.csv', '.json', '.zip']);
 
 export async function readSourcePost(root: string, sourcePath: string, config: BlogConfig, contentDir: string = config.contentDir): Promise<SourcePost> {
@@ -74,24 +24,7 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
   const { data, body } = splitDocument(raw);
   const legacy = !relative.endsWith('/index.md');
   const directory = path.dirname(file);
-  const directoryCategory = Object.entries(categoryNames).find(([, name]) => name === relative.split('/')[0])?.[0];
-  if (!legacy && !directoryCategory) throw new BlogError('文章必须放在三个固定栏目之一。');
-  if (!legacy && data.category !== undefined && data.category !== directoryCategory) throw new BlogError('栏目以目录为准，请移除不一致的 category 字段。');
-  const category = categorySchema.parse(legacy ? data.category : directoryCategory);
-  if (!legacy && (typeof data.id !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(data.id))) throw new BlogError('缺少有效 UUID；使用 meta --init 补齐。');
-  const id = legacy ? `legacy-${sha256(relative).slice(0, 24)}` : String(data.id);
-  const createdAt = typeof data.createdAt === 'string' ? data.createdAt : `${String(data.date)}T12:00:00Z`;
-  if (!legacy && !/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(createdAt)) throw new BlogError('createdAt 必须是带时区的 ISO 时间。');
-  const date = legacy ? String(data.date) : dayInTimezone(createdAt, config.timezone);
-  const post = postSchema.parse({
-    ...data, id, category, createdAt, date, body, publishedAt: undefined, updatedAt: undefined,
-    slug: legacy ? path.basename(relative, '.md') : (data.slug ?? id),
-    status: category === 'play' ? (data.status ?? '记录') : data.status,
-    minutes: data.minutes ?? Math.max(1, Math.ceil(body.length / 400)),
-    flow: data.flow === undefined ? undefined : flowSchema.parse(data.flow), assets: {},
-  });
-  dayInTimezone(`${post.date}T12:00:00Z`, config.timezone);
-  if (!new Date(`${post.date}T12:00:00Z`).toISOString().startsWith(post.date)) throw new BlogError(`不存在的日历日期：${post.date}`);
+  const post = postFromDocument(relative, data, body, config.timezone);
   parseMarkdown(body, post.flow);
   if (post.flow && !/\.(?:png|jpe?g|webp|avif|svg|gif)$/i.test(post.flow.image)) throw new BlogError('flow.image 必须是本篇的静态图片。');
   if (!legacy && await exists(path.join(directory, 'layout.yaml'))) throw new BlogError('使用 frontmatter.flow 配置环绕，不支持第二份 layout.yaml。');

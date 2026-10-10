@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import type { Contour } from '../flow-geometry';
 import { BlogError } from './files';
+import { contourFromPixels } from '../image-contour';
 
 export async function imageDimensions(bytes: Buffer, flow = false) {
   const info = await sharp(bytes, { animated: true, limitInputPixels: 80_000_000 }).metadata();
@@ -20,18 +21,6 @@ export async function createImageContour(bytes: Buffer): Promise<Contour> {
   const { data, info } = await sharp(bytes, { limitInputPixels: 80_000_000 })
     .resize({ width: 256, height: 256, fit: 'inside', withoutEnlargement: true })
     .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const rows: Contour['rows'] = [];
-  for (let y = 0; y < info.height; y += 1) {
-    let left = info.width;
-    let right = -1;
-    for (let x = 0; x < info.width; x += 1) {
-      if (data[(y * info.width + x) * info.channels + info.channels - 1] >= 8) {
-        left = Math.min(left, x);
-        right = x;
-      }
-    }
-    rows.push(right < 0 ? null : [left / info.width, (right + 1) / info.width]);
-  }
-  if (!rows.some(Boolean)) throw new BlogError('环绕图片完全透明，无法生成轮廓。');
-  return { height: info.height, rows };
+  try { return contourFromPixels(data, info.width, info.height, info.channels); }
+  catch (error) { throw new BlogError(error instanceof Error ? error.message : String(error)); }
 }

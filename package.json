@@ -29,7 +29,10 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "test:cli:next": "tsx tools/blog-cli/smoke-next.ts",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "preview:build": "node tools/vscode-preview/build.mjs",
+    "preview:package": "npm --prefix tools/vscode-preview run package",
+    "preview:test:host": "tsx tools/vscode-preview/test-host-runner.ts"
   },
   "dependencies": {
     "@chenglou/pretext": "0.0.9",
@@ -61,6 +64,8 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/vscode": "^1.96.0",
+    "esbuild": "^0.25.12",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.6",
     "tsx": "^4.23.15",

@@ -20,3 +20,5 @@ output/playwright/
 docs-site/.vitepress/cache/
 docs-site/.vitepress/.temp/
 docs-site/.vitepress/dist/
+tools/vscode-preview/dist/
+tools/vscode-preview/.test-host/

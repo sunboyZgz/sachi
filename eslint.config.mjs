@@ -16,5 +16,7 @@ export default defineConfig([
     'docs-site/.vitepress/.temp/**',
     'docs-site/.vitepress/dist/**',
     'docs-site/node_modules/**',
+    'tools/vscode-preview/dist/**',
+    'tools/vscode-preview/.test-host/**',
   ]),
 ]);

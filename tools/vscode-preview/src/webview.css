@@ -1,0 +1,14 @@
+@import '../../../src/styles/tokens.css';
+@import '../../../src/styles/site.css';
+
+html, body { background: var(--paper); }
+body { padding: 0; }
+.preview-main { width: min(720px, calc(100% - 48px)); margin: 36px auto 32px; }
+.preview-status { display: flex; justify-content: space-between; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--rule); color: var(--muted); font: 11px/1.6 var(--font-ui); }
+.preview-notice { margin: 16px; padding: 12px 16px; border-left: 2px solid var(--moss); background: var(--tint); color: var(--ink); font: 12px/1.8 var(--font-ui); overflow-wrap: anywhere; }
+.preview-notice p { margin: 0 0 4px; }
+.preview-notice p:last-child { margin-bottom: 0; }
+.preview-end { border-top: 1px solid var(--rule); }
+.preview-fallback { white-space: pre-wrap; font: 18px/1.95 var(--font-body); }
+@media (max-width: 600px) { .preview-main { width: calc(100% - 32px); margin-top: 28px; } }
+@media print { .preview-status, .preview-notice { display: none; } }

@@ -1,0 +1,38 @@
+{
+  "name": "sachi-blog-preview",
+  "displayName": "Sachi Blog 文章预览",
+  "description": "使用 Sachi Blog 真实排版，实时预览未保存的文章与图文环绕。",
+  "version": "0.1.0",
+  "type": "module",
+  "publisher": "sachi-local",
+  "license": "MIT",
+  "engines": { "vscode": "^1.96.0" },
+  "categories": ["Other"],
+  "keywords": ["markdown", "blog", "sachi", "preview"],
+  "main": "./dist/extension.cjs",
+  "extensionKind": ["workspace"],
+  "capabilities": { "untrustedWorkspaces": { "supported": false }, "virtualWorkspaces": { "supported": false } },
+  "contributes": {
+    "commands": [
+      { "command": "sachiPreview.open", "title": "打开文章预览", "category": "Sachi Blog", "icon": "$(open-preview)" },
+      { "command": "sachiPreview.refresh", "title": "刷新文章预览", "category": "Sachi Blog", "icon": "$(refresh)" }
+    ],
+    "menus": {
+      "editor/title": [{ "command": "sachiPreview.open", "when": "editorLangId == markdown", "group": "navigation" }],
+      "editor/context": [{ "command": "sachiPreview.open", "when": "editorLangId == markdown", "group": "navigation" }]
+    },
+    "keybindings": [{ "command": "sachiPreview.open", "key": "ctrl+alt+v", "mac": "cmd+alt+v", "when": "editorLangId == markdown && editorTextFocus" }],
+    "configuration": {
+      "title": "Sachi Blog 文章预览",
+      "properties": {
+        "sachiPreview.debounceMs": { "type": "number", "default": 180, "minimum": 0, "maximum": 2000, "description": "输入停止后等待多少毫秒再刷新预览。" },
+        "sachiPreview.followActiveEditor": { "type": "boolean", "default": true, "description": "预览跟随当前打开的博客文章；关闭后固定当前文章。" }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "vscode:prepublish": "node build.mjs",
+    "package": "npm exec --yes --package=@vscode/vsce@4.0.0 -- vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links --out dist/sachi-blog-preview.vsix"
+  }
+}

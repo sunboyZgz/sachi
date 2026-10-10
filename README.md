@@ -27,6 +27,17 @@ npm run preview        # 预览 out/，仅监听 127.0.0.1:4173
 
 `npm run build` 的产物在 `out/`，可直接交给 Nginx、Caddy 或任意静态文件服务器。站点采用目录式 URL 和尾斜杠，例如 `/article/learning-rhythm/`。
 
+## VS Code 文章预览
+
+插件在编辑器右侧实时展示文章内容区，包含博客原有排版、图文环绕、媒体和末尾署名；未保存的修改也会刷新。
+
+```sh
+npm run preview:build
+npm run preview:package
+```
+
+在 VS Code 中通过“从 VSIX 安装”选择 `tools/vscode-preview/dist/sachi-blog-preview.vsix`，打开博客文章后运行 **Sachi Blog: 打开文章预览**（macOS `⌘⌥V`）。完整方案、支持范围与验证见 [插件说明](tools/vscode-preview/README.md)。
+
 ## 更换头像
 
 头像源文件单独放在 `src/assets/avatar/`，文件名固定：
