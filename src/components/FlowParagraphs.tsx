@@ -1,18 +1,27 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type {
   LayoutCursor,
   PreparedTextWithSegments,
 } from '@chenglou/pretext';
 import { availableIntervals, clampPosition, flowImageSize, isContour, type Contour, type Position } from '../lib/flow-geometry';
 import type { FlowPresentation } from '../lib/markdown';
+import { cursorOffsetLookup, sourceAttributes, sourceRangeForOffsets, type FlowSourceMap, type SourceLine } from '../lib/source-lines';
+import { joinSourceMaps, normalizeSourceMap, sliceSourceMap, sourceMapAttributes } from '../lib/source-text-map';
 
 const lineHeight = 36;
 
 type DragState = { x: number; y: number; origin: Position };
 
-export function FlowParagraphs({ paragraphs, spec }: { paragraphs: string[]; spec: FlowPresentation }) {
+function mappedText(text: string, lines?: SourceLine[]) {
+  if (!lines) return text;
+  return lines.map((line, index) => <Fragment key={index}>
+    {index ? '\n' : null}<span {...sourceAttributes(line.range, 'text')} {...sourceMapAttributes(line.points)} data-source-line={line.range.start.line}>{line.text}</span>
+  </Fragment>);
+}
+
+export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragraphs: string[]; hardLines?: string[][]; source?: FlowSourceMap; spec: FlowPresentation }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<HTMLDivElement>(null);
   const obstacleRef = useRef<HTMLButtonElement>(null);
@@ -46,7 +55,8 @@ export function FlowParagraphs({ paragraphs, spec }: { paragraphs: string[]; spe
     let contour: Contour | null = null;
     let engine: typeof import('@chenglou/pretext') | null = null;
     let loadingEngine = false;
-    let prepared: PreparedTextWithSegments[] = [];
+    let prepared: PreparedTextWithSegments[][] = [];
+    let cursorOffsets: Array<Array<ReturnType<typeof cursorOffsetLookup>>> = [];
     let fontKey = '';
     const controller = new AbortController();
 
@@ -96,7 +106,8 @@ export function FlowParagraphs({ paragraphs, spec }: { paragraphs: string[]; spe
         const style = getComputedStyle(stage);
         const font = `${style.fontStyle} ${style.fontWeight} 18px ${style.fontFamily}`;
         if (font !== fontKey) {
-          prepared = paragraphs.map((paragraph) => engine!.prepareWithSegments(paragraph, font));
+          prepared = paragraphs.map((paragraph, index) => (hardLines?.[index] ?? [paragraph]).map((line) => engine!.prepareWithSegments(line, font)));
+          if (source) cursorOffsets = prepared.map((chunks) => chunks.map((chunk) => cursorOffsetLookup(chunk.segments)));
           fontKey = font;
         }
         const { width: imageWidth, height: imageHeight } = imageSizeRef.current;
@@ -115,35 +126,56 @@ export function FlowParagraphs({ paragraphs, spec }: { paragraphs: string[]; spe
         let y = 0;
         let total = 0;
         for (let paragraphIndex = 0; paragraphIndex < prepared.length; paragraphIndex += 1) {
-          const current = prepared[paragraphIndex];
-          let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 };
-          let done = false;
           let guard = 0;
-          while (!done && guard < 2000) {
-            guard += 1;
-            const regions = availableIntervals(width, y, lineHeight, obstacle, contour);
-            let placedInRow = false;
-            for (const region of regions) {
-              const range = engine.layoutNextLineRange(current, cursor, region.width);
-              if (!range) {
-                done = true;
-                break;
+          for (let hardLineIndex = 0; hardLineIndex < prepared[paragraphIndex].length; hardLineIndex += 1) {
+            const sourceLines = source?.paragraphs[paragraphIndex]?.[hardLineIndex];
+            const sourceMap = sourceLines?.every((line) => line.points) ? normalizeSourceMap(joinSourceMaps(sourceLines.map((line) => ({ text: line.text, points: line.points! })), '\n')) : undefined;
+            if (hardLines?.[paragraphIndex]?.[hardLineIndex]?.trim() === '') {
+              if (sourceLines?.[0]) {
+                const anchor = document.createElement('span');
+                anchor.className = 'flow-source-anchor';
+                for (const [key, value] of Object.entries(sourceAttributes(sourceLines[0].range, 'flow'))) anchor.setAttribute(key, String(value));
+                anchor.style.cssText = `position:absolute;left:0;top:${y}px;width:1px;height:${lineHeight}px;`;
+                fragment.append(anchor);
               }
-              const line = engine.materializeLineRange(current, range);
-              const node = document.createElement('span');
-              node.className = 'flow-fragment';
-              node.textContent = line.text;
-              node.style.cssText = `left:${region.x}px;top:${y}px;`;
-              node.dataset.room = region.width.toFixed(2);
-              node.dataset.paragraph = String(paragraphIndex);
-              fragment.append(node);
-              total += 1;
-              cursor = line.end;
-              placedInRow = true;
+              y += lineHeight;
+              continue;
             }
-            if (!done || placedInRow) y += lineHeight;
+            const current = prepared[paragraphIndex][hardLineIndex];
+            let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 };
+            let done = false;
+            while (!done && guard < 2000) {
+              guard += 1;
+              const regions = availableIntervals(width, y, lineHeight, obstacle, contour);
+              let placedInRow = false;
+              for (const region of regions) {
+                const range = engine.layoutNextLineRange(current, cursor, region.width);
+                if (!range) {
+                  done = true;
+                  break;
+                }
+                const line = engine.materializeLineRange(current, range);
+                const node = document.createElement('span');
+                node.className = 'flow-fragment';
+                node.textContent = line.text;
+                node.style.cssText = `left:${region.x}px;top:${y}px;`;
+                node.dataset.room = region.width.toFixed(2);
+                node.dataset.paragraph = String(paragraphIndex);
+                if (sourceLines) {
+                  const offset = cursorOffsets[paragraphIndex][hardLineIndex];
+                  const range = sourceRangeForOffsets(sourceLines, offset(line.start), offset(line.end));
+                  for (const [key, value] of Object.entries(sourceAttributes(range, 'flow'))) node.setAttribute(key, String(value));
+                  if (sourceMap) for (const [key, value] of Object.entries(sourceMapAttributes(sliceSourceMap(sourceMap, offset(line.start), offset(line.end), line.text).points))) node.setAttribute(key, value);
+                }
+                fragment.append(node);
+                total += 1;
+                cursor = line.end;
+                placedInRow = true;
+              }
+              if (!done || placedInRow) y += lineHeight;
+            }
+            if (guard >= 2000) throw new Error('环绕布局未能结束。');
           }
-          if (guard >= 2000) throw new Error('环绕布局未能结束。');
           y += lineHeight * 0.55;
         }
         paint.replaceChildren(fragment);
@@ -199,7 +231,7 @@ export function FlowParagraphs({ paragraphs, spec }: { paragraphs: string[]; spe
       document.fonts.removeEventListener('loadingdone', onFonts);
       scheduleRef.current = () => undefined;
     };
-  }, [paragraphs, spec.contour, spec.image, spec.width, spec.defaultX, spec.defaultY]);
+  }, [paragraphs, hardLines, source, spec.contour, spec.image, spec.width, spec.defaultX, spec.defaultY]);
 
   const moveTo = (position: Position) => {
     manualRef.current = true;
@@ -218,12 +250,20 @@ export function FlowParagraphs({ paragraphs, spec }: { paragraphs: string[]; spe
       <div className="flow-canvas" ref={stageRef}>
         <div className={`flow-original ${layout === 'wrap' ? 'sr-only' : 'flow-fallback'}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img ref={imageRef} className="flow-inline-image" src={spec.image} alt={spec.alt} width={spec.imageWidth} height={spec.imageHeight} />
-          {paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph}`}>{paragraph}</p>)}
+          <img {...sourceAttributes(source?.image, 'image')} ref={imageRef} className="flow-inline-image" src={spec.image} alt={spec.alt} width={spec.imageWidth} height={spec.imageHeight} />
+          {paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph}`} {...sourceAttributes(source ? {
+            start: source.paragraphs[index][0][0].range.start,
+            end: source.paragraphs[index].at(-1)!.at(-1)!.range.end,
+          } : undefined, 'flow-paragraph')}>
+            {hardLines?.[index] ? hardLines[index].map((line, lineIndex) => <Fragment key={lineIndex}>
+              {lineIndex ? <br /> : null}{mappedText(line, source?.paragraphs[index]?.[lineIndex])}
+            </Fragment>) : mappedText(paragraph, source?.paragraphs[index]?.[0])}
+          </p>)}
         </div>
         <div className="flow-visual" hidden={layout !== 'wrap'}>
           <div className="flow-text" ref={paintRef} aria-hidden="true" />
           <button
+            {...sourceAttributes(source?.image, 'image')}
             ref={obstacleRef}
             type="button"
             className="flow-obstacle"

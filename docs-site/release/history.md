@@ -20,7 +20,19 @@ online: 不改变
 
 1. 进入“查看发布历史 · history”。
 
+   ```sh
+   npm run blog -- history
+   ```
+
+   显示本地已保存的执行记录。
+
 2. 有部署或 Pages 配置时选择本地记录或只读远端查询。
+
+   ```sh
+   npm run blog -- history --remote
+   ```
+
+   核实已配置目标；Pages 只给出当前核实结果，不是完整 Actions 历史。
 
 3. 查看 releaseId、状态、时间、上一个版本与操作类型。
 
@@ -58,9 +70,4 @@ BUILD_ONLY 不在线，PUSHED 仍需核实 Pages，PARTIAL_OR_FAILED 可能只�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- history
-npm run blog -- history --remote
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

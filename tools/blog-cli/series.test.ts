@@ -16,6 +16,7 @@ import { run } from './process';
 import { storePath } from './config';
 import { activateRelease, uploadRelease } from './deploy';
 import { backupPlan, restoreGit, saveReleaseToGit, syncContent } from './git';
+import { prepareSeriesInsertion, commitSeriesInsertion } from './series-insertion';
 
 const temporary: string[] = [];
 const cli = fileURLToPath(new URL('./index.ts', import.meta.url));
@@ -56,6 +57,33 @@ async function publish(root: string, config: BlogConfig, current: Manifest | nul
 afterEach(async () => { for (const root of temporary.splice(0)) await rm(root, { recursive: true, force: true }); });
 
 describe('series writing and frozen releases', () => {
+  it('publishes an inserted chapter with shifted public chapters while preserving drafts and unrelated snapshots', async () => {
+    const { root, config } = await fixture();
+    const group = await newSeries(root, { title: '学习札记', category: 'learn', slug: 'notes' });
+    const unrelated = await newSeries(root, { title: '其他系列', category: 'learn', slug: 'other' });
+    const firstChapter = await chapter(root, config, group.id, 1, 'one');
+    const secondChapter = await chapter(root, config, group.id, 2, 'two');
+    const other = await chapter(root, config, unrelated.id, 1, 'unrelated');
+    const first = await publish(root, config, null, [firstChapter, secondChapter, other], [group.id, unrelated.id]);
+    const draft = await chapter(root, config, group.id, 10, 'private-draft');
+    const created = await newPost(root, config, { title: 'inserted', category: 'learn', slug: 'inserted' });
+    const plan = await prepareSeriesInsertion(root, config, created.id, group.id, 2);
+    expect(plan.result.publishTogether.sort()).toEqual([created.id, secondChapter.post.id].sort());
+    await commitSeriesInsertion(root, config, plan);
+    expect((await readJson(storePath(root, 'current.json')) as { manifest: Manifest }).manifest).toEqual(first.manifest);
+    expect((await readSnapshot(root, secondChapter.revisionHash)).post.series?.order).toBe(2);
+    expect((await readSourcePost(root, draft.sourcePath, config)).post.series?.order).toBe(11);
+    const inserted = await readSourcePost(root, created.file, config);
+    expect(() => createPlan(first.manifest, [inserted], [], { hash: first.manifest.codeHash, commit: null })).toThrow('序号重复');
+    const shifted = await readSourcePost(root, secondChapter.sourcePath, config);
+    const second = await publish(root, config, first.manifest, [inserted, shifted], [group.id]);
+    expect(await readFile(path.join(second.directory, 'site/series/notes/index.html'), 'utf8')).toContain('one|inserted|two');
+    expect(second.manifest.entries.some((entry) => entry.id === draft.post.id)).toBe(false);
+    expect(second.manifest.entries.find((entry) => entry.id === other.post.id)?.revisionHash).toBe(other.revisionHash);
+    expect(second.manifest.entries.find((entry) => entry.id === firstChapter.post.id)?.revisionHash).toBe(firstChapter.revisionHash);
+    expect(second.manifest.series!.find((entry) => entry.id === unrelated.id)?.revisionHash).toBe(first.manifest.series!.find((entry) => entry.id === unrelated.id)?.revisionHash);
+  });
+
   it('suggests orders using published snapshots even when the working chapter is missing', async () => {
     const { root, config } = await fixture();
     const group = await newSeries(root, { title: 'A', category: 'learn', slug: 'a' });

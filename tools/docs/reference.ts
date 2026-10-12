@@ -1,7 +1,9 @@
 import { commandCatalog } from '../blog-cli/arguments';
 
 const details: Record<string, { guide: string; notes: string; examples: string[] }> = {
-  series: { guide: '/writing/series', notes: '子命令 new/list/meta 管理系列资料；章节发布时自动冻结所属系列最新资料，--series 可单独更新介绍。ID 稳定，已发布 slug 不能修改。', examples: ['blog series new --category learn --title "学习札记" --slug learning-notes', 'blog series list --json', 'blog series meta <系列> --set \'description=按顺序留下学习记录。\''] },
+  toy: { guide: '/writing/toys', notes: 'add 逐项引导或从 --file YAML 录入，必填名称、简介、本地封面、本地视频、公网地址及未来超限策略。媒体须可解码，项目地址须能匿名访问。保存原文件引用和摘要，状态固定为待媒体处理；不上传、不压缩、不裁剪，不进入舞台或公开集合。template 不生成作品 ID，不覆盖目标。list/check 只读，check 发现源文件变化则拒绝并保留原登记摘要。--video-overflow 可覆盖文件策略；--yes 不隐含裁剪授权。Yandu 通用能力验收见 /reference/yandu-acceptance。', examples: ['blog toy add', 'blog toy template --output ./toy.yaml', 'blog toy add --file ./toy.yaml --dry-run', 'blog toy add --file ./toy.yaml --yes', 'blog toy check <作品ID>', 'blog toy list --json'] },
+  series: { guide: '/writing/series', notes: 'search 按中文名称列出候选 ID；new 创建后输出 ID。add 只接受完整文章 ID 和系列 UUID，拒绝已经归组的文章，将序号不小于插入点的所有本地章节加一；修改采用可恢复事务，不自动上线。new/list/meta 保持原用法；章节发布时冻结所属系列资料。', examples: ['blog series search "我学会了"', 'blog series new --category play --title "我学会了"', 'blog series add <文章ID> --series <系列ID> --order 2 --dry-run', 'blog series list --json', 'blog series meta <系列> --set \'description=按顺序留下学习记录。\''] },
+  search: { guide: '/writing/find', notes: '只读取本地正式文章的名称和身份，不检查未完成正文或缺失图片，也不查询服务器。中文关键词和轻微错字使用 Fuse.js 匹配；多个空格分隔的关键词必须全部匹配。输出所有候选及 ID，不自动选择或修改文章。', examples: ['blog search "朝思暮想"', 'blog search "博客 玩具"', 'blog search "朝思暮想" --json'] },
   wizard: { guide: '/start/menu', notes: '无命令的交互入口也会打开菜单；没有终端或 --json 模式不允许问答。', examples: ['npm run blog', 'blog', 'blog wizard'] },
   init: { guide: '/start/configure', notes: '配置向导不创建远端或连接服务器。--yes 的无参数调用保留现有配置，仅创建缺失目录和模板。', examples: ['blog init', 'blog init --timezone Asia/Shanghai --dry-run'] },
   doctor: { guide: '/start/doctor', notes: '可选工具缺失只影响相应功能；--remote 查询已配置的服务器或 Pages，不执行发布。环境报告不等于文章检查或 Actions 权限验收。', examples: ['blog doctor', 'blog doctor --remote'] },

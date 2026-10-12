@@ -22,7 +22,19 @@ online: 不改变
 
 2. 选择“只查看计划”。发布未配置部署时不会进入实际发布。
 
+   ```sh
+   npm run blog -- build <文章> --dry-run
+   ```
+
+   没有部署配置也能预演本地构建。
+
 3. 核对本次选择：这些文章采用当前修订；核对保留旧快照：未选公开文章仍用旧文字和资源。
+
+   ```sh
+   npm run --silent blog -- publish <文章> --dry-run --json
+   ```
+
+   已经配置部署时，查看 selected、unchanged、excluded 与 delivery。
 
 4. 核对不公开的本地文章与历史撤回信息。没有选中的草稿不会自动带入。
 
@@ -69,10 +81,4 @@ online: 不改变
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- build <文章> --dry-run
-npm run blog -- publish <文章> --dry-run
-npm run blog -- unpublish <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

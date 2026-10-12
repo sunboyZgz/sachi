@@ -10,10 +10,10 @@ const temporary = await mkdtemp(path.join(tmpdir(), 'sachi-extension-'));
 try {
   const workspace = path.join(temporary, 'workspace');
   for (const directory of ['src/styles', 'src/config', 'src/assets/avatar', 'content/闲暇娱乐/2026-10-10/assets', 'content/生活旁白/2026-10-10/assets']) await mkdir(path.join(workspace, directory), { recursive: true });
-  for (const file of ['src/styles/tokens.css', 'src/styles/site.css', 'src/config/profile.json', 'src/assets/avatar/avatar-half.png']) await copyFile(path.join(root, file), path.join(workspace, file));
+  for (const file of ['src/styles/tokens.css', 'src/styles/site.css', 'src/styles/code-highlight.css', 'src/config/profile.json', 'src/assets/avatar/avatar-half.png']) await copyFile(path.join(root, file), path.join(workspace, file));
   await writeFile(path.join(workspace, 'package.json'), '{"name":"sachi-blog","private":true}');
   const article = (title: string, body: string) => `---\nid: ${randomUUID()}\ntitle: ${title}\ncreatedAt: "2026-10-10T09:00:00+08:00"\n---\n\n${body}\n`;
-  await writeFile(path.join(workspace, 'content/闲暇娱乐/2026-10-10/index.md'), article('插件验收', '最初正文。\n\n![演示视频](./assets/demo.mp4)\n\n```ts\nconst value = 1;\n```'));
+  await writeFile(path.join(workspace, 'content/闲暇娱乐/2026-10-10/index.md'), article('插件验收', '最初正文。行内 `inline` 和 [链接中的 `code`](https://example.org/)。\n\n![演示视频](./assets/demo.mp4)\n\n```ts\nconst value = "<tag>&";\n\n// 中文注释\nconsole.log(value, 1);\n```\n\n```\n理解工具解决的问题 -> 理解项目的宏观架构\n```'));
   await writeFile(path.join(workspace, 'content/生活旁白/2026-10-10/index.md'), article('另一篇文章', '另一篇的完整正文。'));
   await writeFile(path.join(workspace, 'content/闲暇娱乐/2026-10-10/media.yaml'), 'assets: {}\n');
   await sharp({ create: { width: 160, height: 120, channels: 4, background: { r: 89, g: 107, b: 80, alpha: 1 } } }).png().toFile(path.join(workspace, 'content/闲暇娱乐/2026-10-10/assets/shape.png'));

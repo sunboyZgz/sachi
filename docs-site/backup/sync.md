@@ -22,9 +22,21 @@ online: 不改变
 
 2. 先看计划，了解将备份的全部写作文件，而不是只选中的公开文章。
 
+   ```sh
+   npm run blog -- sync --dry-run
+   ```
+
+   PLANNED 列出全部写作备份范围；未配置 Git 时 SKIPPED。
+
 3. 未配置 Git 时停止于明确跳过，不创建根 Git 仓库或提交。
 
 4. 已配置时重新进入执行，核对范围并确认。
+
+   ```sh
+   npm run blog -- sync
+   ```
+
+   核对并确认后备份，不改变公开网站。
 
 5. 等待独立 .blog/git-content checkout 提交与推送，以及未同步发布记录补记。
 
@@ -60,9 +72,4 @@ visibility=unconfirmed 禁止上传。源文件过大先处理，不自动启用
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- sync --dry-run
-npm run blog -- sync --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

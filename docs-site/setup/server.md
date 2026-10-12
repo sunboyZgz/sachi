@@ -22,54 +22,67 @@ online: 不改变
 
 2. 在配置向导选择 SSH，填写主机别名、专用发布根（如 /srv/sachi-blog）和正式 HTTPS siteUrl。
 
+   ```sh
+   npm run blog -- init
+   ```
+
+   配置 SSH 别名、专用发布根和实际 siteUrl。
+
 3. 核对配置保存，不会修改 Nginx 或安装软件。
 
+   ### 保存的配置如何对照
+
+   下面是 blog.config.json 的字段片段，不是整份文件。host 是你已配置的 SSH 别名；root 是服务器上的专用目录，不是本机项目路径；示例域名必须替换：
+
+   ```json
+   "siteUrl": "https://blog.example.com",
+   "deploy": {
+     "type": "ssh",
+     "host": "sachi-server",
+     "root": "/srv/sachi-blog"
+   }
+   ```
+
+   主机别名只包含字母、数字、下划线、点或短横线；SSH 用户、端口、密钥路径通过自己的 SSH 配置管理，不把整段 `user@host -p ...` 填进 host。正式 siteUrl 不能带账号、查询或片段；若使用子路径，静态服务也要作一致映射，下面示例只展示站点根 `/` 的部署。
+
 4. 由你将静态服务公开根设置为专用目录的 current，并将共享媒体与版本资源映射为下面的路径。
+
+   ### 私有根与公开路径
+
+   | 服务器路径 | 用途 | 可以公开吗 |
+   | --- | --- | --- |
+   | current → 某个 releases/ID/site | 当前静态站点 | 可以，作为网页根 |
+   | shared/media | 带哈希的共享媒体 | 仅映射为 /media/ |
+   | shared/versions | 旧 HTML 需要的版本资源 | 仅映射为 /versions/ |
+   | releases 中的 code / snapshots / 清单 | 原稿、冻结代码、校验与恢复 | 不可以 |
+   | records、staging、锁与管理文件 | 事务与历史 | 不可以 |
+
+   不要开启整个部署根的目录列表，也不要为网页方便而把私有包放进 current。下方 Nginx 是需要管理员审核的配置片段，CLI 不会替你应用它：
+
+   ```nginx
+   root /srv/sachi-blog/current;
+   location / { try_files $uri $uri/ =404; add_header Cache-Control "no-cache"; }
+   location /media/ {
+       alias /srv/sachi-blog/shared/media/;
+       add_header Cache-Control "public, max-age=31536000, immutable";
+   }
+   location /versions/ {
+       alias /srv/sachi-blog/shared/versions/;
+       add_header Cache-Control "public, max-age=31536000, immutable";
+   }
+   location = /release-marker.json { add_header Cache-Control "no-store"; }
+   ```
 
 5. 只公开 current、shared/media、shared/versions。源快照、代码、records、staging 和 release.json 必须保持私有。
 
 6. 先 doctor --remote，再发布少量明确文章，核实正式站 release-marker 与真实页面。
 
-### 保存的配置如何对照
+   ```sh
+   npm run blog -- doctor --remote
+   npm run blog -- publish <文章> --dry-run
+   ```
 
-下面是 blog.config.json 的字段片段，不是整份文件。host 是你已配置的 SSH 别名；root 是服务器上的专用目录，不是本机项目路径；示例域名必须替换：
-
-```json
-"siteUrl": "https://blog.example.com",
-"deploy": {
-  "type": "ssh",
-  "host": "sachi-server",
-  "root": "/srv/sachi-blog"
-}
-```
-
-主机别名只包含字母、数字、下划线、点或短横线；SSH 用户、端口、密钥路径通过自己的 SSH 配置管理，不把整段 `user@host -p ...` 填进 host。正式 siteUrl 不能带账号、查询或片段；若使用子路径，静态服务也要作一致映射，下面示例只展示站点根 `/` 的部署。
-
-### 私有根与公开路径
-
-| 服务器路径 | 用途 | 可以公开吗 |
-| --- | --- | --- |
-| current → 某个 releases/ID/site | 当前静态站点 | 可以，作为网页根 |
-| shared/media | 带哈希的共享媒体 | 仅映射为 /media/ |
-| shared/versions | 旧 HTML 需要的版本资源 | 仅映射为 /versions/ |
-| releases 中的 code / snapshots / 清单 | 原稿、冻结代码、校验与恢复 | 不可以 |
-| records、staging、锁与管理文件 | 事务与历史 | 不可以 |
-
-不要开启整个部署根的目录列表，也不要为网页方便而把私有包放进 current。下方 Nginx 是需要管理员审核的配置片段，CLI 不会替你应用它：
-
-```nginx
-root /srv/sachi-blog/current;
-location / { try_files $uri $uri/ =404; add_header Cache-Control "no-cache"; }
-location /media/ {
-    alias /srv/sachi-blog/shared/media/;
-    add_header Cache-Control "public, max-age=31536000, immutable";
-}
-location /versions/ {
-    alias /srv/sachi-blog/shared/versions/;
-    add_header Cache-Control "public, max-age=31536000, immutable";
-}
-location = /release-marker.json { add_header Cache-Control "no-store"; }
-```
+   先只读检查并核对少量文章的发布计划，再明确执行发布。
 
 ### 只想在本机演练，不接公网
 
@@ -96,10 +109,4 @@ local 模式不会自动启动 HTTP 服务，DEPLOYED 只表示本地部署器�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- init
-npm run blog -- doctor --remote
-npm run blog -- publish <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

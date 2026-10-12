@@ -20,13 +20,37 @@ online: 不改变
 
 1. 进入“查看或修改文章信息”，选择文章；手写文件不能解析时手动输入路径。
 
+   ```sh
+   npm run blog -- search "秋天的一杯茶"
+   ```
+
+   先查候选 ID；也可继续使用原有 slug 或路径。
+
 2. 先选“查看信息”确认身份；修改时再次进入并选“按字段修改”。
+
+   ```sh
+   npm run --silent blog -- meta <文章> --json
+   ```
+
+   READ 只看资料，不修改。
 
 3. 空格勾选需要改的字段，Enter 继续。
 
 4. 逐个输入：标签用中文或英文逗号分隔；精选选择是／否；分钟数输入正整数。
 
+   ```sh
+   npm run blog -- meta <文章> --set 'tags=[日常,记录]' --set 'summary=一杯茶的时间。' --dry-run
+   ```
+
+   PLANNED 展示选中字段；核对后去掉 --dry-run 执行。
+
 5. 当前值作为默认值，直接回车保留它。要清除可选字段，先删掉输入框中的默认内容，再提交空值；标题和 slug 不能留空。
+
+   ```sh
+   npm run blog -- meta <文章> --set 'cover=null' --dry-run
+   ```
+
+   null 删除可选字段；不删除仍被正文引用的文件。
 
 6. 核对摘要并确认，再查看文章信息确认实际保存值。
 
@@ -53,6 +77,14 @@ npm run blog -- meta autumn-tea --set 'cover=null' --dry-run
 
 id 和 createdAt 只允许在接入手写文章时补齐缺失值，不是可反复重置的字段。栏目由目录决定；flow 可通过编辑 frontmatter 或合法的 `--set` 对象修改，复杂配置优先按[环绕教程](/writing/flow)操作。字段修改只影响本地，`featured`、`status` 都不是发布开关。
 
+普通文章加入系列并为后续章节腾出序号，使用[series add](/writing/series)，它会统一顺延。退出已有系列则明确修改当前这一篇：
+
+```sh
+npm run blog -- meta <文章ID> --set 'series=null' --dry-run
+```
+
+核对后去掉 `--dry-run` 保存。退出不重新编号其他章节，公开归属仍需明确发布修订。
+
 ## 确认结果
 
 返回 UPDATED。YAML 注释、未选字段、正文换行和尾随空格保留。
@@ -67,10 +99,4 @@ id 和 createdAt 只允许在接入手写文章时补齐缺失值，不是可反
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- meta <文章>
-npm run blog -- meta <文章> --set 'tags=[日常,记录]' --set 'featured=true' --dry-run
-npm run blog -- meta <文章> --set 'summary=新的摘要' --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

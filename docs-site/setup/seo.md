@@ -26,9 +26,21 @@ online: 明确发布后才改变
 
 4. 编辑文章的 `summary` 和可选 `cover`。摘要未填写时从 Markdown 正文提取；分享图片优先使用本篇封面，没有封面时使用现有创作桌面图。图片必须是本篇本地资源，避免引用会变化的外部封面。
 
+   ```sh
+   npm run blog -- meta <文章> --set 'summary=在一杯茶里记录新的观察。' --dry-run
+   ```
+
+   预演该篇摘要字段；核对后去掉 --dry-run 保存。
+
 5. 按[发布选中文章](/release/publish)查看并确认计划。域名、个人信息都属于全站基线；已经有发布记录时，必须另行明确接受基线变更。
 
 6. 本地构建后检查 `out/sitemap.xml` 和 `out/robots.txt`，并查看文章 HTML 中的 canonical、Open Graph、Twitter 和 `application/ld+json`。canonical 必须是正式 `/article/<slug>/`，而不是 `/versions/<发布ID>/`。
+
+   ```sh
+   npm run blog -- build <文章> --export
+   ```
+
+   明确导出后检查 out 中的 HTML、sitemap 与 robots。
 
 7. 核对站点地图：只包含正式导出中的公开文章、目录和非空栏目分页；不含草稿、fixture、404、空栏目或 `__empty__` 哨兵页。页码各自指向自己的 canonical，不都指回第一页。
 
@@ -77,10 +89,4 @@ Pages 的免费 URL 包含仓库子路径时，访问的是 `https://OWNER.githu
 
 ## 参数方式
 
-```sh
-npm run check
-npm run test:cli:next
-npm run build
-```
-
-真实 Next 构建测试在临时目录完成，不提交 Git、不连接或写入真实服务器。`npm run build` 只采用当前已发布快照；没有记录时生成空站。
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

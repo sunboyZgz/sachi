@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { parseCli } from './arguments';
 
 describe('Commander command boundary', () => {
+  it('parses name queries and ID-only series insertion with explicit order', () => {
+    expect(parseCli(['search', '博客 玩具', '--json'])).toMatchObject({ command: 'search', selectors: ['博客 玩具'], options: { json: true } });
+    expect(parseCli(['series', 'search', '我学会了'])).toMatchObject({ command: 'series', seriesAction: 'search', selectors: ['我学会了'] });
+    expect(parseCli(['series', 'add', 'article-id', '--series', 'series-id', '--order', '2', '--dry-run'])).toMatchObject({ command: 'series', seriesAction: 'add', selectors: ['article-id'], options: { series: ['series-id'], order: 2, 'dry-run': true } });
+  });
   it('keeps global options before or after the command and normalizes keys', () => {
     expect(parseCli(['--json', '--root', '/tmp/project', 'build', 'a', 'b', '--yes', '--dry-run', '--accept-baseline', '--export'])).toMatchObject({
       command: 'build', selectors: ['a', 'b'], options: { json: true, root: '/tmp/project', yes: true, 'dry-run': true, 'accept-baseline': true, export: true },

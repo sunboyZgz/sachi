@@ -13,8 +13,10 @@ import { checksums, linkDependencies, readSnapshot, type CodeSnapshot } from './
 import { validateArticleLinks } from './plan';
 import { withBasePath } from '../../src/lib/site-path';
 import { readSeriesSnapshot } from './series';
+import { assertNoPendingWrites } from './writing-transactions';
 
 export async function buildRelease(root: string, config: BlogConfig, manifest: Manifest, options: { echo?: boolean } = {}) {
+  await assertNoPendingWrites(root);
   const codeDirectory = storePath(root, 'code', manifest.codeHash);
   const descriptor = await readJson(path.join(codeDirectory, 'code.json')) as CodeSnapshot;
   const digest = sha256(stableJson({ files: descriptor.hashes, buildCommand: descriptor.buildCommand, node: descriptor.node, platform: descriptor.platform, sharp: descriptor.sharp, ffmpeg: descriptor.ffmpeg }));

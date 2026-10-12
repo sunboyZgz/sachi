@@ -9,9 +9,11 @@ import { run } from './process';
 import { codeBaseline } from './snapshot';
 import { buildRelease, copyExport } from './site';
 import { withLock } from '../../src/lib/blog/files';
+import { assertNoPendingWrites } from './writing-transactions';
 
 async function build() {
   const root = process.cwd(); const config = await loadConfig(root);
+  await assertNoPendingWrites(root);
   if (process.argv.includes('--fixtures')) {
     const { posts, issues } = await scanContent(root, config, 'tests/fixtures/content');
     if (issues.length) throw new BlogError(issues.map((issue) => `${issue.file}: ${issue.message}`).join('\n'));

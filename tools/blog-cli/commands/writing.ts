@@ -3,7 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { execa } from 'execa';
 import { scanContent, selectPosts } from '../../../src/lib/blog/content';
 import { BlogError, exists, withLock, writeJson } from '../../../src/lib/blog/files';
-import { categoryNames, configSchema, categorySchema } from '../../../src/lib/blog/schema';
+import { categoryNames, configSchema, categorySchema, postSchema, seriesRefSchema } from '../../../src/lib/blog/schema';
 import { scanSeries, selectSeries } from '../../../src/lib/blog/series';
 import { editSeries, newSeries, seriesAssignment } from '../series';
 import { cachePath, validateConfig } from '../config';
@@ -19,11 +19,33 @@ import { cachedManifest } from '../state';
 import { pagesStatus, resolvePagesTarget } from '../pages';
 import { releaseCurrent } from '../delivery';
 import type { CommandContext } from '../context';
+import { searchNames } from '../search';
+import { commitSeriesInsertion, describeInsertion, prepareSeriesInsertion } from '../series-insertion';
+import { assertNoPendingWrites, recoverWritingTransactions } from '../writing-transactions';
 export async function executeWriting(context: CommandContext): Promise<boolean> {
   const { root, config, invocation, prompts, print, confirm } = context;
   const { command, selectors, options } = invocation;
+  if (command === 'search' || command === 'series' && invocation.seriesAction === 'search') {
+    if (!selectors[0]) throw new BlogError('请提供中文名称或关键词。', 2, 'INPUT_REQUIRED');
+    print('READ', await searchNames(root, command === 'search' ? 'article' : 'series', selectors[0])); return true;
+  }
   if (command === 'series') {
     const action = invocation.seriesAction ?? 'list';
+    if (action === 'add') {
+      if (selectors.length !== 1 || options.series?.length !== 1 || options.order === undefined) throw new BlogError('series add 需要文章完整 ID、--series <系列ID> 和 --order <正整数>。', 2, 'INPUT_REQUIRED');
+      postSchema.shape.id.parse(selectors[0]);
+      seriesRefSchema.parse({ id: options.series[0], order: options.order });
+      const prepare = () => prepareSeriesInsertion(root, config, selectors[0], options.series![0], options.order!);
+      if (options['dry-run']) { print('PLANNED', (await prepare()).result); return true; }
+      await withLock(cachePath(root, 'writing.lock'), async () => {
+        const recovered = await withLock(cachePath(root, 'publish.lock'), () => recoverWritingTransactions(root));
+        const plan = await prepare();
+        await confirm(describeInsertion(plan.result));
+        const result = await withLock(cachePath(root, 'publish.lock'), () => commitSeriesInsertion(root, config, plan));
+        print('UPDATED', { ...result, recovered });
+      });
+      return true;
+    }
     if (action === 'new') {
       const values = await collectNewPostOptions(options, prompts);
       const description = options.description ?? (prompts.enabled ? await prompts.input('系列简介（可留空）', () => true) : undefined);
@@ -44,6 +66,7 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
       changes.description = await prompts.input('系列简介（留空清除）', () => true, { default: source.series.description });
     }
     if (!Object.keys(changes).length) { print('READ', source.series); return true; }
+    await assertNoPendingWrites(root);
     if (options['dry-run']) { print('PLANNED', { file: source.sourcePath, changes }); return true; }
     await confirm(`修改系列 ${source.series.title}：\n${JSON.stringify(changes, null, 2)}\n发布该系列章节时会同步采用此资料。`);
     print('UPDATED', await withLock(cachePath(root, 'writing.lock'), () => editSeries(root, config, selector, changes))); return true;
@@ -104,6 +127,7 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
     if (options.title) changes.title = options.title;
     if (options.slug) changes.slug = options.slug;
     if (!options.init && !Object.keys(changes).length) { print('READ', found?.post ?? { file: selector }); return true; }
+    await assertNoPendingWrites(root);
     const cached = await cachedManifest(root);
     if (changes.slug && [...(cached.manifest?.entries ?? []), ...(cached.manifest?.retired ?? [])].some((entry) => entry.id === found?.post.id && entry.slug !== changes.slug)) throw new BlogError('曾发布文章不能更改 slug。', 3);
     if (options['dry-run']) { print('PLANNED', { file: selector, changes, initialize: !!options.init }); return true; }

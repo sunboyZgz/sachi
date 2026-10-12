@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readdir } from 'node:fs/promises';
 import { scanContent, type SourcePost } from '../../src/lib/blog/content';
 import { BlogError, exists, readJson } from '../../src/lib/blog/files';
-import { categoryNames, configSchema, releaseIdSchema, type BlogConfig } from '../../src/lib/blog/schema';
+import { categoryNames, configSchema, releaseIdSchema, postSchema, seriesRefSchema, type BlogConfig } from '../../src/lib/blog/schema';
 import { type CommandName, type Invocation } from './arguments';
 import { validateConfig, storePath } from './config';
 import { deployAction } from './deploy';
@@ -21,7 +21,9 @@ export const mainChoices: Choice[] = [
   { name: '发布选中文章 · publish', value: 'publish', description: '默认不勾选任何文章；先看计划，再确认上线' },
   { name: '推送冻结版本 · push', value: 'push', description: '服务器部署 + blog 分支触发 Pages；main 保持不变' },
   { name: '查看或修改文章信息 · meta', value: 'meta' },
+  { name: '查找文章 ID · search', value: 'search', description: '输入中文标题或关键词，只列候选' },
   { name: '系列管理 · series', value: 'series', description: '维护系列名称、简介和所属栏目' },
+  { name: '准备作品资料 · toy', value: 'toy', description: '逐项录入或填写 YAML；待媒体处理，不上传、不进入舞台' },
   { name: '查看文章状态 · status', value: 'status' },
   { name: '本地构建（不上线）· build', value: 'build' },
   { name: '保存全部写作备份（不上线）· sync', value: 'sync' },
@@ -175,6 +177,12 @@ export async function completeInvocation(root: string, config: BlogConfig, origi
   }
   if (!prompts.enabled) return invocation;
   const { command, options } = invocation;
+  if (command === 'toy' && !invocation.toyAction) {
+    const selected = await prompts.select('作品资料管理（当前仅本地准备）', [{ name: '逐项录入作品', value: 'add' }, { name: '从填写文件录入作品', value: 'file' }, { name: '生成填写模板', value: 'template' }, { name: '查看作品 ID 与状态', value: 'list' }, { name: '重新检查作品', value: 'check' }]);
+    if (!['add', 'file', 'template', 'list', 'check'].includes(selected)) throw new BlogError('未知作品资料操作。', 2);
+    if (selected === 'file') options.file = await prompts.input('已填写的作品 YAML 路径', nonempty);
+    invocation.toyAction = selected === 'file' ? 'add' : selected as Invocation['toyAction'];
+  }
   if (command === 'init' && (invocation.guided || !options.yes && !options.timezone && !options['git-remote'] && !options.pages && !options['pages-remote'])) invocation.configDraft = await collectInitConfig(root, config, prompts);
   if (['status', 'list', 'history', 'doctor'].includes(command!) && invocation.guided && (config.deploy || config.pages) && !options.remote) options.remote = await prompts.select('状态数据来源', [{ name: '本地缓存（不代表已核实线上）', value: 'cached' }, { name: '只读查询服务器 / Pages', value: 'remote' }]) === 'remote';
   if (command === 'push' && !invocation.selectors.length) {
@@ -212,7 +220,13 @@ export async function completeInvocation(root: string, config: BlogConfig, origi
     if (!invocation.selectors.length || new Set(invocation.selectors).size !== invocation.selectors.length || invocation.selectors.some((id) => !entries.some((entry) => entry.id === id))) throw new BlogError('必须明确选择有效公开文章。', 2);
     invocation.guided = true;
   }
-  if (command === 'series' && !invocation.seriesAction) invocation.seriesAction = await prompts.select('系列管理', [{ name: '新建系列', value: 'new' }, { name: '查看系列列表', value: 'list' }, { name: '查看或修改系列资料', value: 'meta' }]) as Invocation['seriesAction'];
+  if (command === 'series' && !invocation.seriesAction) invocation.seriesAction = await prompts.select('系列管理', [{ name: '查找系列 ID', value: 'search' }, { name: '新建系列', value: 'new' }, { name: '按 ID 插入文章', value: 'add' }, { name: '查看系列列表', value: 'list' }, { name: '查看或修改系列资料', value: 'meta' }]) as Invocation['seriesAction'];
+  if ((command === 'search' || command === 'series' && invocation.seriesAction === 'search') && !invocation.selectors.length) invocation.selectors = [await prompts.input('中文名称或关键词（多个关键词用空格分隔）', nonempty)];
+  if (command === 'series' && invocation.seriesAction === 'add') {
+    if (!invocation.selectors.length) invocation.selectors = [await prompts.input('文章完整 ID（可先用 search 查找）', (value) => postSchema.shape.id.safeParse(value).success ? true : '请输入完整文章 ID。')];
+    if (!options.series?.length) options.series = [await prompts.input('系列完整 UUID（可先用 series search 查找）', (value) => seriesRefSchema.shape.id.safeParse(value).success ? true : '请输入完整系列 UUID。')];
+    if (options.order === undefined) options.order = Number(await prompts.input('插入章节序号（后续章节加一）', (value) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? true : '请输入正整数。'));
+  }
   if (['meta', 'dev', 'check', 'build', 'publish'].includes(command!) && !options.resume && !invocation.selectors.length && !options.post && !options.series?.length) {
     const scanned = await scanContent(root, config);
     if (command === 'dev') {

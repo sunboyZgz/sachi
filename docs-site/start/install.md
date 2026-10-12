@@ -20,11 +20,37 @@ online: 不改变
 
 1. 运行 `node --version` 和 `npm --version`，确认运行环境可用。
 
+   ```sh
+   node --version
+   npm --version
+   ```
+
+   确认两个命令都可调用。
+
 2. 在项目根目录运行 `npm ci`，按锁文件安装博客与 CLI 依赖。不要在视觉交接包内安装。
+
+   ```sh
+   npm ci
+   ```
+
+   安装完成后再继续，不改依赖锁来绕过失败。
 
 3. 运行 `npm run blog`，终端会出现操作菜单，无需输入子命令。
 
+   ```sh
+   npm run blog
+   ```
+
+   出现“今天想做什么？”菜单。
+
 4. 如果希望直接输入 `blog`，可在根目录主动运行一次 `npm link`。这会在当前 npm 全局目录注册本项目的命令链接，不初始化 Git 或发布文章。
+
+   ```sh
+   npm link
+   blog --help
+   ```
+
+   这是可选注册方式；不注册时继续使用 npm run blog。
 
 5. 随后在 sachi 根目录运行 `blog`。不想改全局环境时继续使用 `npm run blog` 或 `./bin/blog.mjs`，功能相同。
 
@@ -70,11 +96,4 @@ npm run blog
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog
-# 可选：注册本机命令
-npm link
-blog --help
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

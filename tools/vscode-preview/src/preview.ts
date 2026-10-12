@@ -1,19 +1,21 @@
 import path from 'node:path';
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { parseDocument } from 'yaml';
+import { isMap, isScalar, parseDocument } from 'yaml';
 import { imageReferences, markdownReferences, postFromDocument, splitDocument } from '../../../src/lib/blog/document';
 import { safeFile, sha256 } from '../../../src/lib/blog/files';
 import { configSchema, defaultConfig, mediaSchema, type Asset } from '../../../src/lib/blog/schema';
 import { profileSchema } from '../../../src/config/profile-schema';
 import { profile } from '../../../src/config/profile';
 import { parseMarkdown } from '../../../src/lib/markdown';
-import type { PreviewData } from './protocol';
+import { createSourceMapper } from '../../../src/lib/source-text-map';
+import type { PreviewData, RevealLine } from './protocol';
 
 export type ArticleLocation = { root: string; contentRoot: string; relative: string; file: string; legacy: boolean };
 type BuildOptions = {
   location: ArticleLocation; raw: string; revision: number; dirty: boolean;
   resourceUri: (file: string) => string;
   readText?: (file: string) => Promise<string>;
+  documentVersion?: number; syncEnabled?: boolean; clickEnabled?: boolean; navigation?: RevealLine;
 };
 const imageExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.svg']);
 const videoExtensions = new Set(['.mp4', '.webm', '.mov', '.m4v']);
@@ -47,7 +49,13 @@ export async function buildPreview(options: BuildOptions) {
   const profileRaw = await optionalText(path.join(location.root, 'src/config/profile.json'), readText);
   const author = profileRaw ? profileSchema.parse(JSON.parse(profileRaw)) : profile;
   const warnings: string[] = [];
-  const { data, body } = splitDocument(options.raw);
+  const { data, body, bodyRaw, document: metadata } = splitDocument(options.raw);
+  const titleKey = isMap(metadata.contents) ? metadata.contents.items.find((item) => isScalar(item.key) && item.key.value === 'title')?.key : undefined;
+  const titleOffset = isScalar(titleKey) ? titleKey.range?.[0] : undefined;
+  const title = typeof titleOffset === 'number' ? createSourceMapper(options.raw.replaceAll('\r\n', '\n').replace(/^\uFEFF/, ''), { lineOffset: 0 }).point(4 + titleOffset) : undefined;
+  const bodyOffset = options.raw.length - bodyRaw.length + (bodyRaw.match(/^\s*/u)?.[0].length ?? 0);
+  const beforeBody = options.raw.slice(0, bodyOffset);
+  const origin = { lineOffset: (beforeBody.match(/\n/g) ?? []).length, columnOffset: beforeBody.length - beforeBody.lastIndexOf('\n') - 1 };
   let post;
   try { post = postFromDocument(location.relative, data, body, config.timezone); }
   catch (error) {
@@ -119,7 +127,7 @@ export async function buildPreview(options: BuildOptions) {
   post = { ...post, assets, cover: post.cover ? assets[post.cover]?.url : undefined,
     flow: post.flow ? { ...post.flow, image: assets[post.flow.image].url, contour: post.flow.contour ? assets[post.flow.contour].url : undefined } : undefined };
   const styles: string[] = [];
-  for (const name of ['tokens.css', 'site.css']) {
+  for (const name of ['tokens.css', 'site.css', 'code-highlight.css']) {
     const file = path.join(location.root, 'src/styles', name);
     const info = await stat(file);
     styles.push(`${resourceUri(file)}?v=${info.mtimeMs}-${info.size}`);
@@ -129,7 +137,8 @@ export async function buildPreview(options: BuildOptions) {
     const file = await safeFile(location.root, 'src/assets/avatar/avatar-half.png');
     avatar = `${resourceUri(file)}?v=${sha256(await readFile(file))}`;
   } catch { warnings.push('项目半身头像不可用，使用插件构建时的头像。'); }
-  const message: PreviewData = { type: 'update', revision: options.revision, document: location.file, dirty: options.dirty, post, profile: author, warnings, styles, avatar };
+  const message: PreviewData = { type: 'update', revision: options.revision, document: location.file, dirty: options.dirty, post, profile: author, warnings, styles, avatar,
+    source: { origin, version: options.documentVersion ?? 0, totalLines: options.raw.split('\n').length, syncEnabled: options.syncEnabled ?? true, clickEnabled: options.clickEnabled ?? true, title, navigation: options.navigation } };
   return { message, links, allowedExternal };
 }
 

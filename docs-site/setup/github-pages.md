@@ -28,9 +28,21 @@ online: Actions 成功部署后改变
 
 2. 如果根项目已经是 Git 仓库，运行 `git remote get-url --push origin` 核对目标。CLI 使用这个地址，而不是直接解析 `.git/config`，因此也兼容 worktree 的 `.git` 文件。没有 `.git` 时可以显式配置目标，继续本地写作；CLI 不会擅自执行 git init。
 
+   ```sh
+   git remote get-url --push origin
+   ```
+
+   只读取根仓库实际推送目标；没有 Git 仓库时使用明确配置。
+
 3. `main` 由你使用正常 Git 流程管理。提交前检查 `.gitignore` 与暂存内容；正式文章目录、环境文件、缓存和持久快照默认忽略。历史上已跟踪的草稿不会因为新增忽略规则而自动变私密，需自行审查公开仓库历史。
 
 4. 运行 `npm run blog`，选择“配置项目与正式接入”，在 Pages 一步选“启用，默认使用根仓库 origin”，或“启用，指定目标 GitHub 仓库”。向导只保存设置，不连接 GitHub。Git 写作备份保持独立，不能使用 main 或 blog 分支。
+
+   ```sh
+   npm run blog -- init
+   ```
+
+   在 Pages 一步选择 origin 或指定真实仓库。
 
 5. 无参数方式之外，也可运行 `npm run blog -- init --pages --yes`，启用动态 origin 默认值。配置如下；`remote: null` 表示每次读取根仓库 origin，而不是把地址复制到其他文件：
 
@@ -45,11 +57,25 @@ online: Actions 成功部署后改变
 
 7. 检查文章，再用 `build <文章> --dry-run` 核对计划；正式执行 `build <文章> --yes` 得到 BUILD_ONLY 回执和 release-id。这一步仍未上线，只冻结明确选择的文章。新代码基线需要单独使用 `--accept-baseline` 接受。
 
+   ```sh
+   npm run blog -- build <文章> --dry-run
+   npm run blog -- build <文章>
+   ```
+
+   核对后确认构建，保存 BUILD_ONLY 返回的 releaseId。
+
 8. 打开主菜单选择“推送冻结版本 · push”，或直接运行 `npm run blog -- push`。从已构建列表选择确切版本。它不重新读取 Markdown、当前头像或个人资料的后续修改。
 
 9. 选择目标来源：使用配置/origin，或仅本次指定另一个 GitHub 仓库。参数方式用 `--pages-remote <GitHub仓库地址>`；覆盖不改变 origin 或永久配置。要坚持同仓库 main/blog，请核对这两个目标实际相同。
 
 10. 先选择“只查看计划”，核对服务器目标、仓库、blog 分支、免费 URL 与当前远端提交。再执行并确认：blog 分支的**发布源码和选中正文是公开的**，不是只有导出 HTML。
+
+    ```sh
+    npm run blog -- push <release-id> --dry-run
+    npm run blog -- push <release-id> --setup-pages
+    ```
+
+    核对后确认第二条；--setup-pages 显式启用 Actions 发布源。
 
 11. 执行时，工具在 `.blog/` 的独立临时目录生成新提交，不切换根工作区分支，不暂存根文件。首次建立独立 blog 历史；后续正常追加提交，不强推，不覆盖已有非本工具管理的 blog 分支。远端在确认后变化会拒绝推送。
 
@@ -58,6 +84,12 @@ online: Actions 成功部署后改变
 13. 在 GitHub Actions 检查 build 和 deploy 均成功。仓库 github-pages 环境规则必须允许 blog 分支；分支保护、Actions 禁用或权限限制需要仓库管理员调整，CLI 不会自动绕过。
 
 14. 运行 `npm run blog -- status --remote`。CLI 读取免费 URL 的 release-marker.json；只有标记与冻结版本一致，才显示 Pages DEPLOYED。Pages-only 模式未核实上线前，不能继续以排队版本为新 publish 基线。
+
+    ```sh
+    npm run blog -- status --remote
+    ```
+
+    Pages 的 release-marker 必须与冻结 ID 相同。
 
 15. 打开主页、目录、栏目分页、文章、图片、视频与代码复制按钮。项目地址保留 `/REPO/`；SEO canonical、sitemap、头像、环绕轮廓和下载链接都应在同一路径下。
 
@@ -111,23 +143,4 @@ online: Actions 成功部署后改变
 
 ## 参数方式
 
-以下 OWNER、REPO、文章路径和 release-id 均需替换为实际值：
-
-```sh
-gh auth login
-npm run blog -- init --pages --yes
-npm run blog -- build <文章路径> --dry-run
-npm run blog -- build <文章路径> --yes
-npm run blog -- push <release-id> --dry-run
-npm run blog -- push <release-id> --setup-pages --yes
-npm run blog -- status --remote
-
-# 本次覆盖目标，不改变配置或 origin
-npm run blog -- push <release-id> --pages-remote git@github.com:OWNER/REPO.git --dry-run
-
-# 接入后，发布新修订并执行两个已配置钩子
-npm run blog -- publish <文章路径> --dry-run
-npm run blog -- publish <文章路径> --yes
-```
-
-[push 参数参考](/reference/commands/push) · [发布选中文章](/release/publish) · [服务器接入](/setup/server)
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

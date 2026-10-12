@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import type { SourceAttributes } from '../lib/source-lines';
 
 const subscribe = () => () => {};
 const clientSnapshot = () => true;
 const serverSnapshot = () => false;
 
-export function CodeBlock({ children }: { children: ReactNode }) {
+export function CodeBlock({ children, source }: { children: ReactNode; source?: SourceAttributes }) {
   // The server and initial hydration render agree; no-JS readers get only code.
   const ready = useSyncExternalStore(subscribe, clientSnapshot, serverSnapshot);
   const codeRef = useRef<HTMLPreElement>(null);
@@ -38,7 +39,7 @@ export function CodeBlock({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="code-block">
+    <div {...source} className="code-block">
       <button
         className="code-copy"
         type="button"

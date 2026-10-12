@@ -8,7 +8,9 @@ export const navigation = [
   ] },
   { text: '写作与素材', collapsed: true, items: [
     { text: '新建文章', link: '/writing/new' },
+    { text: '查找文章与系列 ID', link: '/writing/find' },
     { text: '组织系列文章', link: '/writing/series' },
+    { text: '准备玩具作品资料', link: '/writing/toys' },
     { text: '修改文章信息', link: '/writing/edit-meta' },
     { text: '接入手写文章与固定 URL', link: '/writing/identity' },
     { text: '添加图片与封面', link: '/writing/images' },
@@ -53,6 +55,7 @@ export const navigation = [
     { text: '全部命令与参数', link: '/reference/commands' },
     { text: '文章与目录契约', link: '/reference/content' },
     { text: '发布、备份与恢复的区别', link: '/reference/publishing' },
+    { text: 'Yandu 通用媒体验收目标', link: '/reference/yandu-acceptance' },
     { text: '维护和部署文档站', link: '/reference/docs-site' },
   ] },
 ];

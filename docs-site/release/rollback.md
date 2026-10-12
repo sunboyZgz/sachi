@@ -24,11 +24,30 @@ online: 整个公开集合恢复到目标版本
 
 1. 先查远端状态和历史，确认当前与目标版本。
 
+   ```sh
+   npm run blog -- status --remote
+   npm run blog -- history --remote
+   ```
+
+   仅服务器单目标支持 rollback，启用 Pages 时拒绝。
+
 2. 进入“整站回滚 · rollback”，从成功发布记录选择目标。
 
 3. 先看计划里的 from、to、restored、removed，核对将恢复和消失的公开文章。
 
+   ```sh
+   npm run blog -- rollback --to <release-id> --dry-run
+   ```
+
+   核对 from、to、restored 和 removed。
+
 4. 重新进入执行，核对计划并确认，默认取消。
+
+   ```sh
+   npm run blog -- rollback --to <release-id>
+   ```
+
+   确认后切换整站公开版本，不覆盖本地原稿。
 
 5. 服务器在锁下比较基线，切换目标并检查健康；并发变化会拒绝。
 
@@ -60,9 +79,4 @@ Pages 需要纠错时，当前 CLI 可以明确发布一个新的修正版；历
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- rollback --to <release-id> --dry-run
-npm run blog -- rollback --to <release-id> --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

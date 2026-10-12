@@ -2,7 +2,7 @@
   "name": "sachi-blog-preview",
   "displayName": "Sachi Blog 文章预览",
   "description": "使用 Sachi Blog 真实排版，实时预览未保存的文章与图文环绕。",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "publisher": "sachi-local",
   "license": "MIT",
@@ -15,7 +15,8 @@
   "contributes": {
     "commands": [
       { "command": "sachiPreview.open", "title": "打开文章预览", "category": "Sachi Blog", "icon": "$(open-preview)" },
-      { "command": "sachiPreview.refresh", "title": "刷新文章预览", "category": "Sachi Blog", "icon": "$(refresh)" }
+      { "command": "sachiPreview.refresh", "title": "刷新文章预览", "category": "Sachi Blog", "icon": "$(refresh)" },
+      { "command": "sachiPreview.revealLine", "title": "定位当前编辑行", "category": "Sachi Blog" }
     ],
     "menus": {
       "editor/title": [{ "command": "sachiPreview.open", "when": "editorLangId == markdown", "group": "navigation" }],
@@ -26,7 +27,9 @@
       "title": "Sachi Blog 文章预览",
       "properties": {
         "sachiPreview.debounceMs": { "type": "number", "default": 180, "minimum": 0, "maximum": 2000, "description": "输入停止后等待多少毫秒再刷新预览。" },
-        "sachiPreview.followActiveEditor": { "type": "boolean", "default": true, "description": "预览跟随当前打开的博客文章；关闭后固定当前文章。" }
+        "sachiPreview.followActiveEditor": { "type": "boolean", "default": true, "description": "预览跟随当前打开的博客文章；关闭后固定当前文章。" },
+        "sachiPreview.syncScroll": { "type": "boolean", "default": true, "description": "预览跟随编辑器的光标定位和滚动；预览中的手动阅读、图片拖动保持独立。" },
+        "sachiPreview.clickToSource": { "type": "boolean", "default": true, "description": "单击预览文字，将编辑器光标移到对应源码并聚焦编辑器；预览保持只读，与自动滚动同步独立。" }
       }
     }
   },

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import '@/styles/tokens.css';
 import '@/styles/site.css';
+import '@/styles/code-highlight.css';
 import '@/styles/series.css';
 import { profile, siteAsset } from '@/config/site';
 import { getSeoContext, noIndex } from '@/lib/seo';

@@ -25,4 +25,23 @@
   --read-width: 720px;
   --gutter: clamp(24px, 7.78vw, 112px);
   --duration: 160ms;
+  /* Article hierarchy: the page title and Markdown chapters have separate roles. */
+  --article-title-size: 56px;
+  --article-h1-size: 42px;
+  --article-h2-size: 32px;
+  --article-h3-size: 26px;
+  --article-h4-size: 22px;
+  --article-body-size: 18px;
+  --article-heading-color: #2f3830;
+  --article-h4-color: var(--moss);
+  --article-body-color: #3f463f;
+  --article-h1-before: 96px;
+  --article-h2-before: 72px;
+  --article-h3-before: 48px;
+  --article-h4-before: 36px;
+  --article-h1-after: 32px;
+  --article-h2-after: 24px;
+  --article-h3-after: 16px;
+  --article-h4-after: 12px;
+  --article-paragraph-gap: 24px;
 }

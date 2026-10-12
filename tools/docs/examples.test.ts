@@ -11,7 +11,7 @@ afterEach(async () => { vi.unstubAllEnvs(); for (const root of temporary.splice(
 
 describe('single-source synthetic Markdown teaching previews', () => {
   it('renders custom resources and reading controls through the real blog components', async () => {
-    const { examples } = await loadExamples();
+    const { examples, css } = await loadExamples();
     expect(Object.keys(examples)).toEqual(exampleDefinitions.map((definition) => definition.id));
     expect(examples.flow.html).toContain('flow-block'); expect(examples.flow.input.flow?.paragraphs).toHaveLength(3);
     expect(examples.flow.input.flow?.spec.contour).toBe('/examples/illustration-contour.json');
@@ -25,7 +25,14 @@ describe('single-source synthetic Markdown teaching previews', () => {
     expect(examples.attachment.html).toContain('href="/examples/notes.txt"');
     expect(examples['article-link'].html.match(/href="\/examples\/article-note.html"/g)).toHaveLength(2);
     expect(examples.reading.html).toContain('class="code-copy"'); expect(examples.reading.html).toContain('class="heading-link"');
+    expect(examples.reading.html).toContain('hljs-keyword');
+    expect(css).toContain('.article-prose pre code .hljs-keyword');
     expect(examples.reading.html).toContain('<table>'); expect(examples.reading.html).toContain('type="checkbox"');
+    expect(examples.reading.html).toContain('\u2003\u2003标题旁的');
+    expect(examples.flow.input.flow!.paragraphs[0]).toMatch(/^\u2003\u2003下午/);
+    expect(examples.flow.input.flow!.hardLines?.[0]).toHaveLength(2);
+    expect(examples.flow.html).toContain('<br/>\u2003\u2003这里没有强调');
+    expect(examples.reading.html.replaceAll('<!-- -->', '')).toContain('<br/>\n\u2003\u2003这一行保持紧凑行距');
     expect(examples.cover.html).toContain('featured-entry'); expect(examples.cover.input.cover?.title).toBe('让记录慢下来');
   });
   it('keeps document subpaths isolated from Next public environment variables', async () => {
@@ -41,10 +48,11 @@ describe('single-source synthetic Markdown teaching previews', () => {
   });
   it('provides complete ordinary flow paragraphs and code without JavaScript', async () => {
     const { examples } = await loadExamples();
-    for (const paragraph of examples.flow.input.flow!.paragraphs) expect(examples.flow.html).toContain(paragraph);
+    const ordinaryFlow = examples.flow.html.replaceAll('<br/>', '\n').replaceAll('<!-- -->', '');
+    for (const paragraph of examples.flow.input.flow!.paragraphs) expect(ordinaryFlow).toContain(paragraph);
     expect(examples.flow.html).toContain('flow-fallback');
     expect(examples.reading.html).toMatch(/class="code-copy"[^>]*hidden=""[^>]*disabled=""/);
-    expect(examples.reading.html).toContain('console.log(message);\n</code>');
+    expect(examples.reading.html.replace(/<[^>]+>/g, '')).toContain('console.log(message);\n');
     const result = JSON.stringify(examples);
     expect(result).not.toContain('.blog-store'); expect(result).not.toContain('avatar-head'); expect(result).not.toContain('avatar-half');
   });

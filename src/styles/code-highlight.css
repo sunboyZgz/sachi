@@ -1,0 +1,30 @@
+/* One light palette for the blog and VS Code Webview, scoped to article code. */
+.article-prose pre code .hljs-keyword,
+.article-prose pre code .hljs-selector-tag,
+.article-prose pre code .hljs-literal,
+.article-prose pre code .hljs-meta,
+.article-prose pre code .hljs-meta .hljs-keyword { color: #43533d; }
+
+.article-prose pre code .hljs-string,
+.article-prose pre code .hljs-regexp,
+.article-prose pre code .hljs-template-tag,
+.article-prose pre code .hljs-template-variable,
+.article-prose pre code .hljs-meta .hljs-string { color: #79502c; }
+
+.article-prose pre code .hljs-title,
+.article-prose pre code .hljs-built_in,
+.article-prose pre code .hljs-type,
+.article-prose pre code .hljs-tag,
+.article-prose pre code .hljs-name,
+.article-prose pre code .hljs-attr,
+.article-prose pre code .hljs-attribute,
+.article-prose pre code .hljs-selector-class,
+.article-prose pre code .hljs-selector-id,
+.article-prose pre code .hljs-selector-pseudo { color: #365d73; }
+
+.article-prose pre code .hljs-number,
+.article-prose pre code .hljs-symbol,
+.article-prose pre code .hljs-variable { color: #76517c; }
+
+.article-prose pre code .hljs-comment,
+.article-prose pre code .hljs-quote { color: #626b60; }

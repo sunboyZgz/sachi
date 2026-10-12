@@ -32,6 +32,7 @@ sachi/
 │  │                           # 每篇的 assets/ 和可选 media.yaml 在同级
 │  └─ *.md                    # 兼容的旧格式真实文章
 ├─ content/series/<UUID>.yaml # 独立系列名称、简介与所属栏目
+├─ content/toys/<UUID>/toy.yaml # 本地待处理作品资料；原媒体只保存引用，不进入舞台
 ├─ templates/                # 新文章的可选模板
 ├─ public/
 │  ├─ assets/                 # 共用题字、桌面插画、栏目图，不放头像
@@ -56,6 +57,7 @@ sachi/
 | 改正式域名、时区、Git 或服务器 | `blog.config.json` |
 | 换头像 | 覆盖 `src/assets/avatar/avatar-head.png` 或 `avatar-half.png` |
 | 写文章、换本篇封面或环绕图 | 本篇 `index.md` 和 `assets/` |
+| 准备作品资料、查询 ID | `blog toy`；登记在 `content/toys/<UUID>/toy.yaml` |
 | 设置环绕尺寸、位置、替代文字 | 本篇 frontmatter 的 `flow` |
 | 指定手工轮廓 | 本篇 `flow.contour`；省略时自动生成，不使用 `layout.yaml` |
 | 看操作手册或补充手册 | `docs-site/`，不是博客文章目录 |
@@ -72,6 +74,8 @@ sachi/
 ## 发布边界
 
 修改源文件只影响本地工作区；正式构建从冻结代码和候选发布清单读数据，不扫描未选草稿，不复制根目录 `.env`，也不复制整个 `public/media/`。未配置 Git 时不提交，不创建根 Git 仓库。
+
+`content/toys/` 当前是 CLI 的本地待媒体处理资料，不参与舞台读取或发布清单。原封面与视频路径及摘要保存在登记文件中；CLI 不复制原件，不把原视频大小当成压缩后结果。见[作品录入](/writing/toys)和[Yandu 后续验收目标](/reference/yandu-acceptance)。
 
 部署只公开静态导出目录，不公开源码、配置、手册源文件、`.blog/` 或 `.blog-store/`。独立手册不能索引私有文章和快照。
 

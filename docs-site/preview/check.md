@@ -22,11 +22,23 @@ online: 不改变
 
 2. 选择全部本地文章，或选择文章并空格勾选。
 
+   ```sh
+   npm run blog -- check <文章>
+   ```
+
+   把占位符换成实际 ID、slug 或路径；不指定文章时检查全部本地内容。
+
 3. 查看元数据、AST、依赖路径与媒体校验结果。被代码块包围的示例引用不是实际依赖。
 
 4. 按报错文件修复，例如缺图、重复身份、越界引用、原始 HTML 或不支持的媒体。
 
 5. 再次检查，确认 VALID；注意 warnings 并不等于可以忽略所有发布约束。
+
+   ```sh
+   npm run --silent blog -- check <文章> --json
+   ```
+
+   查看 VALID、posts、dependencies 与 warnings，不把检查结果当成发布回执。
 
 6. 发布前再[查看计划](/release/plan)，确认跨文章链接的目标也会公开。
 
@@ -56,10 +68,4 @@ check 不代表完整隔离构建通过，也不代表链接目标已公开。�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- check
-npm run blog -- check <文章A> <文章B>
-npm run --silent blog -- check <文章> --json
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

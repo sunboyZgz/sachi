@@ -22,7 +22,20 @@ online: 不改变
 
 2. 没有部署或 Pages 时查看本地信息；已配置时选择缓存或只读服务器 / Pages 查询。
 
+   ```sh
+   npm run blog -- status
+   npm run blog -- status --remote
+   ```
+
+   前一条读本地缓存，后一条核实已配置的真实目标。
+
 3. 检查 releaseId、checkedAt 和数据来源。CACHED 表示未核实，VERIFIED 表示本次已查询。
+
+   ```sh
+   npm run --silent blog -- status --remote --json
+   ```
+
+   就近查看 releaseId、checkedAt、文章状态和各个部署钩子。
 
 4. 识别 draft（草稿）、published（同修订已发布）、modified（有未发布修订）、withdrawn（撤回）、missing（线上存在、本地缺失）。
 
@@ -63,10 +76,4 @@ Pages 的结果在 `pages` 字段单独给出。`QUEUED_OR_UNKNOWN` 表示尚未
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- status
-npm run blog -- status --remote
-npm run blog -- status --remote --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

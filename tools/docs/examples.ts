@@ -63,7 +63,7 @@ export async function loadExamples(base = '/', sources = examplesDirectory) {
     }
     examples[definition.id] = { id: definition.id, title: definition.title, source, input, html: renderToString(createElement(ExampleReading, { input })), expectedHeight: definition.height };
   }
-  const css = (await Promise.all(['tokens.css', 'site.css'].map((file) => readFile(path.join(project, 'src/styles', file), 'utf8')))).join('\n');
+  const css = (await Promise.all(['tokens.css', 'site.css', 'code-highlight.css'].map((file) => readFile(path.join(project, 'src/styles', file), 'utf8')))).join('\n');
   return { examples, css };
 }
 

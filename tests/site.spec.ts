@@ -257,7 +257,7 @@ test('copies exact code text and newlines on desktop and mobile', async ({ page,
   const code = block.locator('pre code');
   const expected = await code.textContent();
   expect(expected).toContain('\n\nconsole.log(note.title);\n');
-  await expect(code).toHaveClass('language-js');
+  await expect(code).toHaveClass('language-js hljs');
   await expect(block.locator('pre')).toHaveCSS('padding-top', '58px');
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -269,6 +269,38 @@ test('copies exact code text and newlines on desktop and mobile', async ({ page,
     await expect(block.getByRole('status')).toHaveText('代码已复制。');
   }
   await expect(block.getByRole('button', { name: '复制代码', exact: true })).toHaveText('复制');
+});
+
+test('keeps code colors readable under host styles and wide highlighted lines inside the code area', async ({ page }) => {
+  await page.goto('/article/learning-rhythm/');
+  // VS Code gives code its own theme color instead of inheriting the blog's ink.
+  await page.addStyleTag({ content: 'code, a code { color: #e9b662; }' });
+  const code = page.locator('.code-block pre code').first();
+  await expect(code).toHaveCSS('color', 'rgb(63, 70, 63)');
+  await expect(code.locator('.hljs-keyword').first()).toHaveCSS('color', 'rgb(67, 83, 61)');
+  await expect(code.locator('.hljs-string').first()).toHaveCSS('color', 'rgb(121, 80, 44)');
+  await page.locator('.article-prose').evaluate((prose) => {
+    const paragraph = document.createElement('p');
+    paragraph.innerHTML = '行内 <code>inline</code> 和 <a href="#main"><code>link</code></a>。';
+    paragraph.id = 'code-color-probe';
+    const pre = document.createElement('pre');
+    const plain = document.createElement('code');
+    plain.textContent = '理解工具解决的问题 -> 理解项目的宏观架构\n';
+    pre.id = 'plain-code-probe';
+    pre.append(plain);
+    prose.append(paragraph, pre);
+  });
+  await expect(page.locator('#plain-code-probe code')).toHaveCSS('color', 'rgb(63, 70, 63)');
+  expect(await page.locator('#plain-code-probe code span').count()).toBe(0);
+  await expect(page.locator('#code-color-probe > code')).toHaveCSS('color', 'rgb(63, 70, 63)');
+  await expect(page.locator('#code-color-probe a code')).toHaveCSS('color', 'rgb(67, 83, 61)');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await code.locator('.hljs-string').first().evaluate((span) => { span.textContent = `'${'long highlighted string '.repeat(15)}'`; });
+  const pre = code.locator('..');
+  expect(await pre.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true);
+  await pre.evaluate((node) => { node.scrollLeft = node.scrollWidth; });
+  expect(await pre.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
 for (const failure of ['denied', 'unavailable'] as const) {
@@ -360,6 +392,8 @@ test('keeps the complete original paragraphs readable for printing', async ({ pa
   await expect(page.locator('.code-copy').first()).toBeHidden();
   await expect(page.locator('.heading-link').first()).toBeHidden();
   await expect(page.locator('.code-block pre code').first()).toBeVisible();
+  await expect(page.locator('.code-block .hljs-keyword').first()).toBeVisible();
+  await expect(page.locator('.code-block .hljs-keyword').first()).toHaveCSS('color', 'rgb(67, 83, 61)');
   await expect(page.locator('.code-block pre').first()).toHaveCSS('padding-top', '22px');
 });
 
@@ -375,6 +409,7 @@ test('renders complete article DOM and working anchors without JavaScript and ke
     await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
     await expect(page.locator('.code-copy').first()).toBeHidden();
     await expect(page.locator('.code-block pre code').first()).toContainText('console.log(note.title);');
+    await expect(page.locator('.code-block .hljs-keyword').first()).toBeVisible();
     await expect(page.locator('.code-block pre').first()).toHaveCSS('padding-top', '58px');
     for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(viewport);

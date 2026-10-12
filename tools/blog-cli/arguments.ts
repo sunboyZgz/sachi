@@ -2,7 +2,7 @@ import { Command, CommanderError, Option } from 'commander';
 import { BlogError } from '../../src/lib/blog/files';
 import type { BlogConfig } from '../../src/lib/blog/schema';
 
-export type CommandName = 'init' | 'doctor' | 'new' | 'series' | 'list' | 'status' | 'meta' | 'dev' | 'check' | 'build' | 'publish' | 'push' | 'unpublish' | 'history' | 'rollback' | 'sync' | 'restore' | 'recover' | 'wizard';
+export type CommandName = 'init' | 'doctor' | 'new' | 'search' | 'series' | 'toy' | 'list' | 'status' | 'meta' | 'dev' | 'check' | 'build' | 'publish' | 'push' | 'unpublish' | 'history' | 'rollback' | 'sync' | 'restore' | 'recover' | 'wizard';
 export type CliOptions = {
   root?: string; json?: boolean; yes?: boolean; 'dry-run'?: boolean; remote?: boolean;
   category?: string; title?: string; slug?: string; timezone?: string; post?: string;
@@ -10,8 +10,9 @@ export type CliOptions = {
   'git-remote'?: string; visibility?: string; 'accept-baseline'?: boolean; export?: boolean;
   pages?: boolean; 'pages-remote'?: string; 'setup-pages'?: boolean;
   series?: string[]; order?: number; description?: string;
+  file?: string; output?: string; 'video-overflow'?: 'reject' | 'trim-start';
 };
-export type Invocation = { command?: CommandName; selectors: string[]; options: CliOptions; guided?: boolean; configDraft?: BlogConfig; help?: string; seriesAction?: 'new' | 'list' | 'meta' };
+export type Invocation = { command?: CommandName; selectors: string[]; options: CliOptions; guided?: boolean; configDraft?: BlogConfig; help?: string; seriesAction?: 'new' | 'list' | 'meta' | 'search' | 'add'; toyAction?: 'add' | 'template' | 'list' | 'check' };
 
 export function createCliProgram(onInvoke: (invocation: Invocation) => void = () => {}, onOutput: (text: string) => void = () => {}): Command {
   const program = new Command().name('blog').description('Sachi Blog · 本地 Markdown 写作与显式发布')
@@ -24,7 +25,7 @@ export function createCliProgram(onInvoke: (invocation: Invocation) => void = ()
   program.addHelpText('after', '\n终端运行 npm run blog 可进入分步向导。原参数命令仍可用于脚本。\nGit 未配置时不提交；publish 必须显式选择文章，不发布全部草稿。');
   const define = (name: CommandName, description: string, args?: string) => {
     const command = program.command(name).description(description).helpOption('-h, --help', '显示此命令帮助');
-    if (args) command.argument(args, name === 'push' ? '已构建冻结发布版本的 release-id' : '文章路径、ID 或 slug');
+    if (args) command.argument(args, name === 'push' ? '已构建冻结发布版本的 release-id' : name === 'search' ? '中文名称或多个空格分隔的关键词' : '文章路径、ID 或 slug');
     command.action(() => {
       const raw = command.optsWithGlobals();
       const options = Object.fromEntries(Object.entries(raw).map(([key, value]) => [key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`), value])) as CliOptions;
@@ -39,19 +40,36 @@ export function createCliProgram(onInvoke: (invocation: Invocation) => void = ()
     .option('--pages', '启用 GitHub Pages；目标默认读取根仓库 origin')
     .option('--pages-remote <地址>', '保存 GitHub Pages 目标仓库地址');
   define('doctor', '只读环境检查').option('--remote', '检查已配置的部署环境');
+  define('search', '根据中文标题或关键词查找本地文章 ID', '[关键词]');
   define('new', '选择三个栏目之一，再输入标题')
     .option('--category <栏目>', '闲暇娱乐 / 生活旁白 / 蘸豆！！，或 play/life/learn')
     .option('--title <标题>', '文章标题').option('--slug <slug>', '可选固定 URL；默认使用 UUID')
     .option('--series <系列>', '所属系列 ID 或 slug', (value: string) => [value]).option('--order <序号>', '章节正整数序号；缺省建议最大值 + 1', Number);
-  const series = program.command('series').description('新建、列出或修改系列资料').helpOption('-h, --help', '显示系列帮助');
+  const series = program.command('series').description('查找、创建系列，或按 ID 插入章节').helpOption('-h, --help', '显示系列帮助');
   series.action(() => onInvoke({ command: 'series', selectors: [], options: series.optsWithGlobals() }));
-  for (const action of ['new', 'list', 'meta'] as const) {
-    const child = series.command(action).description({ new: '创建系列', list: '列出本地系列', meta: '查看或修改系列' }[action]).helpOption('-h, --help', '显示帮助');
+  for (const action of ['new', 'list', 'meta', 'search', 'add'] as const) {
+    const child = series.command(action).description({ new: '创建系列并输出 ID', list: '列出本地系列', meta: '查看或修改系列', search: '根据中文名称或关键词查找系列 ID', add: '按文章和系列完整 ID 插入章节，后续序号加一' }[action]).helpOption('-h, --help', '显示帮助');
     if (action === 'new') child.option('--category <栏目>', '所属栏目').option('--title <名称>', '系列名称').option('--slug <slug>', '固定 URL').option('--description <简介>', '可选纯文字简介');
     if (action === 'meta') child.argument('[series]', '系列 ID 或 slug').option('--set <字段=YAML值>', '修改资料，可重复', (value: string, previous: string[] = []) => [...previous, value]);
+    if (action === 'search') child.argument('[关键词]', '中文名称或多个空格分隔的关键词');
+    if (action === 'add') child.argument('[文章ID]', '完整文章 ID，不接受名称或 slug')
+      .option('--series <系列ID>', '完整系列 UUID', (value: string) => [value]).option('--order <序号>', '插入章节的正整数序号；后续章节统一加一', Number);
     child.action(() => {
       const options = Object.fromEntries(Object.entries(child.optsWithGlobals()).map(([key, value]) => [key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`), value])) as CliOptions;
       onInvoke({ command: 'series', seriesAction: action, selectors: child.processedArgs.flat().filter((value): value is string => typeof value === 'string'), options });
+    });
+  }
+  const toy = program.command('toy').description('准备本地作品资料；待媒体处理，不上传或公开').helpOption('-h, --help', '显示作品帮助');
+  toy.action(() => onInvoke({ command: 'toy', selectors: [], options: toy.optsWithGlobals() }));
+  for (const action of ['add', 'template', 'list', 'check'] as const) {
+    const child = toy.command(action).description({ add: '逐项或从 YAML 录入作品，保存为待媒体处理', template: '生成填写模板，不覆盖文件、不生成作品 ID', list: '只读列出作品 ID、路径与待处理状态', check: '只读重新检查作品资料、原媒体变化和公网地址' }[action]).helpOption('-h, --help', '显示帮助');
+    if (action === 'add') child.option('--file <YAML文件>', '已填写的作品文件；媒体相对路径以此文件目录为准')
+      .addOption(new Option('--video-overflow <策略>', '未来处理超限视频：reject 拒绝；trim-start 保留开头').choices(['reject', 'trim-start']));
+    if (action === 'template') child.option('--output <YAML路径>', '写入尚不存在的填写模板');
+    if (action === 'check') child.argument('[作品ID]', '完整作品 UUID');
+    child.action(() => {
+      const options = Object.fromEntries(Object.entries(child.optsWithGlobals()).map(([key, value]) => [key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`), value])) as CliOptions;
+      onInvoke({ command: 'toy', toyAction: action, selectors: child.processedArgs.flat().filter((value): value is string => typeof value === 'string'), options });
     });
   }
   for (const name of ['list', 'status'] as const) define(name, name === 'list' ? '列出文章' : '查看文章与备份状态').option('--remote', '只读核实服务器当前清单');

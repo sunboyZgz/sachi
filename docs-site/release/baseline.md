@@ -20,11 +20,29 @@ online: 全站代码与资源更新
 
 1. 先完成本地代码检查、构建或视觉验收。
 
+   ```sh
+   npm run check
+   ```
+
+   本地检查通过后再核对发布范围。
+
 2. 查看发布计划，确认 baselineChanged 与候选文章范围。
+
+   ```sh
+   npm run blog -- publish <文章> --dry-run
+   ```
+
+   查看 baselineChanged 和未选文章的旧快照。
 
 3. 交互向导会单独询问是否接受全站代码／配置更新；默认取消。--yes 不能暗中接受该扩大影响。
 
 4. 参数模式只有核对后才添加 --accept-baseline。
+
+   ```sh
+   npm run blog -- publish <文章> --accept-baseline
+   ```
+
+   此参数明确接受全站基线；随后仍核对最终确认。
 
 5. 再次核对发布确认，执行冻结与上线。
 
@@ -61,9 +79,4 @@ online: 全站代码与资源更新
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- publish <文章> --dry-run
-npm run blog -- publish <文章> --accept-baseline --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

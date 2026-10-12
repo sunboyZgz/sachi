@@ -22,29 +22,47 @@ online: 不改变
 
 2. 在配置向导选择“配置或修改内容仓库”，填写实际远端地址。
 
+   ```sh
+   npm run blog -- init
+   ```
+
+   选择配置内容仓库，填写真实地址和可见性。
+
 3. 输入内容分支，默认 content-source；不要使用根项目 Git index。
+
+   ### 示例配置
+
+   向导保存后，blog.config.json 中的 git 字段类似下面片段。OWNER 与仓库名需要换成真实值；private 只是你对实际仓库设置的确认，不会把远端自动改成私有：
+
+   ```json
+   "git": {
+     "remote": "git@github.com:OWNER/sachi-writing.git",
+     "branch": "content-source",
+     "visibility": "private"
+   }
+   ```
+
+   推荐把含草稿的写作备份与公开 main / blog 仓库分开。启用 Pages 时内容备份分支不能用 main 或 blog；根仓库 origin 也不会被自动用作 git.remote。
+
+   先用自己的 Git 方式验证目标可读写和 SSH / HTTPS 认证，再做 sync 预演。CLI 的 Git 子进程不等待交互式密码输入，不帮你安装密钥，也不应把密码写进地址。
 
 4. 按仓库实际设置选 private 或 public。不确定时保留 unconfirmed，上传会被阻止。
 
 5. 确认保存配置，先运行 sync --dry-run 核对全部写作范围。
 
+   ```sh
+   npm run blog -- sync --dry-run
+   ```
+
+   核对写作备份范围，没有上传。
+
 6. 确认无敏感文件后实际同步，再通过 Git 服务核对备份。
 
-### 示例配置
+   ```sh
+   npm run blog -- sync
+   ```
 
-向导保存后，blog.config.json 中的 git 字段类似下面片段。OWNER 与仓库名需要换成真实值；private 只是你对实际仓库设置的确认，不会把远端自动改成私有：
-
-```json
-"git": {
-  "remote": "git@github.com:OWNER/sachi-writing.git",
-  "branch": "content-source",
-  "visibility": "private"
-}
-```
-
-推荐把含草稿的写作备份与公开 main / blog 仓库分开。启用 Pages 时内容备份分支不能用 main 或 blog；根仓库 origin 也不会被自动用作 git.remote。
-
-先用自己的 Git 方式验证目标可读写和 SSH / HTTPS 认证，再做 sync 预演。CLI 的 Git 子进程不等待交互式密码输入，不帮你安装密钥，也不应把密码写进地址。
+   确认后提交与推送独立内容分支。
 
 ### 第一次与多设备接入有什么不同
 
@@ -66,10 +84,4 @@ online: 不改变
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- init
-npm run blog -- sync --dry-run
-npm run blog -- sync --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

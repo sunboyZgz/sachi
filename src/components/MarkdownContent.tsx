@@ -1,10 +1,14 @@
 import type { ComponentPropsWithoutRef } from 'react';
 import ReactMarkdown, { defaultUrlTransform, type ExtraProps } from 'react-markdown';
 import { toString } from 'mdast-util-to-string';
-import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
+import { remarkArticleStructure } from '../lib/article-structure';
 import type { Asset } from '../lib/blog/schema';
 import { withBasePath } from '../lib/site-path';
+import { remarkFirstLineIndent } from '../lib/remark-first-line-indent';
+import { remarkSourceLines } from '../lib/remark-source-lines';
+import { rehypeCodeHighlight } from '../lib/rehype-code-highlight';
+import { sourceAttributes, sourceRange, type SourceAttributes, type SourceOrigin } from '../lib/source-lines';
 import { CodeBlock } from './CodeBlock';
 
 function resolveAssetUrl(url: string) {
@@ -26,10 +30,20 @@ function MarkdownHeading({ level, node, children, className, ...props }: Compone
   );
 }
 
-function MarkdownImage({ src, alt, asset }: ComponentPropsWithoutRef<'img'> & { asset?: Asset }) {
+// Stable component identities also keep the editor's source-follow DOM intact.
+const headingComponents = {
+  h1: (props: ComponentPropsWithoutRef<'h1'> & ExtraProps) => <MarkdownHeading {...props} level={1} />,
+  h2: (props: ComponentPropsWithoutRef<'h2'> & ExtraProps) => <MarkdownHeading {...props} level={2} />,
+  h3: (props: ComponentPropsWithoutRef<'h3'> & ExtraProps) => <MarkdownHeading {...props} level={3} />,
+  h4: (props: ComponentPropsWithoutRef<'h4'> & ExtraProps) => <MarkdownHeading {...props} level={4} />,
+  h5: (props: ComponentPropsWithoutRef<'h5'> & ExtraProps) => <MarkdownHeading {...props} level={5} />,
+  h6: (props: ComponentPropsWithoutRef<'h6'> & ExtraProps) => <MarkdownHeading {...props} level={6} />,
+};
+
+function MarkdownImage({ src, alt, asset, source }: ComponentPropsWithoutRef<'img'> & { asset?: Asset; source?: SourceAttributes }) {
   const safeSrc = typeof src === 'string' ? resolveAssetUrl(src) : '';
   return (
-    <figure>
+    <figure {...source}>
       {asset?.type === 'video' ? (
         <video src={safeSrc} poster={asset.poster} controls preload="metadata" aria-label={alt || '文章短视频'} />
       ) : (
@@ -41,7 +55,8 @@ function MarkdownImage({ src, alt, asset }: ComponentPropsWithoutRef<'img'> & { 
   );
 }
 
-export function MarkdownContent({ markdown, assets = {}, basePath = process.env.NEXT_PUBLIC_BLOG_BASE_PATH ?? '' }: { markdown: string; assets?: Record<string, Asset>; basePath?: string }) {
+export function MarkdownContent({ markdown, assets = {}, basePath = process.env.NEXT_PUBLIC_BLOG_BASE_PATH ?? '', sourceOrigin, leadingFlow = false }: { markdown: string; assets?: Record<string, Asset>; basePath?: string; sourceOrigin?: SourceOrigin; leadingFlow?: boolean }) {
+  const marker = (node: ExtraProps['node'], kind: string) => sourceOrigin ? sourceAttributes(sourceRange(node?.position, sourceOrigin), kind) : {};
   const localUrl = (url: string) => withBasePath(url, basePath);
   const assetsByUrl = new Map(Object.values(assets).map((asset) => [localUrl(asset.url), asset]));
   const resolve = (url: string) => {
@@ -51,21 +66,16 @@ export function MarkdownContent({ markdown, assets = {}, basePath = process.env.
   };
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeSlug]}
+      remarkPlugins={[remarkGfm, remarkFirstLineIndent, [remarkArticleStructure, { leadingFlow }], ...(sourceOrigin ? [[remarkSourceLines, sourceOrigin] as [typeof remarkSourceLines, SourceOrigin]] : [])]}
+      rehypePlugins={[rehypeCodeHighlight]}
       urlTransform={resolve}
       components={{
-        h1: (props) => <MarkdownHeading {...props} level={1} />,
-        h2: (props) => <MarkdownHeading {...props} level={2} />,
-        h3: (props) => <MarkdownHeading {...props} level={3} />,
-        h4: (props) => <MarkdownHeading {...props} level={4} />,
-        h5: (props) => <MarkdownHeading {...props} level={5} />,
-        h6: (props) => <MarkdownHeading {...props} level={6} />,
-        pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
-        p: ({ node, children }) => node?.children.some((child) => child.type === 'element' && child.tagName === 'img') ? <div className="markdown-media-paragraph">{children}</div> : <p>{children}</p>,
-        img: (props) => <MarkdownImage {...props} asset={typeof props.src === 'string' ? assetsByUrl.get(props.src) : undefined} />,
-        table: ({ children }) => (
-          <div className="table-scroll" tabIndex={0} aria-label="可横向滚动的表格">
+        ...headingComponents,
+        pre: ({ node, children }) => <CodeBlock source={marker(node, 'code-block')}>{children}</CodeBlock>,
+        p: ({ node, children }) => node?.children.some((child) => child.type === 'element' && child.tagName === 'img') ? <div {...marker(node, 'media')} className="markdown-media-paragraph">{children}</div> : <p {...marker(node, 'paragraph')}>{children}</p>,
+        img: (props) => <MarkdownImage {...props} source={marker(props.node, 'image')} asset={typeof props.src === 'string' ? assetsByUrl.get(props.src) : undefined} />,
+        table: ({ node, children }) => (
+          <div {...marker(node, 'table')} className="table-scroll" tabIndex={0} aria-label="可横向滚动的表格">
             <table>{children}</table>
           </div>
         ),

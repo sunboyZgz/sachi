@@ -22,6 +22,41 @@ online: 重新构建和明确发布后才改变
 
 2. 修改 `name`（站名兼作者名）、`signature`（签名）、`bio`（个人简介）和 `homeLabel`（首页小标）。默认内容与现有设计一致，不需要替换也可原样保留。
 
+   ### 完整配置长什么样
+
+   下面是与默认站点一致的完整结构。修改自己的值即可，不增加第二份个人信息文件：
+
+   ```json
+   {
+     "name": "请叫我木头人",
+     "signature": "吾生君未生，君生吾已老",
+     "bio": "双鱼·INFJ·生活第一，工作第二·想要成为有趣的人。",
+     "homeLabel": "个人手记",
+     "copyrightStartYear": 2026,
+     "authorUrl": null,
+     "sameAs": [],
+     "seo": {
+       "description": null,
+       "allowIndexing": true
+     }
+   }
+   ```
+
+   JSON 不允许注释或最后一个字段后的多余逗号。`null`、`true` 和年份不加字符串引号；sameAs 是数组，不是一段逗号分隔文字。
+
+   | 字段 | 显示 / 使用位置 | 校验边界 |
+   | --- | --- | --- |
+   | name | 首页、站名、署名、页脚与 SEO 作者 | 非空，最多 100 字符 |
+   | signature | 首页签名 | 非空，最多 200 字符 |
+   | bio | 首页简介、文末署名、默认 SEO 摘要 | 非空，最多 500 字符 |
+   | homeLabel | 首页小标 | 非空，最多 50 字符 |
+   | copyrightStartYear | 页脚年份 | 整数，1900–9999 |
+   | authorUrl / sameAs | 公开作者资料与结构化数据 | HTTP(S)，不含登录信息；sameAs 最多 10 项 |
+   | seo.description | 全站摘要覆盖 | null 或非空文本，最多 300 字符 |
+   | seo.allowIndexing | 正式页面的索引策略 | 布尔值；不是访问权限 |
+
+   验收时同时看默认题字图和改名后的文字回退，以及桌面 / 手机的长简介换行。不要只在一个页面确认姓名，因为这些字段还会进入分享信息与结构化数据。
+
 3. 把 `copyrightStartYear` 设为开始写作的四位年份。页脚会显示开始年份或开始年份至构建年份的区间。
 
 4. 可选：把 `authorUrl` 从 `null` 改成公开的作者资料页网址；在 `sameAs` 数组中填公开主页。没有就保留 `null` 和 `[]`，不会添加关注按钮或新的常驻导航。
@@ -30,42 +65,19 @@ online: 重新构建和明确发布后才改变
 
 6. 用 `npm run dev` 预览首页、目录和文章末尾署名。默认站名和签名使用已有题字图；修改文字后自动显示真实文字，不继续显示旧 SVG 里的题字。若需要新书法题字，另行更新对应 SVG 及 `src/config/profile.ts` 中的素材文字描述。
 
+   ```sh
+   npm run dev
+   ```
+
+   在 4173 预览本地身份信息。
+
 7. 运行 `npm run check`。确认显示正确后，再按[全站基线变更](/release/baseline)进行构建和发布。无正式文章时，`npm run build` 只生成空站，不会把样例文章发布。
 
-### 完整配置长什么样
+   ```sh
+   npm run check
+   ```
 
-下面是与默认站点一致的完整结构。修改自己的值即可，不增加第二份个人信息文件：
-
-```json
-{
-  "name": "请叫我木头人",
-  "signature": "吾生君未生，君生吾已老",
-  "bio": "双鱼·INFJ·生活第一，工作第二·想要成为有趣的人。",
-  "homeLabel": "个人手记",
-  "copyrightStartYear": 2026,
-  "authorUrl": null,
-  "sameAs": [],
-  "seo": {
-    "description": null,
-    "allowIndexing": true
-  }
-}
-```
-
-JSON 不允许注释或最后一个字段后的多余逗号。`null`、`true` 和年份不加字符串引号；sameAs 是数组，不是一段逗号分隔文字。
-
-| 字段 | 显示 / 使用位置 | 校验边界 |
-| --- | --- | --- |
-| name | 首页、站名、署名、页脚与 SEO 作者 | 非空，最多 100 字符 |
-| signature | 首页签名 | 非空，最多 200 字符 |
-| bio | 首页简介、文末署名、默认 SEO 摘要 | 非空，最多 500 字符 |
-| homeLabel | 首页小标 | 非空，最多 50 字符 |
-| copyrightStartYear | 页脚年份 | 整数，1900–9999 |
-| authorUrl / sameAs | 公开作者资料与结构化数据 | HTTP(S)，不含登录信息；sameAs 最多 10 项 |
-| seo.description | 全站摘要覆盖 | null 或非空文本，最多 300 字符 |
-| seo.allowIndexing | 正式页面的索引策略 | 布尔值；不是访问权限 |
-
-验收时同时看默认题字图和改名后的文字回退，以及桌面 / 手机的长简介换行。不要只在一个页面确认姓名，因为这些字段还会进入分享信息与结构化数据。
+   通过后按照全站基线流程明确发布。
 
 ## 确认结果
 
@@ -86,12 +98,4 @@ JSON 不允许注释或最后一个字段后的多余逗号。`null`、`true` �
 
 ## 参数方式
 
-个人资料由编辑器编辑，CLI 不新增另一份覆盖配置。
-
-```sh
-npm run check
-npm run dev
-npm run blog -- build --accept-baseline
-```
-
-最后一条只做本地构建，不代表已经上线；正式发布仍须先查看计划和明确确认。
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

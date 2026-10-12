@@ -22,11 +22,29 @@ online: 不改变
 
 1. 先核实服务器当前 release-id。
 
+   ```sh
+   npm run blog -- status --remote
+   ```
+
+   先核实服务器 current，再选择恢复来源。
+
 2. 进入“从服务器恢复公开内容 · recover”，输入新的绝对目录。
 
 3. 先看计划，核对来源版本与目的目录。
 
+   ```sh
+   npm run blog -- recover --destination <新的绝对目录> --dry-run
+   ```
+
+   仅支持已配置 deploy 的公开内容恢复。
+
 4. 重新进入执行并确认，下载私有包并验证校验摘要。
+
+   ```sh
+   npm run blog -- recover --destination <新的绝对目录>
+   ```
+
+   确认后下载、校验并恢复原稿。
 
 5. 检查恢复的 Markdown、引用原素材、轮廓和媒体配置。
 
@@ -56,9 +74,4 @@ online: 不改变
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- recover --destination <尚不存在的新目录> --dry-run
-npm run blog -- recover --destination <尚不存在的新目录> --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

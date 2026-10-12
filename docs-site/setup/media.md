@@ -28,11 +28,47 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 3. 照片选 photo，设置 widths 和 quality；截图选 screenshot。
 
+   ### 写法与实际效果
+
+   将[教学图片](/examples/desk.png)、[教学视频](/examples/demo.mp4)和[指定封面图](/examples/poster.png)分别保存为本篇 `assets/desk.png`、`assets/demo.mp4` 和 `assets/poster.png`。正文为：
+
+   <<< @/.vitepress/examples/media.md
+
+   在同级 media.yaml 保存以下配置，资源键必须与正文一致：
+
+   <<< @/.vitepress/examples/media.yaml
+
+   <BlogExample example="media" />
+
+   观察结果：图片保持原有比例，生成 320／640 两档 WebP，并通过 srcset 让浏览器选择；视频仍然使用原生控件，但播放前显示指定的纸张与茶杯封面，点击播放后才出现样片画面。可以对照[未指定封面的例子](/writing/video)，它使用样片首帧。
+
+   这些教学媒体是独立生成的，预览展示实际阅读组件如何使用图片尺寸、srcset、poster 与说明。正式 CLI 会再生成内容哈希路径并冻结本篇配置；改 media.yaml 不会立即改变正在公开的文章。
+
 4. 环绕图维持画布和透明度，不强行套用照片缩放预设；未指定手工轮廓时从 alpha 自动生成，见[文字环绕](/writing/flow)。普通 GIF／多帧保留动画，但环绕障碍只接受静态图片。
+
+   ```yaml
+   assets:
+     ./assets/demo.mp4:
+       poster: ./assets/poster.png
+   ```
+
+   poster 是本篇真实图片，不直接把 YAML 片段当整份配置覆盖。
 
 5. 视频可指定本地 poster 图片，未指定时由转换生成。
 
+   ```sh
+   npm run blog -- check <文章>
+   ```
+
+   校验配置与资源引用。
+
 6. 检查再构建，验证清晰度、方向、透明边缘、声音和播放。
+
+   ```sh
+   npm run blog -- build <文章>
+   ```
+
+   核对后构建，等待实际媒体处理。
 
 ### 预设与字段具体做什么
 
@@ -62,22 +98,6 @@ assets:
     poster: ./assets/poster.png
 ```
 
-## 使用示例与生成效果
-
-将[教学图片](/examples/desk.png)、[教学视频](/examples/demo.mp4)和[指定封面图](/examples/poster.png)分别保存为本篇 `assets/desk.png`、`assets/demo.mp4` 和 `assets/poster.png`。正文为：
-
-<<< @/.vitepress/examples/media.md
-
-在同级 media.yaml 保存以下配置，资源键必须与正文一致：
-
-<<< @/.vitepress/examples/media.yaml
-
-<BlogExample example="media" />
-
-观察结果：图片保持原有比例，生成 320／640 两档 WebP，并通过 srcset 让浏览器选择；视频仍然使用原生控件，但播放前显示指定的纸张与茶杯封面，点击播放后才出现样片画面。可以对照[未指定封面的例子](/writing/video)，它使用样片首帧。
-
-这些教学媒体是独立生成的，预览展示实际阅读组件如何使用图片尺寸、srcset、poster 与说明。正式 CLI 会再生成内容哈希路径并冻结本篇配置；改 media.yaml 不会立即改变正在公开的文章。
-
 ## 确认结果
 
 照片生成不放大的等比 WebP／srcset；截图、透明图、环绕图采用无损输出，视频 H.264／AAC 加 poster。
@@ -92,9 +112,4 @@ assets:
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- check <文章>
-npm run blog -- build <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

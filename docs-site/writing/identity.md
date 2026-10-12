@@ -22,9 +22,27 @@ online: 不改变
 
 2. 选择“补齐手写文章的 ID 和创建时间”，核对路径并确认。已有身份不会重建。
 
+   ```sh
+   npm run blog -- meta <文章目录> --init
+   ```
+
+   核对路径并确认，只补齐缺失的身份与创建时间。
+
 3. 运行检查，补齐标题等必要信息。不要把 fixture 当正式文章。
 
+   ```sh
+   npm run blog -- check <文章>
+   ```
+
+   修正必要信息直到 VALID。
+
 4. 首次发布前可选择修改字段里的 slug，设置可读 URL。
+
+   ```sh
+   npm run blog -- meta <文章> --slug a-cup-of-tea --dry-run
+   ```
+
+   只对从未发布的文章预演可读 URL 修改。
 
 5. 输入字母、数字、下划线或短横线，例如 a-cup-of-tea，首字符须为字母或数字。
 
@@ -68,10 +86,4 @@ tags: [日常]
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- meta content/生活旁白/2026-10-06 --init --dry-run
-npm run blog -- meta content/生活旁白/2026-10-06 --init --yes
-npm run blog -- meta <未发布文章> --slug a-cup-of-tea --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

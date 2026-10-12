@@ -7,8 +7,10 @@ import { BlogError, atomicWrite, exists, inside, safeDirectory, safeFile, sha256
 import { categoryNames, postSchema, defaultConfig, type BlogConfig, type BlogPost } from '../../src/lib/blog/schema';
 import { scanSeries, validateSeriesMembers } from '../../src/lib/blog/series';
 import { scanContent } from '../../src/lib/blog/content';
+import { assertNoPendingWrites } from './writing-transactions';
 
 export async function newPost(root: string, config: BlogConfig, values: { category: string; title: string; slug?: string; now?: Date; series?: BlogPost['series'] }) {
+  await assertNoPendingWrites(root);
   const category = Object.entries(categoryNames).find(([id, name]) => id === values.category || name === values.category);
   if (!category || !values.title.trim()) throw new BlogError('必须提供有效栏目和非空标题。', 2);
   const id = randomUUID(); const now = values.now ?? new Date();
@@ -40,6 +42,7 @@ export async function newPost(root: string, config: BlogConfig, values: { catego
 }
 
 export async function editMeta(root: string, selector: string, changes: Record<string, unknown>, initialize = false, config: BlogConfig = defaultConfig()) {
+  await assertNoPendingWrites(root);
   const relative = selector.replace(/\/$/, '').replace(/^\.\//, '');
   const contentRoot = path.join(root, 'content');
   const relativeFile = relative.replace(/^content\//, '') + (relative.endsWith('.md') ? '' : '/index.md');

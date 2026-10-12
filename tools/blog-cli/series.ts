@@ -9,6 +9,7 @@ import { categoryNames, seriesRefSchema, seriesSchema, seriesSnapshotSchema, typ
 import { immutableWrite, readSnapshot } from './snapshot';
 import { storePath } from './config';
 import { cachedManifest } from './state';
+import { assertNoPendingWrites } from './writing-transactions';
 
 export async function publishedChapters(root: string): Promise<BlogPost[]> {
   const { manifest } = await cachedManifest(root);
@@ -37,6 +38,7 @@ export async function seriesAssignment(root: string, config: BlogConfig, categor
 }
 
 export async function newSeries(root: string, values: { title: string; category: string; slug?: string; description?: string }) {
+  await assertNoPendingWrites(root);
   const category = Object.entries(categoryNames).find(([id, name]) => id === values.category || name === values.category)?.[0];
   const id = randomUUID();
   const series = seriesSchema.parse({ ...values, id, slug: values.slug ?? id, category });
@@ -50,6 +52,7 @@ export async function newSeries(root: string, values: { title: string; category:
 }
 
 export async function editSeries(root: string, config: BlogConfig, selector: string, changes: Record<string, unknown>) {
+  await assertNoPendingWrites(root);
   const catalogue = await scanSeries(root);
   const source = selectSeries(catalogue.series, [selector])[0];
   const document = parseDocument(source.raw);

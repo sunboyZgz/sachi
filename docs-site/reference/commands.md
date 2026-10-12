@@ -14,8 +14,10 @@ scope: reference
 | [wizard](/reference/commands/wizard) | 分步选择操作，不需要记参数 |
 | [init](/reference/commands/init) | 配置向导；不建立根项目 Git 仓库或连接服务器 |
 | [doctor](/reference/commands/doctor) | 只读环境检查 |
+| [search](/reference/commands/search) | 根据中文标题或关键词查找本地文章 ID |
 | [new](/reference/commands/new) | 选择三个栏目之一，再输入标题 |
-| [series](/reference/commands/series) | 新建、列出或修改系列资料 |
+| [series](/reference/commands/series) | 查找、创建系列，或按 ID 插入章节 |
+| [toy](/reference/commands/toy) | 准备本地作品资料；待媒体处理，不上传或公开 |
 | [list](/reference/commands/list) | 列出文章 |
 | [status](/reference/commands/status) | 查看文章与备份状态 |
 | [meta](/reference/commands/meta) | 选择文章，查看或修改元数据 |

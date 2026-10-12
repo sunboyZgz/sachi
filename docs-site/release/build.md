@@ -22,13 +22,31 @@ online: 不改变
 
 2. 先选择只看计划，确认保留与排除内容。
 
+   ```sh
+   npm run blog -- build <文章> --dry-run
+   ```
+
+   PLANNED 只预演，不保存可供 resume 的冻结版本。
+
 3. 重新进入并选择执行。决定是否额外导出 out：默认不导出。
+
+   ```sh
+   npm run blog -- build <文章> --export
+   ```
+
+   确认后生成 BUILD_ONLY 并额外导出 out；省略 --export 则只生成发布包。
 
 4. 基线变化时核对提示，单独接受整站代码／配置更新。
 
 5. 核对最终计划并确认，等待冻结、媒体转换、隔离构建与本地 HTTP 检查。
 
 6. 查看 BUILD_ONLY、releaseId 与 directory。若导出，打开静态结果进行验收。
+
+   ```sh
+   npm run preview
+   ```
+
+   在已导出 out 的前提下启动静态预览，以输出地址为准。
 
 ### 构建与看见结果
 
@@ -73,9 +91,4 @@ directory 指向整个私有包，不是可直接公开的目录。其中 `site/
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- build <文章> --dry-run
-npm run blog -- build <文章> --yes --export
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

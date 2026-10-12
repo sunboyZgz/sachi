@@ -20,15 +20,39 @@ online: 不改变
 
 1. 打开菜单选择“新建文章”，选择“生活旁白”，输入“秋天的一杯茶”，记下返回路径。
 
+   ```sh
+   npm run blog -- new --category life --title "秋天的一杯茶" --slug autumn-tea
+   ```
+
+   记下真实 file 与 id；autumn-tea 已存在时换一个 slug。
+
 2. 用编辑器打开该 index.md，替换模板正文，保留生成的 ID 和创建时间。
 
 3. 把图片放入同级 assets，按[图片教程](/writing/images)写相对路径。
 
 4. 再次打开菜单选择“检查 Markdown 与资源”，选择这篇文章并处理问题。
 
+   ```sh
+   npm run blog -- check autumn-tea
+   ```
+
+   VALID 表示当前正文与资源检查通过。
+
 5. 选择“预览首页或文章”，选择文章，在浏览器打开输出地址。看完按 Ctrl+C 停止预览。
 
+   ```sh
+   npm run blog -- dev --post autumn-tea
+   ```
+
+   打开输出的 4173 预览地址；看完在该终端按 Ctrl+C。
+
 6. 选择“本地构建”，勾选这篇文章，先看计划。重新进入相同操作，选择执行并确认，暂不导出 out。
+
+   ```sh
+   npm run blog -- build autumn-tea --dry-run
+   ```
+
+   先核对 PLANNED，再去掉 --dry-run 执行；BUILD_ONLY 仍未上线。
 
 ### 可照着完成的一篇文章
 
@@ -87,11 +111,4 @@ npm run blog -- build autumn-tea
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- new --category life --title "秋天的一杯茶"
-npm run blog -- check
-# 用实际 slug、ID 或路径替换
-npm run blog -- build <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

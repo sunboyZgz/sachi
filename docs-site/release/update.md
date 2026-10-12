@@ -20,13 +20,32 @@ online: 更新候选集合，不带入其他修订
 
 1. 保存 B 的正文与资源，检查并预览 B。
 
+   ```sh
+   npm run blog -- check <文章B>
+   npm run blog -- dev --post <文章B>
+   ```
+
+   检查并预览本次真正要修改的文章。
+
 2. 进入发布菜单，只勾选 B，不勾选 A。
 
 3. 看计划确认 B 属于本次选择，A 属于保留旧快照。
 
+   ```sh
+   npm run blog -- publish <文章B> --dry-run
+   ```
+
+   selected 只包含 B，A 在 unchanged 中。
+
 4. 不要靠修改 draft 标志或全量扫描来决定公开集合。
 
 5. 重新选择执行，核对全站基线变化并确认。
+
+   ```sh
+   npm run blog -- publish <文章B>
+   ```
+
+   明确执行 B 的修订，不附带其他草稿。
 
 6. 上线后核实 B 的新修订，以及 A 仍使用旧文字、封面、图片和轮廓。
 
@@ -54,9 +73,4 @@ Git 备份里的 A 可以有新原稿，但公开 A 仍是旧快照。发布与�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- publish <文章B> --dry-run
-npm run blog -- publish <文章B> --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

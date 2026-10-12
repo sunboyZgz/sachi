@@ -20,15 +20,35 @@ online: 不改变
 
 1. 找到根项目 src/assets/avatar/。
 
+   ```text
+   src/assets/avatar/
+     avatar-head.png
+     avatar-half.png
+   ```
+
+   覆盖这两个源文件；不新增第二套头像。
+
 2. 覆盖 avatar-head.png、avatar-half.png，名称不变。
 
 3. 不在 Markdown、public 或文档站另存头像，也不改页面引用地址。
 
 4. 预览首页、目录、文章末尾：前两处头部头像，末尾半身署名。
 
+   ```sh
+   npm run dev
+   ```
+
+   检查首页、目录及文末署名的实际落位。
+
 5. 确认文章首屏、栏目分页与共享页头没有新增头像。
 
 6. 正式发布按[全站基线](/release/baseline)单独接受资源变更。
+
+   ```sh
+   npm run blog -- publish <文章> --dry-run
+   ```
+
+   替换头像属于全站基线，执行时单独明确接受。
 
 ### 两个文件分别负责哪里
 
@@ -55,9 +75,4 @@ online: 不改变
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run dev
-npm run blog -- publish <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

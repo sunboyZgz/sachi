@@ -22,12 +22,22 @@ async function fixture() {
   for (const directory of ['content/闲暇娱乐/2026-10-10/assets', 'src/styles', 'src/assets/avatar', 'public/assets']) await mkdir(path.join(root, directory), { recursive: true });
   await writeFile(file, raw('磁盘上的旧正文。'));
   await writeFile(path.join(root, 'blog.config.json'), JSON.stringify({ schemaVersion: 1, timezone: 'Asia/Shanghai' }));
-  for (const file of ['src/styles/tokens.css', 'src/styles/site.css', 'src/assets/avatar/avatar-half.png']) await writeFile(path.join(root, file), 'test');
+  for (const file of ['src/styles/tokens.css', 'src/styles/site.css', 'src/styles/code-highlight.css', 'src/assets/avatar/avatar-half.png']) await writeFile(path.join(root, file), 'test');
   const location = articleLocation(root, file)!;
   return { root, file, location, resourceUri: (file: string) => `https://resource.test/${encodeURIComponent(path.relative(root, file))}` };
 }
 
 describe('VS Code article preview adapter', () => {
+  it('keeps absolute editor lines with frontmatter, leading whitespace, CRLF and document versions', async () => {
+    const fixtureData = await fixture();
+    const input = raw('\n\n  正文。\r\n下一行。').replaceAll('\n', '\r\n').replaceAll('\r\r\n', '\r\n');
+    const { message } = await buildPreview({ ...fixtureData, raw: input, revision: 4, dirty: true, documentVersion: 7, syncEnabled: false });
+    const beforeBody = input.slice(0, input.indexOf('正文。'));
+    expect(message.source).toMatchObject({ version: 7, syncEnabled: false, clickEnabled: true, title: { line: 3, column: 1 }, totalLines: input.split('\n').length,
+      origin: { lineOffset: beforeBody.split('\n').length - 1, columnOffset: 2 } });
+    expect(message.post.body).toBe('正文。\n下一行。');
+  });
+
   it('recognizes only real article paths and explicit fixtures', () => {
     expect(articleLocation('/blog', '/blog/README.md')).toBeNull();
     expect(articleLocation('/blog', '/blog/content/unknown/2026-10-10/index.md')).toBeNull();
@@ -60,7 +70,10 @@ describe('VS Code article preview adapter', () => {
     const html = renderToStaticMarkup(createElement(ArticleProse, { parsed: parseMarkdown(post.body), assets: post.assets, flowKey: 'test' }));
     expect(html).toContain('<video'); expect(html).toContain('poster='); expect(html).toContain('<figcaption>引用图片');
     expect(html).toContain('<table>'); expect(html).toContain('type="checkbox"'); expect(html).toContain('class="code-block"');
-    expect(html).toContain('const a = &quot;&lt;tag&gt;&quot;;'); expect(html).toContain('href="#');
+    expect(html.replace(/<[^>]+>/g, '')).toContain('const a = &quot;&lt;tag&gt;&quot;;'); expect(html).toContain('href="#');
+    expect(html).toContain('hljs-keyword');
+    expect(result.message.styles).toHaveLength(3);
+    expect(result.message.styles[2]).toContain('code-highlight.css');
     expect(result.links.size).toBe(3);
   });
 

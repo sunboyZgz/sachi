@@ -22,7 +22,20 @@ online: 不改变
 
 2. 选择首页，或选择要查看的文章。
 
+   ```sh
+   npm run blog -- dev --post <文章>
+   ```
+
+   指定要预览的实际 ID、slug 或路径；只看首页可运行 dev。
+
 3. 等待终端输出 PREVIEW 与地址，再等待 Next.js 开发服务器就绪。
+
+   ```text
+   PREVIEW
+   地址：http://127.0.0.1:4173/article/<实际slug>/
+   ```
+
+   这是地址形式示意，以终端实际地址和服务器就绪日志为准。
 
 4. 在浏览器打开输出地址。CLI 不会自动弹出浏览器。
 
@@ -71,10 +84,4 @@ npm run blog -- check autumn-tea
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- dev
-npm run blog -- dev --post <文章>
-npm run blog -- dev --post <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

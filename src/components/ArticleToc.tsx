@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { ArticleHeading } from '@/lib/markdown';
+import type { ArticleHeading } from '@/lib/article-structure';
 
 function TocList({ headings, mobile = false }: { headings: ArticleHeading[]; mobile?: boolean }) {
   const [current, setCurrent] = useState(headings[0]?.id ?? '');
@@ -11,23 +11,40 @@ function TocList({ headings, mobile = false }: { headings: ArticleHeading[]; mob
     const nodes = headings
       .map((heading) => document.getElementById(heading.id))
       .filter((node): node is HTMLElement => node instanceof HTMLElement);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .toSorted((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setCurrent(visible[0].target.id);
-      },
-      { rootMargin: '-6% 0px -68% 0px' },
-    );
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
+    let frame = 0;
+    const fromScroll = () => {
+      frame = 0;
+      // Native anchors stop 38px from the top; a stacked child must not win early.
+      const threshold = 48;
+      let active: HTMLElement | undefined = nodes[0];
+      for (const node of nodes) {
+        if (node.getBoundingClientRect().top > threshold) break;
+        active = node;
+      }
+      if (window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) active = nodes.at(-1);
+      if (active) setCurrent(active.id);
+    };
+    const fromHash = () => {
+      // Compare encoded fragments directly; malformed URL escapes stay harmless.
+      const active = nodes.find((node) => `#${encodeURIComponent(node.id)}` === window.location.hash);
+      if (active) setCurrent(active.id);
+      else fromScroll();
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(fromScroll); };
+    frame = requestAnimationFrame(() => { frame = 0; fromHash(); });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('hashchange', fromHash);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('hashchange', fromHash);
+    };
   }, [headings]);
 
   const list = (
     <ol>
-      {headings.map((heading, index) => (
-        <li key={heading.id}>
+      {headings.map((heading) => (
+        <li key={heading.id} data-toc-level={heading.nesting}>
           <a
             href={`#${encodeURIComponent(heading.id)}`}
             aria-current={current === heading.id ? 'location' : undefined}
@@ -36,7 +53,7 @@ function TocList({ headings, mobile = false }: { headings: ArticleHeading[]; mob
               detailsRef.current?.removeAttribute('open');
             }}
           >
-            {String(index + 1).padStart(2, '0')} · {heading.text}
+            <span className="toc-number">{heading.number} · </span>{heading.text}
           </a>
         </li>
       ))}

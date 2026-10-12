@@ -12,8 +12,10 @@ import { createTerminalPrompts, type PromptDriver } from './prompts';
 import { humanResult } from './reporter';
 import { completeInvocation } from './wizard';
 import { executeWriting } from './commands/writing';
+import { executeToys } from './commands/toys';
 import { executeBackup } from './commands/backup';
 import { executeReleases } from './commands/releases';
+import { assertNoPendingWrites } from './writing-transactions';
 
 export async function main(argv = process.argv.slice(2), runtime: { prompts?: PromptDriver } = {}) {
   const parsed = parseCli(argv);
@@ -29,6 +31,7 @@ export async function main(argv = process.argv.slice(2), runtime: { prompts?: Pr
   const invocation = await completeInvocation(root, storedConfig, parsed, prompts);
   if (!invocation) { console.log('已退出，未执行操作。'); return; }
   const { command, options } = invocation;
+  if (['init', 'new', 'build', 'publish', 'push', 'unpublish', 'rollback', 'sync', 'restore', 'recover'].includes(command!)) await assertNoPendingWrites(root);
   const config = command !== 'init' && (options['pages-remote'] || command === 'push')
     ? { ...storedConfig, pages: { remote: options['pages-remote'] ?? storedConfig.pages?.remote ?? null, branch: 'blog' as const } }
     : storedConfig;
@@ -41,7 +44,7 @@ export async function main(argv = process.argv.slice(2), runtime: { prompts?: Pr
     },
     confirm: confirmation(invocation, prompts, (description) => { if (!options.json) console.error(description); }),
   };
-  for (const execute of [executeWriting, executeBackup, executeReleases]) if (await execute(context)) return;
+  for (const execute of [executeToys, executeWriting, executeBackup, executeReleases]) if (await execute(context)) return;
   throw new BlogError(`未知命令：${command}。使用 --help。`, 2);
 }
 

@@ -20,6 +20,12 @@ online: 不改变
 
 1. 打开菜单选择“配置项目与正式接入”。
 
+   ```sh
+   npm run blog -- init
+   ```
+
+   终端依次询问时区、Git、部署和 Pages，尚未保存配置。
+
 2. 输入时区，或 Enter 保留当前值。日期目录按该时区生成。
 
 3. 在 Git 设置保留未配置状态，或按[Git 接入](/setup/git)填写。内容备份仓库不同于根项目仓库。
@@ -29,6 +35,12 @@ online: 不改变
 5. 在 Pages 一步保留未启用，或按[GitHub Pages 接入](/setup/github-pages)选择 origin / 指定仓库。根 Git 仓库不存在时，不要选择依赖 origin 的方式；可明确指定已有 GitHub 仓库。
 
 6. 核对提示并确认。默认取消；未确认前不写入配置。
+
+   ```sh
+   npm run blog -- init --timezone Asia/Shanghai --dry-run
+   ```
+
+   PLANNED 显示配置计划；核对后去掉 --dry-run 并完成确认。
 
 7. 检查 blog.config.json、三个栏目目录与 templates/post.md。已有模板不会覆盖。
 
@@ -68,10 +80,4 @@ online: 不改变
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- init
-npm run blog -- init --timezone Asia/Shanghai --dry-run
-npm run blog -- init --timezone Asia/Shanghai --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

@@ -26,9 +26,45 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 2. 正文写 `[下载笔记](./assets/notes.pdf)`，使用链接而非图片语法。
 
+   ### 写法与实际效果
+
+   把[教学文本附件](/examples/notes.txt)保存为本篇 `assets/notes.txt`，在正文加入：
+
+   <<< @/.vitepress/examples/attachment.md
+
+   <BlogExample example="attachment" />
+
+   点击预览框里的链接会打开教学文件。生成效果是普通附件链接，不会把文本或 PDF 内容嵌进文章；打开还是下载取决于文件类型和浏览器设置，CLI 没有强制下载开关。
+
+   PDF 使用同一种写法，换成真实文件后检查即可：
+
+   ```markdown
+   [下载完整笔记](./assets/notes.pdf)
+   ```
+
+   不要在附件链接前添加 `!`，也不要把私有配置或整个发布包作为教学附件。正式构建会把相对链接替换成本篇冻结附件的哈希地址。
+
+   ```markdown
+   [下载笔记](./assets/notes.pdf)
+   ```
+
+   前面没有 !，渲染为普通链接。
+
 3. 检查文件存在、扩展名允许、路径没有越界。
 
+   ```sh
+   npm run blog -- check <文章>
+   ```
+
+   检查附件引用范围与文件类型。
+
 4. 构建文章，检查下载链接。
+
+   ```sh
+   npm run blog -- build <文章> --export
+   ```
+
+   确认后在静态结果中打开附件链接。
 
 5. 发布后打开附件，确认是本次冻结版本。
 
@@ -39,24 +75,6 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 文件类型允许不代表内容安全。发布前打开 PDF、表格与压缩包，检查私人资料、密钥、隐藏记录和版权权限。JSON / ZIP 尤其不能装整个 `.blog-store` 或项目环境文件。CLI 检查路径、体积与允许的格式，不替你审核文件里的秘密或扫描恶意内容。
 
 仅把附件放进 assets 不会公开；真正引用后才随文章冻结。已发布附件覆盖同名文件后，必须明确重新发布本篇文章才采用新哈希地址。撤回文章也无法收回读者已经保存的文件。
-
-## 使用示例与生成效果
-
-把[教学文本附件](/examples/notes.txt)保存为本篇 `assets/notes.txt`，在正文加入：
-
-<<< @/.vitepress/examples/attachment.md
-
-<BlogExample example="attachment" />
-
-点击预览框里的链接会打开教学文件。生成效果是普通附件链接，不会把文本或 PDF 内容嵌进文章；打开还是下载取决于文件类型和浏览器设置，CLI 没有强制下载开关。
-
-PDF 使用同一种写法，换成真实文件后检查即可：
-
-```markdown
-[下载完整笔记](./assets/notes.pdf)
-```
-
-不要在附件链接前添加 `!`，也不要把私有配置或整个发布包作为教学附件。正式构建会把相对链接替换成本篇冻结附件的哈希地址。
 
 ## 确认结果
 
@@ -72,9 +90,4 @@ PDF 使用同一种写法，换成真实文件后检查即可：
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- check <文章>
-npm run blog -- build <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

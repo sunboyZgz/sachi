@@ -22,13 +22,49 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 ## 操作步骤
 
-1. 用文章信息或状态列表找到目标身份，优先稳定 ID。
+1. 用中文标题查到目标身份，优先稳定 ID；也可使用原有文章信息或状态列表。
+
+   ```sh
+   npm run blog -- search "朝思暮想"
+   ```
+
+   根据目标标题查到 ID，核对栏目与文件路径。
 
 2. 写 `[继续阅读](blog:<目标UUID>)` 或 `[继续阅读](/article/<目标slug>/)`。
 
+   ### 写法与实际效果
+
+   假设目标文章的 ID 为 `51f3e126-f6a0-4ef3-a4fb-6dca72b85afd`，slug 为 `slow-notes`。这些是教学身份，写自己的文章时要换成 status 或 meta 查到的真实值：
+
+   <<< @/.vitepress/examples/article-link.md
+
+   <BlogExample example="article-link" />
+
+   两条链接显示为普通可点击文字。正式博客通过候选发布清单把 `blog:ID` 转换成 `/article/slow-notes/`；slug 写法直接引用该固定地址，部署在 Pages 子路径时会加上 `/仓库名/`。预览中的两条链接都指向独立的教学目标页，不会尝试打开不存在的博客文章。
+
+   | 输入 | 正式博客中的地址 | 后续修改 |
+   | --- | --- | --- |
+   | blog:51f3e126-f6a0-4ef3-a4fb-6dca72b85afd | /article/slow-notes/ | 按文章身份查找；改标题或目录不影响引用 |
+   | /article/slow-notes/ | /article/slow-notes/ | 依赖固定 slug；曾发布 slug 不可直接更换 |
+
+   如果目标仍是未选草稿，生成效果不是“自动公开目标”：发布检查会报未发布引用，并停止计划。需要明确把两篇加入同一候选集合，或先修改链接。
+
 3. 检查正文，再看发布计划。
 
+   ```sh
+   npm run blog -- check <文章>
+   npm run blog -- publish <文章> --dry-run
+   ```
+
+   检查当前文件后再核对候选公开集合。
+
 4. 目标是草稿时明确选择一起发布，或先移除链接；CLI 不会自动发布目标草稿。
+
+   ```sh
+   npm run blog -- publish <当前文章ID> <目标文章ID> --dry-run
+   ```
+
+   目标仍是草稿时必须明确一起选择；核对后再执行。
 
 5. 撤回目标前先修改并发布仍引用它的公开文章。
 
@@ -44,23 +80,6 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 普通 HTTP(S) 外部文字链接可用，但 CLI 不联网证明目标有效；发布前由你打开检查。附件链接仍遵循本篇 assets 规则，不能把其他文章的磁盘路径当站内链接。
 
-## 使用示例与生成效果
-
-假设目标文章的 ID 为 `51f3e126-f6a0-4ef3-a4fb-6dca72b85afd`，slug 为 `slow-notes`。这些是教学身份，写自己的文章时要换成 status 或 meta 查到的真实值：
-
-<<< @/.vitepress/examples/article-link.md
-
-<BlogExample example="article-link" />
-
-两条链接显示为普通可点击文字。正式博客通过候选发布清单把 `blog:ID` 转换成 `/article/slow-notes/`；slug 写法直接引用该固定地址，部署在 Pages 子路径时会加上 `/仓库名/`。预览中的两条链接都指向独立的教学目标页，不会尝试打开不存在的博客文章。
-
-| 输入 | 正式博客中的地址 | 后续修改 |
-| --- | --- | --- |
-| blog:51f3e126-f6a0-4ef3-a4fb-6dca72b85afd | /article/slow-notes/ | 按文章身份查找；改标题或目录不影响引用 |
-| /article/slow-notes/ | /article/slow-notes/ | 依赖固定 slug；曾发布 slug 不可直接更换 |
-
-如果目标仍是未选草稿，生成效果不是“自动公开目标”：发布检查会报未发布引用，并停止计划。需要明确把两篇加入同一候选集合，或先修改链接。
-
 ## 确认结果
 
 链接目标属于公开集合，发布引用检查通过。
@@ -75,8 +94,4 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- publish <引用文章> <目标文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

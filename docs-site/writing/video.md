@@ -26,11 +26,57 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 2. 正文写 `![一次小实验](./assets/demo.mp4)`，不写原始 HTML video 标签。
 
+   ### 写法与实际效果
+
+   把[四秒教学视频](/examples/demo.mp4)保存为本篇 `assets/demo.mp4`，然后在正文中写：
+
+   <<< @/.vitepress/examples/video.md
+
+   <BlogExample example="video" />
+
+   观察结果：这条 Markdown 图片语法根据资源类型被转换为 **原生视频播放器**，不是一张损坏的图片。它有播放／暂停、进度等浏览器控件，下方显示“一次小实验”；初始显示首帧封面，不自动播放。教学样片没有音轨，真实视频中的已有声音会按 CLI 转换规则保留。
+
+   如果希望指定自己的封面，在同级 media.yaml 中写：
+
+   ```yaml
+   assets:
+     ./assets/demo.mp4:
+       poster: ./assets/poster.png
+   ```
+
+   把封面图也放入本篇 assets。生成的视频控件不变，播放前的封面会换成该图片；[媒体配置页](/setup/media)提供指定封面的完整示例与对照效果。
+
+   ```markdown
+   ![一次小实验](./assets/demo.mp4)
+   ```
+
+   同一图片语法根据资源类型显示原生视频播放器。
+
 3. 可在 media.yaml 指定 poster，也可由转换生成首帧封面。
+
+   ```yaml
+   assets:
+     ./assets/demo.mp4:
+       poster: ./assets/poster.png
+   ```
+
+   保存到本篇 media.yaml；封面文件必须真实存在。
 
 4. 检查文章，解决探测失败、超时长和过大文件。
 
+   ```sh
+   npm run blog -- check <文章>
+   ```
+
+   探测时长、大小与素材格式。
+
 5. 本地构建，等待 H.264／AAC 与 poster 生成；不自动剪辑或静默删除音轨。
+
+   ```sh
+   npm run blog -- build <文章> --export
+   ```
+
+   确认后生成候选，等待视频与封面处理完成。
 
 6. 打开预览／构建结果检查画面、原有声音、控件和封面；默认不自动播放。
 
@@ -41,26 +87,6 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 默认上限是 180 **秒**和单个源文件 100 **MiB**。上限是校验规则，不是自动截断或压缩到指定体积的承诺；超出时先剪辑 / 压缩自己的原素材，必要时明确调整 blog.config.json 的 media 限制。Git 单文件上限最高仍是 100 MiB。
 
 预览和完整构建都可能需要媒体处理时间。check 只负责检查，不证明已经转换成功。播放失败时先看 doctor 的两个视频工具，再看实际构建日志，最后用桌面与手机测试画面、声音和拖动进度。
-
-## 使用示例与生成效果
-
-把[四秒教学视频](/examples/demo.mp4)保存为本篇 `assets/demo.mp4`，然后在正文中写：
-
-<<< @/.vitepress/examples/video.md
-
-<BlogExample example="video" />
-
-观察结果：这条 Markdown 图片语法根据资源类型被转换为 **原生视频播放器**，不是一张损坏的图片。它有播放／暂停、进度等浏览器控件，下方显示“一次小实验”；初始显示首帧封面，不自动播放。教学样片没有音轨，真实视频中的已有声音会按 CLI 转换规则保留。
-
-如果希望指定自己的封面，在同级 media.yaml 中写：
-
-```yaml
-assets:
-  ./assets/demo.mp4:
-    poster: ./assets/poster.png
-```
-
-把封面图也放入本篇 assets。生成的视频控件不变，播放前的封面会换成该图片；[媒体配置页](/setup/media)提供指定封面的完整示例与对照效果。
 
 ## 确认结果
 
@@ -76,10 +102,4 @@ assets:
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- doctor
-npm run blog -- check <文章>
-npm run blog -- build <文章> --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

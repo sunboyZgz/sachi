@@ -1,4 +1,6 @@
 import type { Plan } from './plan';
+import { categoryNames } from '../../src/lib/blog/schema';
+import { describeInsertion, type InsertionResult } from './series-insertion';
 
 export function describePlan(plan: Plan): string {
   const titles = (ids: string[]) => ids.map((id) => plan.manifest.entries.find((entry) => entry.id === id)?.title ?? id);
@@ -22,6 +24,29 @@ export function humanResult(command: string, status: string, data: unknown): str
   if (typeof data === 'string') return `${heading}\n${data}`;
   if (!data || typeof data !== 'object') return `${heading}\n${String(data)}`;
   const record = data as Record<string, unknown>;
+  if (command === 'toy') {
+    const issues = (record.issues ?? []) as Array<{ file: string; message: string }>;
+    if (Array.isArray(record.toys)) {
+      const toys = record.toys as Array<{ id: string; title: string; file: string }>;
+      return ['作品资料（只读）：', ...toys.map((toy) => `${toy.title} · 待媒体处理\n  ID：${toy.id}\n  文件：${toy.file}`), toys.length ? '' : '暂无已登记作品。', ...issues.map((issue) => `读取问题：${issue.file} · ${issue.message}`)].filter(Boolean).join('\n');
+    }
+    const video = record.video as { bytes: number; durationSeconds: number } | undefined;
+    return [`toy：${status === 'PREPARED' ? '本地资料已登记' : status === 'LOCAL_VALID' ? '本地检查通过' : statusNames[status] ?? status}`,
+      record.title ? `作品：${record.title}` : '', record.id ? `ID：${record.id}` : '', record.file ? `文件：${record.file}` : '',
+      record.state ? '状态：待媒体处理' : '', video ? `视频原文件：${video.bytes} 字节；${video.durationSeconds} 秒` : '',
+      record.videoOverflow ? `未来超限策略：${record.videoOverflow === 'reject' ? '拒绝，不裁剪' : '允许保留开头、删除尾部'}` : '',
+      record.processing ? '压缩后大小：未知；裁剪后保留秒数：未知；未来输出上限：10,000,000 字节。' : '',
+      record.note ? String(record.note) : ''].filter(Boolean).join('\n');
+  }
+  if (Array.isArray(record.matches)) {
+    const matches = record.matches as Array<{ id: string; title: string; category: keyof typeof categoryNames; file: string; series?: { id: string; order: number } }>;
+    return [`${record.kind === 'article' ? '文章' : '系列'}搜索：${record.query}`, `匹配 ${matches.length} 项：`,
+      ...matches.map((match) => `${match.title} · ${categoryNames[match.category]}\n  ID：${match.id}\n  文件：${match.file}${match.series ? `\n  所属系列：${match.series.id} · 第 ${match.series.order} 章` : ''}`),
+      matches.length ? '' : '没有匹配结果，请尝试更短或不同的关键词。',
+      ...(record.issues as Array<{ file: string; message: string }>).map((issue) => `读取问题：${issue.file} · ${issue.message}`)].filter(Boolean).join('\n');
+  }
+  if (record.articleId && Array.isArray(record.changes)) return `${heading}\n${describeInsertion(data as InsertionResult)}${status === 'PLANNED' ? '\n未写入文件。' : '\n归属与顺延已保存，尚未上线。'}${Array.isArray(record.recovered) && record.recovered.length ? '\n已恢复上次未完成的写作事务。' : ''}`;
+  if (command === 'series' && status === 'CREATED' && record.id && record.title) return `${heading}\n系列：${record.title}\n栏目：${categoryNames[record.category as keyof typeof categoryNames]}\nID：${record.id}\n文件：${record.file}`;
   if (record.manifest && Array.isArray(record.selected) && Array.isArray(record.unchanged)) {
     return `${heading}\n${describePlan(data as Plan)}\n${record.note ?? '未执行构建或上线。'}`;
   }

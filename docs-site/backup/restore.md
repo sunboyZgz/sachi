@@ -24,7 +24,19 @@ online: 不改变
 
 3. 先看计划中的目的目录与远端。
 
+   ```sh
+   npm run blog -- restore --destination <新的绝对目录> --dry-run
+   ```
+
+   替换为尚不存在的新目录，核对来源与目标。
+
 4. 重新进入执行，核对后确认，克隆内容分支。
+
+   ```sh
+   npm run blog -- restore --destination <新的绝对目录>
+   ```
+
+   确认后恢复到新目录，原工作目录不覆盖。
 
 5. 检查文章、原素材和身份，先在新目录验收，再由你决定如何合并回写作目录。
 
@@ -57,9 +69,4 @@ restore 克隆已配置的内容分支，不是根项目 main / Pages blog 分�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- restore --destination <尚不存在的新目录> --dry-run
-npm run blog -- restore --destination <尚不存在的新目录> --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

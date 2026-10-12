@@ -26,9 +26,56 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 2. 正文写 `![一杯茶](./assets/cup.png)`，添加有意义的说明。
 
+   ### 正文图片
+
+   把[教学图片](/examples/desk.png)保存为本篇 `assets/desk.png`，将下面内容放入 index.md 的正文。`!` 表示显示图片，中括号里的文字同时是替代文字和图片下方的说明。
+
+   <<< @/.vitepress/examples/image.md
+
+   <BlogExample example="image" />
+
+   生成效果是“完整图片 + 下方说明”，图片保持比例；在窄屏上缩小到正文宽度，不裁切。教学预览使用派生媒体，正式发布会使用本篇冻结资源的哈希地址，而不是原始 assets 路径。
+
+   ```markdown
+   ![一杯茶](./assets/cup.png)
+   ```
+
+   替代文字也会显示为图片说明，路径与实际文件一致。
+
+   ### 引用式写法
+
+   同一张图片也可以先写引用名称，再在正文其他位置定义地址。两种写法生成相同的图片与说明，也都参与资源检查：
+
+   <<< @/.vitepress/examples/image-reference.md
+
+   <BlogExample example="image-reference" />
+
 3. 设置封面时，在文章信息菜单勾选“封面路径”，填 `./assets/cover.jpg`。
 
+   ### 封面不是第二张正文图片
+
+   在原 frontmatter 中增加以下字段即可；保留 CLI 生成的身份字段：
+
+   <<< @/.vitepress/examples/cover.md
+
+   <BlogExample example="cover" />
+
+   上面仅是“此文章被选为栏目重点条目时”的示意，不是完整目录页。cover 用于目录重点图和分享图片，不会自动插入正文。要让阅读页显示图片，仍须写上面的图片语法。featured 只标记栏目精选，不会自动发布文章；同栏目有多个精选时依现有排序选择一个重点条目，普通分页条目也不会因新增封面而全部变成图片卡片。
+
+   ```sh
+   npm run blog -- meta <文章> --set 'cover=./assets/cover.jpg' --dry-run
+   ```
+
+   封面是元数据，保留正文中的图片引用。
+
 4. 检查文章，确认引用存在、素材可解码；然后预览。
+
+   ```sh
+   npm run blog -- check <文章>
+   npm run blog -- dev --post <文章>
+   ```
+
+   先确认真实资源，再看比例和图下注释。
 
 5. 需要控制照片、截图处理方式时使用[媒体配置](/setup/media)。
 
@@ -41,36 +88,6 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 源文件默认最大 100 MiB，过大先在编辑器处理；改扩展名不会把不可解码素材变成图片。照片通常生成等比 WebP，多尺寸不放大原图；透明图、截图预设等采用无损 PNG，具体见[媒体规则](/setup/media)。
 
 替代文字写图片传递的信息，不只写“图片”。它还会显示为图下注释；正文中不要把私密文件名、截图中的账户信息误当成可公开内容。
-
-## 使用示例与生成效果
-
-### 正文图片
-
-把[教学图片](/examples/desk.png)保存为本篇 `assets/desk.png`，将下面内容放入 index.md 的正文。`!` 表示显示图片，中括号里的文字同时是替代文字和图片下方的说明。
-
-<<< @/.vitepress/examples/image.md
-
-<BlogExample example="image" />
-
-生成效果是“完整图片 + 下方说明”，图片保持比例；在窄屏上缩小到正文宽度，不裁切。教学预览使用派生媒体，正式发布会使用本篇冻结资源的哈希地址，而不是原始 assets 路径。
-
-### 引用式写法
-
-同一张图片也可以先写引用名称，再在正文其他位置定义地址。两种写法生成相同的图片与说明，也都参与资源检查：
-
-<<< @/.vitepress/examples/image-reference.md
-
-<BlogExample example="image-reference" />
-
-### 封面不是第二张正文图片
-
-在原 frontmatter 中增加以下字段即可；保留 CLI 生成的身份字段：
-
-<<< @/.vitepress/examples/cover.md
-
-<BlogExample example="cover" />
-
-上面仅是“此文章被选为栏目重点条目时”的示意，不是完整目录页。cover 用于目录重点图和分享图片，不会自动插入正文。要让阅读页显示图片，仍须写上面的图片语法。featured 只标记栏目精选，不会自动发布文章；同栏目有多个精选时依现有排序选择一个重点条目，普通分页条目也不会因新增封面而全部变成图片卡片。
 
 ## 确认结果
 
@@ -86,9 +103,4 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- check <文章>
-npm run blog -- meta <文章> --set 'cover=./assets/cover.jpg' --dry-run
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

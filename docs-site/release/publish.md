@@ -24,13 +24,31 @@ online: 确认执行后切换公开版本
 
 3. 先选择只看计划，核对选中修订、保留旧快照、排除草稿和全站基线。
 
+   ```sh
+   npm run blog -- publish <文章> --dry-run
+   ```
+
+   先核对 PLANNED 的内容范围与交付目标。
+
 4. 再次打开同一操作，选择执行并重新核对计划。检查通过不等于预演冻结。
+
+   ```sh
+   npm run blog -- publish <文章>
+   ```
+
+   重新规划并确认后才冻结、构建与交付。
 
 5. 有代码／资源基线变化时单独接受；核对最终执行确认，默认取消。
 
 6. 等待冻结源快照、可选 Git 备份和隔离构建。随后执行已配置的服务器部署和 Pages 推送两个钩子；服务器健康检查失败会恢复旧 current，Pages 由 Actions 先构建、再部署。main 分支保持不变。
 
 7. 运行 status --remote 核实 releaseId，再在正式网站打开文章与媒体。
+
+   ```sh
+   npm run blog -- status --remote
+   ```
+
+   服务器看 current；Pages 必须匹配 release-marker，不仅是 QUEUED。
 
 ### 第一次发布前的最后核对
 
@@ -71,10 +89,4 @@ UNKNOWN 先查询实际目标；PARTIAL_OR_FAILED 的回执会列出每个钩子
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- publish <文章> --dry-run
-npm run blog -- publish <文章> --yes
-npm run blog -- status --remote
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

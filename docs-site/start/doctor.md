@@ -20,7 +20,19 @@ online: 不改变
 
 1. 进入菜单选择“检查运行环境”。
 
+   ```sh
+   npm run blog -- doctor
+   ```
+
+   CHECKED 报告本地工具与配置。
+
 2. 有部署或 Pages 配置时选择本地信息或只读远端查询；没有配置时只检查本地。
+
+   ```sh
+   npm run blog -- doctor --remote
+   ```
+
+   只读检查已配置目标；没有目标时先使用本地检查。
 
 3. 查看 Node.js、时区、Git 集成和部署类型。
 
@@ -58,9 +70,4 @@ doctor 报告的是环境信息，并不是一次完整的部署演练。例如�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- doctor
-npm run blog -- doctor --remote
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

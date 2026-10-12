@@ -8,7 +8,7 @@ export function ArticleIntro({ post }: { post: BlogPost }) {
     : post.category === 'learn' ? [categoryName, ...post.tags, `约 ${post.minutes} 分钟`] : [categoryName];
   return <>
     <p className="article-category">{categoryName}</p>
-    <h1>{post.title}</h1>
+    <h1 className="article-title">{post.title}</h1>
     <div className="meta">
       <time dateTime={post.date}>{dateLabel(post.date)}</time>
       {items.map((item, index) => <Fragment key={`${item}-${index}`}>

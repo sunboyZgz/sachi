@@ -1,5 +1,6 @@
 @import '../../../src/styles/tokens.css';
 @import '../../../src/styles/site.css';
+@import '../../../src/styles/code-highlight.css';
 
 html, body { background: var(--paper); }
 body { padding: 0; }
@@ -10,5 +11,7 @@ body { padding: 0; }
 .preview-notice p:last-child { margin-bottom: 0; }
 .preview-end { border-top: 1px solid var(--rule); }
 .preview-fallback { white-space: pre-wrap; font: 18px/1.95 var(--font-body); }
+.preview-source-target { background-color: var(--tint); border-radius: 2px; }
+.flow-source-anchor { pointer-events: none; }
 @media (max-width: 600px) { .preview-main { width: calc(100% - 32px); margin-top: 28px; } }
-@media print { .preview-status, .preview-notice { display: none; } }
+@media print { .preview-status, .preview-notice { display: none; } .preview-source-target { background: transparent; } }

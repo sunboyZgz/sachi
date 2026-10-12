@@ -14,7 +14,7 @@ export function ExampleReading({ input }: { input: BlogExampleInput }) {
     createElement('p', { className: 'entry-kind' }, '条目采用文章封面，正文没有因此自动增加图片。'),
   );
   return createElement(Fragment, null,
-    input.flow ? createElement(FlowParagraphs, { paragraphs: input.flow.paragraphs, spec: input.flow.spec }) : null,
+    input.flow ? createElement(FlowParagraphs, { paragraphs: input.flow.paragraphs, hardLines: input.flow.hardLines, spec: input.flow.spec }) : null,
     createElement(MarkdownContent, { markdown: input.markdown, assets: input.assets, basePath: '' }),
   );
 }

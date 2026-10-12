@@ -26,9 +26,27 @@ online: 明确移除选中的公开条目
 
 4. 先看计划，确认本次撤回目标与保留文章。
 
+   ```sh
+   npm run blog -- unpublish <文章> --dry-run
+   ```
+
+   计划核对撤回目标和保留公开文章。
+
 5. 重新进入执行，接受必要代码基线变更并核对最终确认。
 
+   ```sh
+   npm run blog -- unpublish <文章>
+   ```
+
+   确认后撤回，保留本地原文与历史身份。
+
 6. 用远端状态与网站页面验证目标不再公开。
+
+   ```sh
+   npm run blog -- status --remote
+   ```
+
+   核实公开清单与真实页面，不只检查本地文件。
 
 ### A 仍链接 B，怎样撤回 B
 
@@ -56,10 +74,4 @@ Pages 的旧正文还可能保留在 blog 分支 Git 历史中；unpublish 不�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- unpublish <文章> --dry-run
-npm run blog -- unpublish <文章> --yes
-npm run blog -- status --remote
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

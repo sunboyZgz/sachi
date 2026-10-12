@@ -20,15 +20,43 @@ online: 不改变
 
 1. 进入“新建文章 · new”，或运行 `npm run blog -- new`。
 
+   ```sh
+   npm run blog -- new
+   ```
+
+   进入栏目和标题问答。
+
 2. 用方向键选择栏目，按 Enter，栏目映射为对应目录。
 
 3. 输入标题。空白标题要求重输；标题不会作为目录名或 shell 命令。
 
+   ```sh
+   npm run blog -- new --category learn --title "把问题写下来" --slug write-a-question
+   ```
+
+   完整参数方式与菜单方式生成相同身份和目录。
+
 4. 等待 CREATED，记下 file、id 和 slug。
+
+   ```text
+   CREATED
+   file：content/蘸豆！！/2026-10-12/index.md
+   id：<实际新UUID>
+   slug：write-a-question
+   ```
+
+   这是字段示意，日期和序号以实际返回路径为准。
 
 5. 打开生成的 index.md 写正文，把本篇资源放入同级 assets。
 
 6. 用[内容检查](/preview/check)和[本地预览](/preview/dev)确认文章。
+
+   ```sh
+   npm run blog -- check write-a-question
+   npm run blog -- dev --post write-a-question
+   ```
+
+   用自己的实际 slug 代替教学名称。
 
 ### 栏目与参数怎么对应
 
@@ -49,6 +77,8 @@ online: 不改变
 
 一个新目录包含 `index.md` 和空 `assets/`。图片、视频、附件放进 assets；仅放入文件不会自动显示，必须在正文或封面 / flow 中引用。
 
+忘记 ID 后可以[按中文标题找回](/writing/find)。需要插入系列并统一顺延后续章节时，先创建普通文章，再按[系列教程](/writing/series)操作；新建时直接选择系列的原有方式仍用于指定空闲序号，不自动顺延其他文章。
+
 ### 使用自己的正文模板
 
 编辑根目录 `templates/post.md`，后续 new 会读取它，已有文章不受影响。可只放常用二级标题与正文；如果带 frontmatter，标签、摘要等可作为默认值，但 id、title、slug、createdAt 会重新生成，category、fixture、date 不会被直接照搬。不要在模板中保留新文章目录里不存在的图片路径。
@@ -67,10 +97,4 @@ online: 不改变
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- new
-npm run blog -- new --category "蘸豆！！" --title "把问题写下来" --dry-run
-npm run blog -- new --category learn --title "把问题写下来" --slug write-a-question
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。

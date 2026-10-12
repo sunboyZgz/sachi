@@ -26,9 +26,29 @@ online: 不改变
 
 4. 退出码 4：基线或并发变化。重新查服务器并计划，不修改旧摘要绕过比较。
 
+   系列插入返回 WRITING_RECOVERY_REQUIRED 时，不继续写作修改或发布，先按下方恢复记录处理；只读查找仍可运行：
+
+   ```sh
+   npm run blog -- search "朝思暮想"
+   npm run blog -- series search "我学会了"
+   ```
+
 5. 退出码 5／6：分别检查 Git 权限与远端冲突、构建日志与依赖锁。根工作区不要 reset，内容仓库不要强推。
 
+   ```sh
+   npm run blog -- doctor
+   ```
+
+   先核对本地工具与配置，再处理实际失败的 Git 或构建阶段。
+
 6. 退出码 7 或 UNKNOWN：先 status --remote 核实。不能查询时保持结果未知，恢复连接后再判断。
+
+   ```sh
+   npm run blog -- status --remote
+   npm run blog -- history --remote
+   ```
+
+   这是对真实目标的只读核实，不执行重新发布。
 
 7. 退出码 8：先区分 DEPLOYED_UNSYNCED 和 PARTIAL_OR_FAILED。前者表示服务器已上线、记录待同步；后者要逐项检查两个 hooks，不能推断全部上线或全部失败。
 
@@ -39,6 +59,10 @@ online: 不改变
 | 状态 | 意味着什么 | 安全的下一步 |
 | --- | --- | --- |
 | PLANNED | 只看计划，没冻结或上线 | 核对后重新进入执行 |
+| PREPARED | 作品本地资料已登记，待媒体处理 | 保留原文件；不代表已压缩、上传或进入舞台 |
+| LOCAL_VALID | 作品本地资料、原媒体及公网地址复查通过 | 仍待媒体处理；压缩后大小与保留秒数未知 |
+| INVALID_TOY / INVALID_PROJECT_URL / PROJECT_URL_UNREACHABLE | 作品资料、媒体或匿名公网检查失败 | 根据错误修正字段、文件或项目地址；不跳过校验 |
+| SOURCE_CHANGED / TOY_EXISTS | 原文件变化或重复作品 ID | 核对原文件与登记摘要；不覆盖已有身份 |
 | BUILD_ONLY | 本地包完成 | 验收；不把它当已上线 |
 | PUSHED / Pages QUEUED | Git 推送完成，Actions 尚待核实 | 看 Actions，再 status --remote |
 | PAGES_PENDING / QUEUED_OR_UNKNOWN | 本次 Pages 标记还未核实 | 检查作业、审批、目标与连接，不继续新 publish |
@@ -72,6 +96,22 @@ echo $?
 
 成功对象包含 `command`、`status`、`data`；错误对象包含 `status`、`error`、`code`，部分交付失败还含 `details.hooks`。脚本必须检查进程退出码与状态，不只判断 stdout 有没有输出。`--json` 禁用问答；必要输入缺失时 INPUT_REQUIRED，执行未明确确认时 CONFIRMATION_REQUIRED。
 
+### 系列插入中断后的恢复
+
+插入会修改多篇文章，恢复记录保存在 `.blog-store/writing-transactions/<事务ID>/journal.json`。其中保存修改前后内容与摘要，属于私有持久资料；不要删除记录来绕过阻止，也不要上传到公开仓库。
+
+普通写入失败会立即回滚。异常中断后，再次执行原来的归组命令，先恢复未完成事务，再展示新计划并询问确认：
+
+```sh
+npm run blog -- series add <文章ID> --series <系列ID> --order 2
+```
+
+若旧进程留下 `.blog/writing.lock`，按照报错先核对记录中的 PID，确认旧进程已经结束后才移除该锁并重试。插入写入与发布冻结互斥；报错指向 `.blog/publish.lock` 时也须核对持有进程，不能移除仍在运行的发布锁。恢复只处理写作事务，不处理发布计划或改变线上版本。
+
+发现额外编辑时返回 WRITING_RECOVERY_CONFLICT 或带同类原因的 WRITING_RECOVERY_REQUIRED，恢复记录和额外编辑都保留。先按 `details` 核对文件，保存额外编辑的独立副本，再用记录中的 before/after 对照修复；原文件必须明确回到其中一种状态后，才能再次安全恢复。文件缺失也必须先恢复原稿，不能用空文件代替。`--dry-run` 不执行恢复，不写记录。
+
+ALREADY_IN_SERIES 表示文章已经归组，add 不自动换系列；SOURCE_MISSING 表示需要顺延的公开章节缺少本地源文件。修正原始问题后重试，不使用相似名称代替完整 ID。
+
 ### 求助时保留什么
 
 记录执行命令（去掉敏感内容）、完整错误状态 / 退出码、releaseId、实际目标、Node 版本、失败作业步骤与相关文件路径。不要发送 token、SSH 私钥、整个 `.env` 或完整私有发布包；有个人资料的截图先遮盖。
@@ -92,11 +132,4 @@ echo $?
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- doctor
-npm run blog -- status --remote
-npm run blog -- history --remote
-npm run --silent blog -- status --remote --json
-```
+上方按错误类型给出查询与恢复写法。完整参数见[命令索引](/reference/commands)；成功与错误对象都要结合退出码和状态判断。

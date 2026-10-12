@@ -20,11 +20,29 @@ online: 可能完成原计划的上线
 
 1. 先执行 status --remote，判断网站是否已经切到目标版本。
 
+   ```sh
+   npm run blog -- status --remote
+   ```
+
+   先核实是否已经上线，避免重复创建新版本。
+
 2. 进入“继续冻结发布计划”，选择尚未完成的本地 release-id。
 
 3. 先看恢复计划，核对目标 ID 与服务器基线。
 
+   ```sh
+   npm run blog -- publish --resume <release-id> --dry-run
+   ```
+
+   使用实际已保存冻结计划的完整 ID，不传预演 ID。
+
 4. 重新进入并确认执行。完整包可复用，构建失败时可从冻结源和代码重建。
+
+   ```sh
+   npm run blog -- publish --resume <release-id>
+   ```
+
+   核对原目标并确认；恢复不读取后续草稿。
 
 5. 不要同时选择新文章，也不把后来修改的正文当作原计划内容。
 
@@ -65,9 +83,4 @@ BUILD_ONLY 和已完成 DEPLOYED 记录不在待继续菜单中。流水线改�
 
 ## 参数方式
 
-尖括号是占位符，应换成实际文章或目录，不要原样执行。未安装简短命令时用 `npm run blog --`；已安装时可替换成 `blog`。
-
-```sh
-npm run blog -- publish --resume <release-id> --dry-run
-npm run blog -- publish --resume <release-id> --yes
-```
+本页步骤旁已给出对应写法与结果说明。完整参数可在[命令索引](/reference/commands)按操作名查看；示例占位符请换成实际值，已安装简短命令时可把 `npm run blog --` 换成 `blog`。
