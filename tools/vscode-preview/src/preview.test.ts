@@ -22,7 +22,7 @@ async function fixture() {
   for (const directory of ['content/闲暇娱乐/2026-10-10/assets', 'src/styles', 'src/assets/avatar', 'public/assets']) await mkdir(path.join(root, directory), { recursive: true });
   await writeFile(file, raw('磁盘上的旧正文。'));
   await writeFile(path.join(root, 'blog.config.json'), JSON.stringify({ schemaVersion: 1, timezone: 'Asia/Shanghai' }));
-  for (const file of ['src/styles/tokens.css', 'src/styles/site.css', 'src/styles/code-highlight.css', 'src/assets/avatar/avatar-half.png']) await writeFile(path.join(root, file), 'test');
+  for (const file of ['src/styles/tokens.css', 'src/styles/site.css', 'src/styles/code-highlight.css', 'src/styles/math.css', 'src/assets/avatar/avatar-half.png']) await writeFile(path.join(root, file), 'test');
   const location = articleLocation(root, file)!;
   return { root, file, location, resourceUri: (file: string) => `https://resource.test/${encodeURIComponent(path.relative(root, file))}` };
 }
@@ -72,8 +72,9 @@ describe('VS Code article preview adapter', () => {
     expect(html).toContain('<table>'); expect(html).toContain('type="checkbox"'); expect(html).toContain('class="code-block"');
     expect(html.replace(/<[^>]+>/g, '')).toContain('const a = &quot;&lt;tag&gt;&quot;;'); expect(html).toContain('href="#');
     expect(html).toContain('hljs-keyword');
-    expect(result.message.styles).toHaveLength(3);
+    expect(result.message.styles).toHaveLength(4);
     expect(result.message.styles[2]).toContain('code-highlight.css');
+    expect(result.message.styles[3]).toContain('math.css');
     expect(result.links.size).toBe(3);
   });
 
@@ -81,10 +82,21 @@ describe('VS Code article preview adapter', () => {
     const fixtureData = await fixture();
     const body = '第一段 **正在编辑**。\n\n![图片](./assets/absent.png)\n\n## 后文\n\n最后一段。';
     const result = await buildPreview({ ...fixtureData, raw: raw(body, 'flow:\n  image: ./assets/absent.png\n'), revision: 1, dirty: true });
-    expect(result.message.post.flow).toBeUndefined(); expect(result.message.post.body).toBe(body);
-    expect(result.message.warnings.join(' ')).toContain('环绕暂用普通排版');
+    expect(result.message.post.flow).toMatchObject({ image: './assets/absent.png' }); expect(result.message.post.body).toBe(body);
+    expect(result.message.warnings.join(' ')).toContain('暂用普通排版');
     await expect(buildPreview({ ...fixtureData, raw: raw().replace('title: 编辑器文章', 'title: [未完成'), revision: 2, dirty: true })).rejects.toThrow('YAML');
     await expect(buildPreview({ ...fixtureData, raw: raw().replace('tags: [预览, 测试]', 'tags: 不是数组'), revision: 2, dirty: true })).rejects.toThrow();
+  });
+
+  it('keeps valid per-image settings while another configuration is incomplete', async () => {
+    const fixtureData = await fixture();
+    await writeFile(path.join(path.dirname(fixtureData.file), 'assets/photo.png'), 'bytes');
+    const result = await buildPreview({ ...fixtureData, raw: raw('![图](./assets/photo.png)\n\n有效区域。\n\n---\n\n另一段。', 'flow:\n  - image: ./assets/photo.png\n    width: 240\n  - width: 180\n'), revision: 1, dirty: true });
+    expect(result.message.post.flow).toMatchObject([{ image: './assets/photo.png', width: 240 }]);
+    const parsed = parseMarkdown(result.message.post.body, result.message.post.flow, result.message.post.assets, result.message.source.origin, { tolerant: true });
+    expect(parsed.flows).toHaveLength(1);
+    expect(result.message.warnings.join(' ')).toContain('flow[2]');
+    expect(result.message.post.body).toContain('另一段');
   });
 
   it('blocks traversal, unsupported protocols and symbolic links while rendering the rest', async () => {

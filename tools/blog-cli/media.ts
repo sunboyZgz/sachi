@@ -2,7 +2,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 import { BlogError, sha256, stableJson } from '../../src/lib/blog/files';
-import { type Asset, type BlogConfig, type Snapshot } from '../../src/lib/blog/schema';
+import { flowSpecs, type FlowConfig, type Asset, type BlogConfig, type Snapshot } from '../../src/lib/blog/schema';
 import { storePath } from './config';
 import { immutableWrite } from './snapshot';
 import { run } from './process';
@@ -15,19 +15,20 @@ async function mediaOperation<T>(description: string, action: () => Promise<T>):
     throw new BlogError(`${description}失败：${error instanceof Error ? error.message : String(error)}`, 3);
   }
 }
-export async function validateMedia(root: string, config: BlogConfig, dependencies: Array<{ url: string; sourceFile: string }>, flowImage?: string) {
-  return await mediaOperation('媒体检查', () => inspectMedia(root, config, dependencies, flowImage));
+export async function validateMedia(root: string, config: BlogConfig, dependencies: Array<{ url: string; sourceFile: string }>, flowConfig?: FlowConfig | string) {
+  return await mediaOperation('媒体检查', () => inspectMedia(root, config, dependencies, flowConfig));
 }
-async function inspectMedia(root: string, config: BlogConfig, dependencies: Array<{ url: string; sourceFile: string }>, flowImage?: string) {
+async function inspectMedia(root: string, config: BlogConfig, dependencies: Array<{ url: string; sourceFile: string }>, flowConfig?: FlowConfig | string) {
+  const flowImages = new Set(typeof flowConfig === 'string' ? [flowConfig] : flowSpecs(flowConfig).map((spec) => spec.image));
   const checked = [];
   for (const dependency of dependencies) {
     const extension = path.extname(dependency.sourceFile).toLowerCase();
     if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.svg'].includes(extension)) {
       const info = await sharp(dependency.sourceFile, { animated: true, limitInputPixels: 80_000_000 }).metadata();
       if (!info.width || !info.height) throw new BlogError(`图片缺少有效尺寸：${dependency.url}`);
-      if (dependency.url === flowImage && info.orientation && info.orientation !== 1) throw new BlogError(`环绕图包含 EXIF 旋转，须先显式修正图片和轮廓：${dependency.url}`);
-      if (dependency.url === flowImage && (info.pages ?? 1) > 1) throw new BlogError(`环绕图片必须是静态图片：${dependency.url}`);
-      if (dependency.url === flowImage) await createImageContour(await readFile(dependency.sourceFile));
+      if (flowImages.has(dependency.url) && info.orientation && info.orientation !== 1) throw new BlogError(`环绕图包含 EXIF 旋转，须先显式修正图片和轮廓：${dependency.url}`);
+      if (flowImages.has(dependency.url) && (info.pages ?? 1) > 1) throw new BlogError(`环绕图片必须是静态图片：${dependency.url}`);
+      if (flowImages.has(dependency.url)) await createImageContour(await readFile(dependency.sourceFile));
       checked.push({ url: dependency.url, width: info.width, height: info.height, frames: info.pages ?? 1 });
     } else if (['.mp4', '.webm', '.mov', '.m4v'].includes(extension)) {
       await run(['ffmpeg', '-version'], { cwd: root, code: 3 });
@@ -49,7 +50,8 @@ async function transformMedia(root: string, config: BlogConfig, snapshot: Snapsh
     const input = path.join(storePath(root, 'snapshots', snapshot.revisionHash), 'files', dependency.file);
     const extension = path.extname(dependency.file).toLowerCase();
     const bytes = await readFile(input); const preset = snapshot.media.assets[dependency.url];
-    const isFlow = dependency.url === snapshot.post.flow?.image;
+    const spec = flowSpecs(snapshot.post.flow).find((spec) => spec.image === dependency.url);
+    const isFlow = !!spec;
     const write = async (output: Buffer, ext: string) => {
       const url = `/media/${snapshot.post.id}/${sha256(output)}${ext}`;
       await immutableWrite(path.join(publicRoot, url.slice(1)), output);
@@ -75,7 +77,7 @@ async function transformMedia(root: string, config: BlogConfig, snapshot: Snapsh
       }
       if (isFlow) {
         Object.assign(assets[dependency.url], await imageDimensions(bytes, true));
-        if (!snapshot.post.flow?.contour) assets[dependency.url].contour = await write(Buffer.from(JSON.stringify(await createImageContour(bytes))), '.json');
+        if (!spec?.contour) assets[dependency.url].contour = await write(Buffer.from(JSON.stringify(await createImageContour(bytes))), '.json');
       }
     } else if (['.mp4', '.webm', '.mov', '.m4v'].includes(extension)) {
       const probe = JSON.parse((await run(['ffprobe', '-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', input], { cwd: root, code: 3 })).stdout) as { format?: { duration?: string }; streams?: Array<{ codec_type?: string; codec_name?: string; width?: number; height?: number }> };

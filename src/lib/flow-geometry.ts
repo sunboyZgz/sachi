@@ -2,6 +2,7 @@ export type Interval = { x: number; width: number };
 export type Position = { x: number; y: number };
 export type Obstacle = Position & { width: number; height: number };
 export type Contour = { height: number; rows: Array<[number, number] | null> };
+export const maxFlowY = 330;
 
 export function isContour(value: unknown): value is Contour {
   if (!value || typeof value !== 'object') return false;
@@ -11,11 +12,9 @@ export function isContour(value: unknown): value is Contour {
     && rows.every((row) => row === null || (Array.isArray(row) && row.length === 2 && row.every((v) => typeof v === 'number' && Number.isFinite(v)) && row[0] >= 0 && row[1] <= 1 && row[0] <= row[1]));
 }
 
-export function flowImageSize(width = 205, sourceWidth?: number, sourceHeight?: number) {
+export function flowImageSize(width = 205, sourceWidth?: number, sourceHeight?: number, containerWidth = Infinity) {
   if (!sourceWidth || !sourceHeight || !Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) throw new Error('环绕图片缺少有效的原始尺寸。');
-  // Both bounds preserve the aspect ratio; unusually tall images never occupy
-  // thousands of lines, and wide images leave room for readable text columns.
-  const scale = Math.min(width / sourceWidth, 360 / sourceHeight);
+  const scale = Math.min(width, containerWidth) / sourceWidth;
   return { width: sourceWidth * scale, height: sourceHeight * scale };
 }
 
@@ -50,7 +49,7 @@ export function availableIntervals(
   ].filter((region) => region.width >= minWidth);
 }
 
-export function clampPosition(position: Position, width: number, imageWidth: number, maxY = 330) {
+export function clampPosition(position: Position, width: number, imageWidth: number, maxY = maxFlowY) {
   return {
     x: Math.max(0, Math.min(width - imageWidth, position.x)),
     y: Math.max(0, Math.min(maxY, position.y)),

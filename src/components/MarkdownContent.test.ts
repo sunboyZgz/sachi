@@ -32,13 +32,33 @@ describe('Markdown reading controls', () => {
     const { headings } = parseMarkdown(markdown);
     for (const component of [DesktopArticleToc, MobileArticleToc]) {
       const html = renderToStaticMarkup(createElement(component, { headings }));
-      expect(html.match(/<li /g)).toHaveLength(4);
+      expect(html.match(/<li /g)).toHaveLength(5);
       expect(html).toContain('data-toc-level="2"');
       expect(html).toContain('01.1.1 · ');
       expect(html).toContain('01.2 · ');
-      expect(html).not.toContain('说明');
+      expect(html).toContain('data-toc-level="3"');
+      expect(html).toContain('01.1.1.1 · ');
+      expect(html).toContain('说明');
       for (const heading of headings) expect(html).toContain(`href="#${encodeURIComponent(heading.id)}"`);
     }
+  });
+
+  it('shows h1 to h4 as two contents levels while retaining the original h4 body and anchor', () => {
+    const markdown = '# 章节\n\n#### **四级小节**\n\n#### 另一个小节';
+    const { headings } = parseMarkdown(markdown);
+    expect(headings.map(({ nesting }) => nesting)).toEqual([0, 1, 1]);
+    expect(render(markdown)).toMatch(/<h4[^>]*id="四级小节"[^>]*class="article-heading"/);
+    for (const component of [DesktopArticleToc, MobileArticleToc]) {
+      const html = renderToStaticMarkup(createElement(component, { headings }));
+      expect(html).toContain('01.1 · '); expect(html).toContain('01.2 · ');
+      expect(html.match(/data-toc-level="1"/g)).toHaveLength(2);
+      expect(html).toContain('style="--toc-level:1"');
+      expect(html).not.toContain('data-toc-level="2"');
+      expect(html).toContain(`href="#${encodeURIComponent('四级小节')}"`);
+    }
+    const deepest = parseMarkdown('# 一\n\n## 二\n\n### 三\n\n#### 四\n\n##### 五\n\n###### 六').headings;
+    expect(deepest.at(-1)).toMatchObject({ depth: 6, nesting: 5, number: '01.1.1.1.1.1' });
+    expect(renderToStaticMarkup(createElement(DesktopArticleToc, { headings: deepest }))).toContain('style="--toc-level:5"');
   });
 
   it('keeps the chapter after a flow intro separated from the intro, with matching nested anchors', () => {
@@ -166,4 +186,17 @@ describe('Markdown reading controls', () => {
     expect(html).toContain('<p>另一个段落。</p>');
     expect(html).toContain('flow-fallback');
   });
+});
+
+
+it('keeps global reference definitions and heading IDs when local flow blocks are replaced', () => {
+  const markdown = '开头。\n\n![环绕][same]\n\n[same]: ./assets/a.png\n\n# 重复\n\n**普通段落**。\n\n![普通][same]\n\n# 重复';
+  const parsed = parseMarkdown(markdown, { image: './assets/a.png', defaultX: .53, defaultY: 20 });
+  const html = renderToStaticMarkup(createElement(ArticleProse, { parsed, assets: {}, flowKey: 'references' }));
+  expect(html).toContain('alt="普通"');
+  expect(html).toContain('src="/assets/a.png"');
+  expect(html).toContain('id="重复"');
+  expect(html).toContain('id="重复-1"');
+  expect(html).not.toContain('[same]');
+  expect(html).toContain('flow-ordinary-image');
 });

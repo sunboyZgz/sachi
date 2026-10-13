@@ -4,7 +4,7 @@ import { visit } from 'unist-util-visit';
 import { sourceAttributes, sourceRange, type SourceOrigin } from './source-lines';
 import { createSourceMapper, sourceMapAttributes } from './source-text-map';
 
-const blocks = new Set(['heading', 'paragraph', 'code', 'table', 'tableRow', 'listItem', 'blockquote']);
+const blocks = new Set(['heading', 'paragraph', 'code', 'math', 'inlineMath', 'table', 'tableRow', 'listItem', 'blockquote']);
 
 /** Opt-in source markers for editor previews; production HTML never enables this plugin. */
 export function remarkSourceLines(origin: SourceOrigin) {

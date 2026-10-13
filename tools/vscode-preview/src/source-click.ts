@@ -71,11 +71,19 @@ export class SourceClick {
     if (!this.root.ownerDocument.getSelection()?.isCollapsed) return;
     const target = event.target instanceof Element ? event.target : null;
     if (!target || target.closest(controls) || !target.closest('.article-prose, .article-title')) return;
-    const hit = textHit(this.root.ownerDocument, event.clientX, event.clientY);
-    if (!hit || !this.root.contains(hit.node) || hit.node.parentElement?.closest(controls) || hit.node.parentElement?.closest('.flow-block[data-layout="wrap"] .flow-original')) return;
-    const title = hit.node.parentElement?.closest('.article-title');
-    if (!title && !hit.node.parentElement?.closest('.article-prose')) return;
-    const point = title ? this.data.source.title : pointForText(hit.node, hit.offset);
+    let point: SourcePoint | undefined;
+    const image = target.closest('img, .flow-obstacle[data-interactive="false"]');
+    if (image) {
+      const marker = image.closest<HTMLElement>('[data-source-start]');
+      const line = Number(marker?.dataset.sourceStart), column = Number(marker?.dataset.sourceStartColumn);
+      if (line > 0 && column > 0) point = { line, column };
+    } else {
+      const hit = textHit(this.root.ownerDocument, event.clientX, event.clientY);
+      if (!hit || !this.root.contains(hit.node) || hit.node.parentElement?.closest(controls) || hit.node.parentElement?.closest('.flow-block[data-layout="wrap"] .flow-original')) return;
+      const title = hit.node.parentElement?.closest('.article-title');
+      if (!title && !hit.node.parentElement?.closest('.article-prose')) return;
+      point = title ? this.data.source.title : pointForText(hit.node, hit.offset);
+    }
     if (!point) return;
     this.pending = ++this.sequence;
     this.send({ type: 'revealSource', document: this.data.document, revision: this.data.revision, version: this.data.source.version, sequence: this.sequence, ...point });

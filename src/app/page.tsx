@@ -40,6 +40,7 @@ export default async function HomePage() {
           <Link className="text-link cover-entry" href="/contents/">
             浏览目录 <Arrow />
           </Link>
+          {fixtureMode ? <div><Link className="quiet-link" href="/article/special-blocks/">查看特殊块排版样例 <Arrow /></Link></div> : null}
         </section>
         <picture className="cover-art">
           <source media="(max-width:600px)" srcSet={siteAsset('/assets/desk-scene-mobile.webp')} />

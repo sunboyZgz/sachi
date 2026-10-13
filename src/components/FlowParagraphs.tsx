@@ -9,10 +9,15 @@ import { availableIntervals, clampPosition, flowImageSize, isContour, type Conto
 import type { FlowPresentation } from '../lib/markdown';
 import { cursorOffsetLookup, sourceAttributes, sourceRangeForOffsets, type FlowSourceMap, type SourceLine } from '../lib/source-lines';
 import { joinSourceMaps, normalizeSourceMap, sliceSourceMap, sourceMapAttributes } from '../lib/source-text-map';
+import { browserFlowStorage, clearFlowPosition, flowPositionSettings, projectFlowPosition, readFlowPosition, relativeFlowPosition, writeFlowPosition, type RelativeFlowPosition } from '../lib/flow-position-memory';
 
 const lineHeight = 36;
 
-type DragState = { x: number; y: number; origin: Position };
+type DragState = { x: number; y: number; origin: Position; moved: boolean };
+
+function placeObstacle(node: HTMLElement, position: Position, image: { width: number; height: number }) {
+  node.style.cssText = `left:${position.x}px;top:${position.y}px;width:${image.width}px;height:${image.height}px;`;
+}
 
 function mappedText(text: string, lines?: SourceLine[]) {
   if (!lines) return text;
@@ -21,15 +26,17 @@ function mappedText(text: string, lines?: SourceLine[]) {
   </Fragment>);
 }
 
-export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragraphs: string[]; hardLines?: string[][]; source?: FlowSourceMap; spec: FlowPresentation }) {
+export function FlowParagraphs({ paragraphs, hardLines, source, spec, imageIndex = 0, layoutMode = 'responsive', storageKey }: { paragraphs: string[]; hardLines?: string[][]; source?: FlowSourceMap; spec: FlowPresentation; imageIndex?: number; layoutMode?: 'responsive' | 'desktop'; storageKey?: string }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<HTMLDivElement>(null);
-  const obstacleRef = useRef<HTMLButtonElement>(null);
+  const obstacleRef = useRef<HTMLElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const imageSizeRef = useRef({ width: spec.width ?? 205, height: 0 });
   const positionRef = useRef<Position>({ x: 0, y: spec.defaultY });
   const widthRef = useRef(0);
   const manualRef = useRef(false);
+  const preferredPositionRef = useRef<RelativeFlowPosition | undefined>(undefined);
+  const settingsRef = useRef('');
   const activeRef = useRef(false);
   const plainRef = useRef(false);
   const failedRef = useRef(false);
@@ -38,7 +45,9 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
   const [interactive, setInteractive] = useState(false);
   const [plain, setPlain] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [reason, setReason] = useState('正在加载图片与环绕引擎');
   const [layout, setLayout] = useState<'inline' | 'wrap'>('inline');
+  const positionSettings = flowPositionSettings(spec);
 
   useEffect(() => {
     activeRef.current = interactive;
@@ -51,6 +60,14 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
 
   useEffect(() => {
     let destroyed = false;
+    const identity = JSON.stringify([storageKey, positionSettings]);
+    if (settingsRef.current !== identity) {
+      settingsRef.current = identity;
+      dragRef.current = null;
+      preferredPositionRef.current = storageKey ? readFlowPosition(browserFlowStorage(stageRef.current?.ownerDocument.defaultView), storageKey, positionSettings) : undefined;
+      manualRef.current = !!preferredPositionRef.current;
+    }
+    failedRef.current = false;
     let animationFrame = 0;
     let contour: Contour | null = null;
     let engine: typeof import('@chenglou/pretext') | null = null;
@@ -65,6 +82,7 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
         console.warn('Pretext 环绕不可用，已退回普通 DOM 排版。', error);
         failedRef.current = true;
         setFailed(true);
+        setReason(error instanceof Error ? error.message : '环绕引擎不可用');
       }
       setLayout('inline');
       const stage = stageRef.current;
@@ -72,6 +90,15 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
       if (stage) stage.style.height = 'auto';
       if (paint) paint.replaceChildren();
     };
+
+    // Invalidate painted source maps before any asynchronous work for new props.
+    paintRef.current?.replaceChildren();
+    queueMicrotask(() => {
+      if (destroyed) return;
+      showPlainFallback();
+      setFailed(false);
+      setReason('正在加载图片与环绕引擎');
+    });
 
     const relayout = () => {
       if (destroyed) return;
@@ -83,8 +110,9 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
       try {
         const width = stage.clientWidth;
         widthRef.current = width;
-        const inline = width < 520 || window.matchMedia('(max-width: 600px)').matches || plainRef.current || failedRef.current;
+        const inline = width < 520 || layoutMode !== 'desktop' && window.matchMedia('(max-width: 600px)').matches || plainRef.current || failedRef.current;
         if (inline) {
+          if (!failedRef.current) setReason(plainRef.current ? '已选择普通排版' : '窄面板或移动端');
           showPlainFallback();
           return;
         }
@@ -102,6 +130,7 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
           return;
         }
 
+        setReason('Pretext 0.0.9');
         setLayout('wrap');
         const style = getComputedStyle(stage);
         const font = `${style.fontStyle} ${style.fontWeight} 18px ${style.fontFamily}`;
@@ -111,7 +140,9 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
           fontKey = font;
         }
         const { width: imageWidth, height: imageHeight } = imageSizeRef.current;
-        if (!manualRef.current) {
+        if (manualRef.current && preferredPositionRef.current) {
+          positionRef.current = projectFlowPosition(preferredPositionRef.current, width, imageWidth);
+        } else {
           positionRef.current = {
             x: width * spec.defaultX - imageWidth / 2,
             y: spec.defaultY,
@@ -120,7 +151,7 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
         const position = clampPosition(positionRef.current, width, imageWidth);
         positionRef.current = position;
         const obstacle = { ...position, width: imageWidth, height: imageHeight };
-        obstacleNode.style.cssText = `left:${position.x}px;top:${position.y}px;width:${imageWidth}px;height:${imageHeight}px;`;
+        placeObstacle(obstacleNode, position, imageSizeRef.current);
 
         const fragment = document.createDocumentFragment();
         let y = 0;
@@ -206,6 +237,8 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
       const value: unknown = await response.json();
       if (!isContour(value)) throw new Error('环绕轮廓格式无效。');
       contour = value;
+      if (destroyed) return;
+      setFailed(false);
       const image = imageRef.current;
       if (!image) throw new Error('环绕图片未能加载。');
       await image.decode();
@@ -231,65 +264,93 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
       document.fonts.removeEventListener('loadingdone', onFonts);
       scheduleRef.current = () => undefined;
     };
-  }, [paragraphs, hardLines, source, spec.contour, spec.image, spec.width, spec.defaultX, spec.defaultY]);
+  }, [paragraphs, hardLines, source, spec.contour, spec.image, spec.width, spec.defaultX, spec.defaultY, layoutMode, storageKey, positionSettings]);
 
   const moveTo = (position: Position) => {
+    if (layout !== 'wrap' || failedRef.current) return false;
+    const next = clampPosition(position, widthRef.current, imageSizeRef.current.width);
+    if (next.x === positionRef.current.x && next.y === positionRef.current.y) return false;
     manualRef.current = true;
-    positionRef.current = clampPosition(position, widthRef.current, imageSizeRef.current.width);
+    positionRef.current = next;
+    preferredPositionRef.current = relativeFlowPosition(next, widthRef.current, imageSizeRef.current.width);
     scheduleRef.current();
+    return true;
   };
 
+  const rememberPosition = () => {
+    if (!storageKey || !preferredPositionRef.current || layout !== 'wrap' || failedRef.current) return;
+    writeFlowPosition(browserFlowStorage(stageRef.current?.ownerDocument.defaultView), storageKey, positionSettings, preferredPositionRef.current);
+  };
+
+  const finishDrag = () => {
+    const moved = dragRef.current?.moved;
+    dragRef.current = null;
+    if (moved) rememberPosition();
+  };
+
+  const Obstacle = interactive && !failed ? 'button' : 'div';
   return (
     <section
       className="flow-block"
-      data-engine={failed ? 'plain-dom' : 'pretext'}
+      data-engine={layout === 'wrap' ? 'pretext' : 'plain-dom'}
       data-layout={layout}
+      data-layout-mode={layoutMode}
       aria-label="图文环绕段落"
-      style={{ '--flow-image-width': `${spec.width ?? 180}px` } as CSSProperties}
+      style={{ '--flow-image-width': `${spec.width ?? 205}px` } as CSSProperties}
     >
       <div className="flow-canvas" ref={stageRef}>
         <div className={`flow-original ${layout === 'wrap' ? 'sr-only' : 'flow-fallback'}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img {...sourceAttributes(source?.image, 'image')} ref={imageRef} className="flow-inline-image" src={spec.image} alt={spec.alt} width={spec.imageWidth} height={spec.imageHeight} />
-          {paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph}`} {...sourceAttributes(source ? {
+          {Array.from({ length: paragraphs.length + 1 }, (_, slot) => {
+            if (slot === imageIndex) return <Fragment key="image">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img {...sourceAttributes(source?.image, 'image')} ref={imageRef} className="flow-inline-image" src={spec.image} alt={spec.alt} width={spec.imageWidth} height={spec.imageHeight} />
+            </Fragment>;
+            const index = slot < imageIndex ? slot : slot - 1;
+            const paragraph = paragraphs[index];
+            return <p key={`${index}-${paragraph}`} {...sourceAttributes(source ? {
             start: source.paragraphs[index][0][0].range.start,
             end: source.paragraphs[index].at(-1)!.at(-1)!.range.end,
           } : undefined, 'flow-paragraph')}>
             {hardLines?.[index] ? hardLines[index].map((line, lineIndex) => <Fragment key={lineIndex}>
               {lineIndex ? <br /> : null}{mappedText(line, source?.paragraphs[index]?.[lineIndex])}
             </Fragment>) : mappedText(paragraph, source?.paragraphs[index]?.[0])}
-          </p>)}
+          </p>; })}
         </div>
         <div className="flow-visual" hidden={layout !== 'wrap'}>
           <div className="flow-text" ref={paintRef} aria-hidden="true" />
-          <button
+          <Obstacle
             {...sourceAttributes(source?.image, 'image')}
-            ref={obstacleRef}
-            type="button"
+            ref={(node: HTMLButtonElement | HTMLDivElement | null) => {
+              obstacleRef.current = node;
+              if (node && imageSizeRef.current.height) placeObstacle(node, positionRef.current, imageSizeRef.current);
+              scheduleRef.current();
+            }}
+            type={interactive ? "button" : undefined}
             className="flow-obstacle"
-            aria-label={`移动环绕图片${spec.alt ? `：${spec.alt}` : ''}；开启互动后也可用方向键移动`}
-            disabled={!interactive || failed}
+            aria-label={interactive ? `移动环绕图片${spec.alt ? `：${spec.alt}` : ''}；也可用方向键移动` : undefined}
             data-interactive={interactive && !failed ? 'true' : 'false'}
             onPointerDown={(event) => {
-              if (!activeRef.current) return;
+              if (!activeRef.current || layout !== 'wrap' || failedRef.current) return;
               event.preventDefault();
               event.currentTarget.setPointerCapture(event.pointerId);
               dragRef.current = {
                 x: event.clientX,
                 y: event.clientY,
                 origin: { ...positionRef.current },
+                moved: false,
               };
             }}
             onPointerMove={(event) => {
               const drag = dragRef.current;
               if (!drag || !activeRef.current) return;
-              moveTo({
+              if (moveTo({
                 x: drag.origin.x + event.clientX - drag.x,
                 y: drag.origin.y + event.clientY - drag.y,
-              });
+              })) drag.moved = true;
             }}
-            onPointerUp={() => { dragRef.current = null; }}
-            onPointerCancel={() => { dragRef.current = null; }}
+            onPointerUp={finishDrag}
+            onPointerCancel={finishDrag}
+            onLostPointerCapture={finishDrag}
             onKeyDown={(event) => {
               const offsets: Partial<Record<string, [number, number]>> = {
                 ArrowLeft: [-12, 0],
@@ -300,19 +361,19 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
               const offset = offsets[event.key];
               if (!activeRef.current || !offset) return;
               event.preventDefault();
-              moveTo({
+              if (moveTo({
                 x: positionRef.current.x + offset[0],
                 y: positionRef.current.y + offset[1],
-              });
+              })) rememberPosition();
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={spec.image} alt="" width={spec.imageWidth} height={spec.imageHeight} draggable={false} />
-          </button>
+          </Obstacle>
         </div>
       </div>
       <div className="flow-controls">
-        <span className="flow-status">{failed ? '普通排版 · Pretext 不可用' : 'Pretext 0.0.9'}</span>
+        {source ? <span className="flow-status">{layout === 'wrap' ? '环绕 · Pretext 0.0.9' : `${failed ? '降级' : '普通图文'} · ${reason}`}</span> : null}
         <button
           type="button"
           aria-pressed={interactive}
@@ -326,6 +387,9 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec }: { paragr
           disabled={failed}
           onClick={() => {
             manualRef.current = false;
+            preferredPositionRef.current = undefined;
+            dragRef.current = null;
+            if (storageKey) clearFlowPosition(browserFlowStorage(stageRef.current?.ownerDocument.defaultView), storageKey);
             scheduleRef.current();
           }}
         >还原位置</button>

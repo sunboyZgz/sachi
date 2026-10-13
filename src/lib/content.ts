@@ -1,13 +1,13 @@
 import { cache } from 'react';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { configSchema, defaultConfig, manifestSchema, postSchema, seriesSchema, type BlogPost, type FlowSpec } from './blog/schema';
+import { configSchema, defaultConfig, manifestSchema, postSchema, seriesSchema, type BlogPost, type FlowSpec, type FlowConfig } from './blog/schema';
 import { scanSeries, seriesIndex } from './blog/series';
 import { sha256, stableJson } from './blog/files';
 import { scanContent } from './blog/content';
 import { previewPosts } from './blog/preview';
 
-export type { FlowSpec };
+export type { FlowSpec, FlowConfig };
 export type Post = BlogPost;
 export type PostMeta = Omit<Post, 'body'>;
 

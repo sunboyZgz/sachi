@@ -10,14 +10,15 @@ import { automaticContour } from './auto-contour';
 import { SourceFollower } from './source-follow';
 import { SourceClick } from './source-click';
 import { testClick } from './test-click';
+import { inspectArticleStyles } from './style-audit';
 import { sourceAttributes } from '../../../src/lib/source-lines';
 import type { HostMessage, PreviewData, RenderMessage, ViewMessage } from './protocol';
 import './webview.css';
 
 declare function acquireVsCodeApi(): {
   postMessage(message: ViewMessage): void;
-  getState(): { document: string; scroll: number } | undefined;
-  setState(value: { document: string; scroll: number }): void;
+  getState(): { document: string; scroll: number; layoutMode?: 'responsive' | 'desktop' } | undefined;
+  setState(value: { document: string; scroll: number; layoutMode?: 'responsive' | 'desktop' }): void;
 };
 
 const vscode = acquireVsCodeApi();
@@ -29,6 +30,7 @@ const packagedAvatar = new URL(String(avatarHalf), (document.currentScript as HT
 let latest = 0;
 let current: PreviewData | undefined;
 let scrollFrame = 0;
+let layoutMode: 'responsive' | 'desktop' = vscode.getState()?.layoutMode ?? 'responsive';
 
 class PreviewBoundary extends Component<{ children: ReactNode; data: PreviewData }, { failed: boolean; revision: number }> {
   state = { failed: false, revision: this.props.data.revision };
@@ -47,13 +49,13 @@ class PreviewBoundary extends Component<{ children: ReactNode; data: PreviewData
 
 function Article({ data, parsed }: { data: PreviewData; parsed: ParsedMarkdown }) {
   return <>
-    <div className="preview-status" role="status">实时预览<span>{data.dirty ? '含未保存修改' : '已保存'}</span></div>
+    <div className="preview-status" role="status">实时预览<button type="button" onClick={() => vscode.postMessage({ type: 'toggleLayout' })}>{layoutMode === 'desktop' ? '桌面宽度 · 切换响应式' : '响应式 · 切换桌面宽度'}</button><span>{data.dirty ? '含未保存修改' : '已保存'}</span></div>
     {data.warnings.length ? <aside className="preview-notice" role="status">{data.warnings.map((warning, index) => <p key={index}>{warning}</p>)}</aside> : null}
     <main className="article-main preview-main">
       <div {...sourceAttributes({ start: { line: 1, column: 1 }, end: { line: Math.max(1, data.source.origin.lineOffset), column: 1 } }, 'metadata')}><ArticleIntro post={data.post} /></div>
       <div className="article-intro-rule" aria-hidden="true" />
       <PreviewBoundary key={data.document} data={data}>
-        <ArticleProse parsed={parsed} assets={data.post.assets} flowKey={`${data.document}:${data.post.flow?.image}:${data.post.flow?.contour}`} />
+        <ArticleProse parsed={parsed} assets={data.post.assets} flowKey={data.document} layoutMode={layoutMode} />
       </PreviewBoundary>
       <AuthorSignatureView name={data.profile.name} bio={data.profile.bio} avatar={
         <span className="avatar-slot avatar-slot--signature" aria-hidden="true">
@@ -85,18 +87,17 @@ async function update(message: RenderMessage) {
   if (message.type !== 'update') return;
   let data = message;
   const warnings = [...message.warnings];
-  let flow = data.post.flow;
-  if (flow && !flow.contour) {
-    try { flow = { ...flow, contour: await automaticContour(flow.image) }; }
-    catch (error) { flow = undefined; warnings.push(`环绕暂用普通排版：${error instanceof Error ? error.message : String(error)}`); }
-  }
+  const parsed = parseMarkdown(data.post.body, data.post.flow, data.post.assets, data.source.origin, { tolerant: true });
+  for (const warning of parsed.warnings) if (!warnings.includes(warning)) warnings.push(warning);
+  await Promise.all(parsed.flows.map(async (region) => {
+    if (region.spec.contour) return;
+    try { region.spec = { ...region.spec, contour: await automaticContour(region.spec.image) }; }
+    catch (error) { warnings.push(`${region.spec.image}：本区域环绕暂用普通排版：${error instanceof Error ? error.message : String(error)}`); }
+  }));
   if (latest !== message.revision) return;
-  let parsed: ParsedMarkdown;
-  try { parsed = parseMarkdown(data.post.body, flow, data.post.assets, data.source.origin); }
-  catch (error) {
-    warnings.push(`环绕暂用普通排版：${error instanceof Error ? error.message : String(error)}`);
-    parsed = parseMarkdown(data.post.body, undefined, data.post.assets, data.source.origin);
-  }
+  layoutMode = data.layoutMode ?? layoutMode;
+  document.body.dataset.layoutMode = layoutMode;
+  document.documentElement.dataset.layoutMode = layoutMode;
   data = { ...data, warnings };
   const saved = vscode.getState();
   const scroll = current?.document === data.document ? window.scrollY : saved?.document === data.document ? saved.scroll : 0;
@@ -112,7 +113,7 @@ async function update(message: RenderMessage) {
   requestAnimationFrame(() => {
     if (latest !== data.revision) return;
     window.scrollTo({ top: scroll, behavior: 'instant' });
-    vscode.setState({ document: data.document, scroll });
+    vscode.setState({ document: data.document, scroll, layoutMode });
     sourceClick.setData(data);
     follower.rendered(data);
     vscode.postMessage({ type: 'rendered', receipt: { revision: data.revision, title: data.post.title, text: document.querySelector('main')?.textContent ?? '', flow: !!parsed.flow } });
@@ -131,6 +132,13 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
   else if (message?.type === 'inspectCodeStyles' && current) {
     vscode.postMessage({ type: 'codeStyles', receipt: {
       revision: current.revision, sequence: message.sequence, theme: document.body.dataset.vscodeThemeKind ?? '', scrollTop: window.scrollY,
+      article: inspectArticleStyles(),
+      layoutMode, bodyWidth: container.querySelector('.preview-main')?.getBoundingClientRect().width ?? 0,
+      flows: [...container.querySelectorAll<HTMLElement>('.flow-block')].map((block) => {
+        const image = block.querySelector(block.dataset.layout === 'wrap' ? '.flow-obstacle' : '.flow-inline-image')!;
+        const rect = image.getBoundingClientRect();
+        return { layout: block.dataset.layout ?? '', engine: block.dataset.engine ?? '', width: rect.width, height: rect.height, status: block.querySelector('.flow-status')?.textContent ?? '' };
+      }),
       blocks: [...container.querySelectorAll<HTMLElement>('.article-prose pre code')].map((code) => ({
         language: [...code.classList].find((name) => name.startsWith('language-')) ?? '',
         text: code.textContent ?? '', color: getComputedStyle(code).color, background: getComputedStyle(code.closest('pre')!).backgroundColor,
@@ -143,7 +151,7 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
 });
 window.addEventListener('scroll', () => {
   cancelAnimationFrame(scrollFrame);
-  scrollFrame = requestAnimationFrame(() => { if (current) vscode.setState({ document: current.document, scroll: window.scrollY }); });
+  scrollFrame = requestAnimationFrame(() => { if (current) vscode.setState({ document: current.document, scroll: window.scrollY, layoutMode }); });
 }, { passive: true });
 document.addEventListener('click', (event) => {
   const anchor = event.target instanceof Element ? event.target.closest('a') : null;

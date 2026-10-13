@@ -250,6 +250,34 @@ test('uses inline article layout and collapsible contents on mobile', async ({ p
   await expect(page.locator('.article-prose h2').nth(1)).toBeInViewport();
 });
 
+test('compresses h1 to h4 into two contents levels on desktop and mobile without changing heading styles', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+    await page.goto('/article/reading-notes/');
+    const toc = page.locator(width === 1440 ? '.toc' : '.mobile-toc');
+    if (width === 390) await toc.locator('summary').click();
+    const chapter = toc.getByRole('link', { name: '02 · 留给标题的另一种样式', exact: true });
+    const child = toc.getByRole('link', { name: '02.1 · 跳过中间层级的小节', exact: true });
+    const sibling = toc.getByRole('link', { name: '02.2 · 并列的小节', exact: true });
+    const grandchild = toc.getByRole('link', { name: '02.2.1 · 更细的一点补充', exact: true });
+    await expect(chapter.locator('..')).toHaveAttribute('data-toc-level', '0');
+    await expect(child.locator('..')).toHaveAttribute('data-toc-level', '1');
+    await expect(sibling.locator('..')).toHaveAttribute('data-toc-level', '1');
+    await expect(grandchild.locator('..')).toHaveAttribute('data-toc-level', '2');
+    await expect(child).toHaveCSS('padding-left', width === 1440 ? '12px' : '16px');
+    const bodyHeading = page.locator('.article-prose h4').filter({ hasText: '跳过中间层级的小节' });
+    expect(await bodyHeading.evaluate((node) => getComputedStyle(node).fontSize)).toBe(await page.locator('.article-prose h4').first().evaluate((node) => getComputedStyle(node).fontSize));
+    const hash = `#${encodeURIComponent((await bodyHeading.getAttribute('id'))!)}`;
+    await expect(child).toHaveAttribute('href', hash);
+    await child.click();
+    await expect.poll(() => new URL(page.url()).hash).toBe(hash);
+    await expect(bodyHeading).toBeInViewport();
+    if (width === 390) await expect(toc).not.toHaveAttribute('open');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
+});
+
 test('copies exact code text and newlines on desktop and mobile', async ({ page, context, baseURL }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: baseURL });
   await page.goto('/article/learning-rhythm/');
@@ -359,7 +387,8 @@ test('preserves wide and tall image ratios without tea-specific geometry', async
     const box = await page.locator('.flow-obstacle').boundingBox();
     expect(box).not.toBeNull();
     expect(box!.width / box!.height).toBeCloseTo(dimensions.width / dimensions.height);
-    expect(box!.height).toBeLessThanOrEqual(360);
+    expect(box!.width).toBeCloseTo(205);
+    expect(box!.height).toBeCloseTo(205 * dimensions.height / dimensions.width);
     await expect(page.locator('.flow-inline-image')).toHaveAttribute('alt', '一杯茶，作为图文环绕的独立图片');
     await page.unroute('**/media/**');
   }

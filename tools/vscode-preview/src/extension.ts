@@ -36,6 +36,7 @@ class Preview implements vscode.Disposable {
   private revision = 0;
   private timer?: ReturnType<typeof setTimeout>;
   private ready = false;
+  private layoutMode?: 'responsive' | 'desktop';
   private follows = 0;
   private watchers: vscode.Disposable[] = [];
   private links = new Map<string, string>();
@@ -64,6 +65,7 @@ class Preview implements vscode.Disposable {
       this.panel = vscode.window.createWebviewPanel('sachiPreview', 'Sachi Blog 文章预览', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, { enableScripts: true, retainContextWhenHidden: true });
       this.panel.onDidDispose(() => this.close(), undefined, this.context.subscriptions);
       this.panel.webview.onDidReceiveMessage((message: ViewMessage) => {
+        if (message?.type === 'toggleLayout') this.toggleLayout();
         if (message?.type === 'ready') { this.ready = true; this.lastSourceSequence = 0; this.refresh(); }
         if (message?.type === 'openLink' && typeof message.href === 'string') void this.openLink(message.href);
         if (message?.type === 'rendered' && message.receipt?.revision === this.state.message?.revision) this.state.receipt = message.receipt;
@@ -159,6 +161,12 @@ class Preview implements vscode.Disposable {
     this.navigate(editor, 'manual');
   }
 
+  toggleLayout() {
+    const current = this.layoutMode ?? vscode.workspace.getConfiguration('sachiPreview').get<string>('layoutMode', 'responsive');
+    this.layoutMode = current === 'desktop' ? 'responsive' : 'desktop';
+    this.refresh();
+  }
+
   settingsChanged() {
     if (!this.syncEnabled()) {
       if (this.navigationTimer) clearTimeout(this.navigationTimer);
@@ -188,7 +196,7 @@ class Preview implements vscode.Disposable {
       const version = document.version;
       const editor = vscode.window.activeTextEditor;
       if (editor?.document === document && this.syncEnabled() && (!this.target || this.target.version !== version)) this.navigate(editor, 'cursor');
-      const result = await buildPreview({ location, raw, revision, dirty: document.isDirty, documentVersion: version, syncEnabled: this.syncEnabled(),
+      const result = await buildPreview({ location, raw, revision, layoutMode: this.layoutMode ?? vscode.workspace.getConfiguration('sachiPreview').get<'responsive' | 'desktop'>('layoutMode', 'responsive'), dirty: document.isDirty, documentVersion: version, syncEnabled: this.syncEnabled(),
         resourceUri: (file) => panel.webview.asWebviewUri(vscode.Uri.file(file)).toString(), readText, clickEnabled: this.clickEnabled() });
       if (revision !== this.revision || this.panel !== panel) return;
       message = result.message;
@@ -319,6 +327,7 @@ class Preview implements vscode.Disposable {
     for (const watcher of this.watchers) watcher.dispose();
     this.watchers = [];
     this.panel = undefined;
+    this.layoutMode = undefined;
     this.ready = false;
     this.document = undefined;
     this.location = undefined;
@@ -343,6 +352,7 @@ export function activate(context: vscode.ExtensionContext) {
   const preview = new Preview(context);
   context.subscriptions.push(preview,
     vscode.commands.registerCommand('sachiPreview.open', () => preview.open()),
+    vscode.commands.registerCommand('sachiPreview.toggleLayout', () => preview.toggleLayout()),
     vscode.commands.registerCommand('sachiPreview.refresh', () => preview.refresh()),
     vscode.commands.registerCommand('sachiPreview.revealLine', () => preview.revealCurrentLine()),
     vscode.workspace.onDidChangeTextDocument((event) => preview.changed(event.document)),

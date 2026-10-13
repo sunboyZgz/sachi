@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { ArticleHeading } from '@/lib/article-structure';
 
 function TocList({ headings, mobile = false }: { headings: ArticleHeading[]; mobile?: boolean }) {
@@ -44,7 +44,7 @@ function TocList({ headings, mobile = false }: { headings: ArticleHeading[]; mob
   const list = (
     <ol>
       {headings.map((heading) => (
-        <li key={heading.id} data-toc-level={heading.nesting}>
+        <li key={heading.id} data-toc-level={heading.nesting} style={{ '--toc-level': heading.nesting } as CSSProperties}>
           <a
             href={`#${encodeURIComponent(heading.id)}`}
             aria-current={current === heading.id ? 'location' : undefined}

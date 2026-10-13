@@ -1,10 +1,12 @@
 @import '../../../src/styles/tokens.css';
 @import '../../../src/styles/site.css';
 @import '../../../src/styles/code-highlight.css';
+@import 'katex/dist/katex.min.css';
+@import '../../../src/styles/math.css';
 
 html, body { background: var(--paper); }
 body { padding: 0; }
-.preview-main { width: min(720px, calc(100% - 48px)); margin: 36px auto 32px; }
+.preview-main { width: min(var(--read-width), calc(100% - var(--gutter) * 2)); margin: 36px auto 32px; }
 .preview-status { display: flex; justify-content: space-between; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--rule); color: var(--muted); font: 11px/1.6 var(--font-ui); }
 .preview-notice { margin: 16px; padding: 12px 16px; border-left: 2px solid var(--moss); background: var(--tint); color: var(--ink); font: 12px/1.8 var(--font-ui); overflow-wrap: anywhere; }
 .preview-notice p { margin: 0 0 4px; }
@@ -13,5 +15,15 @@ body { padding: 0; }
 .preview-fallback { white-space: pre-wrap; font: 18px/1.95 var(--font-body); }
 .preview-source-target { background-color: var(--tint); border-radius: 2px; }
 .flow-source-anchor { pointer-events: none; }
-@media (max-width: 600px) { .preview-main { width: calc(100% - 32px); margin-top: 28px; } }
+@media (max-width: 600px) { .preview-main { margin-top: 28px; } }
 @media print { .preview-status, .preview-notice { display: none; } .preview-source-target { background: transparent; } }
+
+.preview-status button { border: 0; background: transparent; color: var(--moss); cursor: pointer; font: inherit; }
+body[data-layout-mode="desktop"] { min-width: 768px; }
+body[data-layout-mode="desktop"] .preview-main { width: 720px; margin-top: 36px; }
+/* VS Code adds a mouse-focus outline that ordinary browser articles do not have. */
+a:focus:not(:focus-visible) { outline: none; }
+@media print {
+  body[data-layout-mode] { min-width: 0; }
+  body[data-layout-mode] .preview-main { width: 100%; margin: 0; }
+}

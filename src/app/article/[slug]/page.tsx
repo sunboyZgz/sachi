@@ -47,7 +47,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           {series ? <p className="article-series"><Link href={`/series/${series.slug}/`}>{series.title} · 第 {String(post.series!.order).padStart(2, '0')} 篇</Link></p> : null}
           <MobileArticleToc headings={parsed.headings} />
           <div className="article-intro-rule" aria-hidden="true" />
-          <ArticleProse parsed={parsed} assets={post.assets} flowKey={`${post.id}:${parsed.flow?.spec.image}:${parsed.flow?.spec.contour ?? ''}`} />
+          <ArticleProse parsed={parsed} assets={post.assets} flowKey={post.id} />
           {series ? <SeriesNavigation series={series} postId={post.id} /> : null}
           <AuthorSignature />
           <div className="article-end">

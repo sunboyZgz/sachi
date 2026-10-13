@@ -1,10 +1,12 @@
-import type { Paragraph, Root } from 'mdast';
+import type { Paragraph, Root, Image, ImageReference } from 'mdast';
 import { toString } from 'mdast-util-to-string';
 import { unified } from 'unified';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import { analyzeArticleStructure, type ArticleHeading } from './article-structure';
-import type { Asset, FlowSpec } from './blog/schema';
+import { flowSpecs, type Asset, type FlowSpec, type FlowConfig } from './blog/schema';
+import { visit } from 'unist-util-visit';
 import { firstLineIndent, remarkFirstLineIndent } from './remark-first-line-indent';
 import { normalizeFlowText, sourceRange, type FlowSourceMap, type SourceLine, type SourceOrigin } from './source-lines';
 import { createSourceMapper, joinSourceMaps, trimSourceMap, type SourceTextMap } from './source-text-map';
@@ -12,12 +14,19 @@ import { createSourceMapper, joinSourceMaps, trimSourceMap, type SourceTextMap }
 export type { ArticleHeading } from './article-structure';
 export type FlowPresentation = FlowSpec & { alt: string; imageWidth?: number; imageHeight?: number };
 
+export type FlowRegion = {
+  id: string; start: number; end: number; imageIndex: number;
+  paragraphs: string[]; hardLines?: string[][]; source?: FlowSourceMap; spec: FlowPresentation;
+};
 export type ParsedMarkdown = {
   markdown: string;
   headings: ArticleHeading[];
   description: string;
   sourceOrigin?: SourceOrigin;
-  flow: null | { paragraphs: string[]; hardLines?: string[][]; source?: FlowSourceMap; spec: FlowPresentation };
+  flows: FlowRegion[];
+  flow: FlowRegion | null;
+  flowWidths: Record<string, number>;
+  warnings: string[];
 };
 
 function isPlainParagraph(node: Paragraph) {
@@ -73,74 +82,100 @@ function flowSource(node: Paragraph, chunks: string[], bodyLines: string[], orig
   });
 }
 
-export function parseMarkdown(body: string, flowSpec?: FlowSpec, assets: Record<string, Asset> = {}, origin?: SourceOrigin): ParsedMarkdown {
-  const processor = unified().use(remarkParse).use(remarkGfm).use(remarkFirstLineIndent);
+/** Author references are matched before display URL mapping (hash-identical assets stay distinct). */
+export function flowResource(url: string) {
+  try { return decodeURIComponent(url).replace(/^\.\//, '/'); } catch { return url; }
+}
+export function imageResolver(tree: Root) {
+  const definitions = new Map(tree.children.filter((node) => node.type === 'definition').map((node) => [node.identifier.toUpperCase(), node.url]));
+  return (node: Image | ImageReference) => node.type === 'image' ? node.url : definitions.get(node.identifier.toUpperCase());
+}
+
+export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<string, Asset> = {}, origin?: SourceOrigin, options: { tolerant?: boolean } = {}): ParsedMarkdown {
+  const processor = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkFirstLineIndent);
   const tree = processor.runSync(processor.parse(body), body) as Root;
   const headings = analyzeArticleStructure(tree);
-
-  const description = tree.children
-    .filter((node): node is Paragraph => node.type === 'paragraph')
-    .map(paragraphDescription)
-    .find(Boolean)
-    ?.slice(0, 140) ?? '';
-
-  if (!flowSpec) return { markdown: body, headings, description, flow: null, ...(origin ? { sourceOrigin: origin } : {}) };
-
-  const boundaryIndex = tree.children.findIndex(
-    (node) => node.type === 'heading' && node.depth === 2,
-  );
-  if (boundaryIndex < 0) throw new Error('启用图文环绕的文章必须至少包含一个二级标题。');
-
-  const introNodes = tree.children.slice(0, boundaryIndex);
-  const paragraphs: string[] = [];
-  const hardLines: string[][] = [];
-  let hasHardBreak = false;
-  let imageCount = 0;
-  let imageAlt = '';
-  const source: FlowSourceMap | undefined = origin ? { paragraphs: [], image: { start: { line: 1, column: 1 }, end: { line: 1, column: 1 } } } : undefined;
-  const bodyLines = origin ? body.split('\n') : [];
+  const description = tree.children.filter((node): node is Paragraph => node.type === 'paragraph').map(paragraphDescription).find(Boolean)?.slice(0, 140) ?? '';
+  const flows: FlowRegion[] = [];
+  const warnings: string[] = [];
+  const errors: string[] = [];
+  const specs = new Map<string, FlowSpec>();
+  const invalid = new Set<string>();
+  const flowWidths: Record<string, number> = {};
+  const atLine = (line?: number) => line === undefined ? '?' : line + (origin?.lineOffset ?? 0);
+  const issue = (message: string) => { errors.push(message); warnings.push(`环绕暂用普通排版：${message}`); };
+  flowSpecs(config).forEach((spec, index) => {
+    const key = flowResource(spec.image);
+    if (specs.has(key)) { invalid.add(key); issue(`flow[${index + 1}] 配置重复：${spec.image}`); }
+    else specs.set(key, spec);
+    flowWidths[key] = spec.width ?? 205;
+  });
+  const resolveImage = imageResolver(tree);
+  const keyFor = (node: Image | ImageReference) => flowResource(resolveImage(node) ?? '');
+  // Old mapped inputs are accepted when unambiguous; new pipelines keep original references.
+  for (const [key, spec] of [...specs]) {
+    if (Object.values(assets).some((asset) => flowResource(asset.url) === key)) {
+      const matches = Object.entries(assets).filter(([, asset]) => flowResource(asset.url) === key);
+      if (matches.length === 1) { specs.set(flowResource(matches[0][0]), spec); flowWidths[flowResource(matches[0][0])] = spec.width ?? 205; }
+    }
+  }
+  const occurrences = new Map<string, number>();
+  const seen = new Set<FlowSpec>();
+  visit(tree, (node, _index, parent) => {
+    if (node.type !== 'image' && node.type !== 'imageReference') return;
+    const key = keyFor(node), spec = specs.get(key);
+    if (!spec) return;
+    seen.add(spec);
+    const top = parent?.type === 'paragraph' && tree.children.includes(parent) && parent.children.length === 1;
+    if (!top) issue(`第 ${atLine(node.position?.start.line)} 行：${spec.image} 不是独立的正文图片段落，嵌套或富文本图片保留普通 Markdown。`);
+  });
+  for (const spec of new Set(specs.values())) if (!seen.has(spec)) issue(`flow.image 未出现在正文：${spec.image}`);
+  const bodyLines = body.split('\n');
   const mapper = origin ? createSourceMapper(body, origin) : undefined;
-  for (const node of introNodes) {
-    if (node.type !== 'paragraph') {
-      throw new Error('图文环绕区域仅支持纯文本段落和一张独立图片。');
+  const eligible = (node: Root['children'][number]) => node.type === 'definition' || node.type === 'paragraph' && (isPlainParagraph(node) || node.children.length === 1 && (node.children[0].type === 'image' || node.children[0].type === 'imageReference') && specs.has(keyFor(node.children[0])));
+  for (let start = 0; start < tree.children.length;) {
+    if (!eligible(tree.children[start])) { start++; continue; }
+    let end = start;
+    while (end < tree.children.length && eligible(tree.children[end])) end++;
+    const nodes = tree.children.slice(start, end);
+    const images = nodes.filter((node): node is Paragraph => node.type === 'paragraph' && node.children.length === 1 && (node.children[0].type === 'image' || node.children[0].type === 'imageReference'));
+    if (images.length > 1) issue(`第 ${atLine(images[0].position?.start.line)}–${atLine(images.at(-1)!.position?.start.line)} 行：同一连续区域含多张配置图片，请用任意标题、分隔线或其他普通块分隔。`);
+    else if (images.length === 1) {
+      const imageNode = images[0].children[0] as Image | ImageReference;
+      const key = keyFor(imageNode), spec = specs.get(key)!;
+      const textNodes = nodes.filter((node): node is Paragraph => node.type === 'paragraph' && isPlainParagraph(node));
+      if (!textNodes.length) warnings.push(`第 ${atLine(imageNode.position?.start.line)} 行：${spec.image} 附近没有连续纯文本，按配置宽度普通展示。`);
+      else if (!invalid.has(key)) {
+        const hardLines = textNodes.map(flowLines);
+        const imageAsset = assets[spec.image] ?? assets[resolveImage(imageNode)!];
+        const occurrence = (occurrences.get(key) ?? 0) + 1;
+        occurrences.set(key, occurrence);
+        flows.push({ id: `${key}:${occurrence}`, start, end, imageIndex: nodes.slice(0, nodes.indexOf(images[0])).filter((node) => node.type === 'paragraph').length,
+          paragraphs: hardLines.map((lines) => lines.join('\n')),
+          ...(hardLines.some((lines) => lines.length > 1) ? { hardLines } : {}),
+          ...(origin ? { source: { paragraphs: textNodes.map((node, index) => flowSource(node, hardLines[index], bodyLines, origin, mapper!)), image: sourceRange(imageNode.position, origin)! } } : {}),
+          spec: { ...spec, image: imageAsset?.url ?? spec.image, contour: spec.contour ? assets[spec.contour]?.url ?? spec.contour : imageAsset?.contour,
+            alt: spec.alt ?? imageNode.alt ?? '', imageWidth: imageAsset?.width, imageHeight: imageAsset?.height },
+        });
+      }
     }
-    if (node.children.length === 1 && node.children[0]?.type === 'image') {
-      const normalize = (url: string) => decodeURIComponent(assets[url]?.url ?? url).replace(/^\.\//, '/');
-      if (normalize(node.children[0].url) !== normalize(flowSpec.image)) throw new Error('环绕区域的图片必须与 flow.image 一致。');
-      imageCount += 1;
-      imageAlt = node.children[0].alt ?? '';
-      if (source) source.image = sourceRange(node.position, origin!)!;
-      continue;
-    }
-    if (!isPlainParagraph(node)) {
-      throw new Error('图文环绕段落不能包含链接、强调、代码或其他富文本。');
-    }
-    const lines = flowLines(node);
-    const text = lines.join('\n');
-    if (text.trim()) {
-      paragraphs.push(text);
-      hardLines.push(lines);
-      if (source) source.paragraphs.push(flowSource(node, lines, bodyLines, origin!, mapper!));
-      if (lines.length > 1) hasHardBreak = true;
-    }
+    start = end;
   }
-  if (imageCount !== 1 || paragraphs.length === 0) {
-    throw new Error('图文环绕区域必须包含至少一个段落和一张独立图片。');
-  }
+  if (errors.length && !options.tolerant) throw new Error(errors.join('\n'));
+  return { markdown: body, headings, description, flows, flow: flows[0] ?? null, flowWidths, warnings, ...(origin ? { sourceOrigin: origin } : {}) };
+}
 
-  const boundary = tree.children[boundaryIndex];
-  const offset = boundary?.position?.start.offset;
-  if (offset === undefined) throw new Error('无法确定图文环绕区域的 Markdown 边界。');
-  const imageAsset = assets[flowSpec.image] ?? Object.values(assets).find((asset) => asset.url === flowSpec.image);
-
-  return {
-    markdown: body.slice(offset).trim(),
-    headings,
-    description,
-    ...(origin ? { sourceOrigin: { lineOffset: origin.lineOffset + boundary.position!.start.line - 1 } } : {}),
-    flow: { paragraphs, ...(hasHardBreak ? { hardLines } : {}), ...(source ? { source } : {}), spec: {
-      ...flowSpec, alt: flowSpec.alt ?? imageAlt,
-      imageWidth: imageAsset?.width, imageHeight: imageAsset?.height,
-    } },
+/** Replace only recognized blocks after full-tree heading and source analysis. */
+export function remarkFlowRegions({ flows, widths }: { flows: FlowRegion[]; widths: Record<string, number> }) {
+  return (tree: Root) => {
+    const resolve = imageResolver(tree);
+    visit(tree, (node) => {
+      if (node.type !== 'image' && node.type !== 'imageReference') return;
+      const width = widths[flowResource(resolve(node) ?? '')];
+      if (width) node.data = { ...node.data, hProperties: { ...node.data?.hProperties, 'data-flow-width': width } };
+    });
+    for (const region of [...flows].reverse()) tree.children.splice(region.start, region.end - region.start, {
+      type: 'blockquote', children: tree.children.slice(region.start, region.end).filter((node) => node.type === 'definition'), data: { hName: 'div', hProperties: { 'data-flow-id': region.id } },
+    });
   };
 }

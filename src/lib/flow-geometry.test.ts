@@ -19,7 +19,11 @@ describe('flow geometry', () => {
   it('preserves arbitrary aspect ratios and the original tea image baseline', () => {
     expect(flowImageSize(undefined, 205, 203)).toEqual({ width: 205, height: 203 });
     expect(flowImageSize(240, 1200, 600)).toEqual({ width: 240, height: 120 });
-    expect(flowImageSize(240, 400, 2000)).toEqual({ width: 72, height: 360 });
+    expect(flowImageSize(240, 400, 2000)).toEqual({ width: 240, height: 1200 });
+    for (const width of [120, 180, 240, 360]) {
+      expect(flowImageSize(width, 100, 500)).toEqual({ width, height: width * 5 });
+      expect(flowImageSize(width, 100, 500, 90)).toEqual({ width: 90, height: 450 });
+    }
     expect(() => flowImageSize(240, 0, 0)).toThrow('原始尺寸');
   });
 

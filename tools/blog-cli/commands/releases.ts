@@ -89,7 +89,7 @@ export async function executeReleases(context: CommandContext): Promise<boolean>
   if (scanned.issues.length) throw new BlogError(scanned.issues.map((issue) => `${issue.file}: ${issue.message}`).join('\n'));
   const current = command === 'build' ? (config.deploy ? await remoteCurrent(root, config) : (await cachedManifest(root)).manifest) : await releaseCurrent(root, config);
   const selected = command === 'unpublish' ? [] : selectPosts(scanned.posts, selectors);
-  for (const source of selected) await validateMedia(root, config, source.dependencies, source.post.flow?.image);
+  for (const source of selected) await validateMedia(root, config, source.dependencies, source.post.flow);
   const withdrawn = command === 'unpublish' ? selectors.map((selector) => {
     const entry = current?.entries.find((entry) => entry.id === selector || entry.slug === selector || entry.sourcePath === selector || entry.sourcePath.replace(/\/index.md$/, '') === selector);
     if (!entry) throw new BlogError(`当前未发布：${selector}`); return entry.id;

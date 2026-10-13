@@ -4,7 +4,7 @@ import { parseDocument } from 'yaml';
 import { parseMarkdown } from '../markdown';
 import { isContour } from '../flow-geometry';
 import { BlogError, exists, safeFile, sha256, stableJson } from './files';
-import { categoryNames, mediaSchema, type BlogConfig, type BlogPost, type Dependency, type MediaSpec } from './schema';
+import { categoryNames, flowSpecs, mediaSchema, type BlogConfig, type BlogPost, type Dependency, type MediaSpec } from './schema';
 import { scanSeries, validateSeriesMembers } from './series';
 import { imageReferences, markdownReferences, postFromDocument, splitDocument } from './document';
 export { dayInTimezone, markdownReferences, splitDocument } from './document';
@@ -21,12 +21,14 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
   const relative = sourcePath.replace(/^content\//, '');
   const file = await safeFile(contentRoot, relative);
   const raw = await readFile(file, 'utf8');
-  const { data, body } = splitDocument(raw);
+  const { data, body, bodyRaw } = splitDocument(raw);
   const legacy = !relative.endsWith('/index.md');
   const directory = path.dirname(file);
   const post = postFromDocument(relative, data, body, config.timezone);
-  parseMarkdown(body, post.flow);
-  if (post.flow && !/\.(?:png|jpe?g|webp|avif|svg|gif)$/i.test(post.flow.image)) throw new BlogError('flow.image 必须是本篇的静态图片。');
+  const beforeBody = raw.slice(0, raw.length - bodyRaw.length + (bodyRaw.match(/^\s*/u)?.[0].length ?? 0));
+  const parsed = parseMarkdown(body, post.flow, {}, { lineOffset: (beforeBody.match(/\n/g) ?? []).length, columnOffset: beforeBody.length - beforeBody.lastIndexOf('\n') - 1 });
+  const specs = flowSpecs(post.flow);
+  for (const spec of specs) if (!/\.(?:png|jpe?g|webp|avif|svg|gif)$/i.test(spec.image)) throw new BlogError(`flow.image 必须是本篇的静态图片：${spec.image}`);
   if (!legacy && await exists(path.join(directory, 'layout.yaml'))) throw new BlogError('使用 frontmatter.flow 配置环绕，不支持第二份 layout.yaml。');
   const mediaFile = path.join(directory, 'media.yaml');
   const parsedMedia = !legacy && await exists(mediaFile)
@@ -34,15 +36,15 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
     : mediaSchema.parse({});
   const urls = markdownReferences(body);
   const links = urls.filter((url) => url.startsWith('/article/') || url.startsWith('blog:') || url.startsWith('/series/') || url.startsWith('series:'));
-  const resourceUrls = [...urls, post.cover, post.flow?.image, post.flow?.contour].filter((url): url is string => !!url);
+  const resourceUrls = [...urls, post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour])].filter((url): url is string => !!url);
   const media = { assets: Object.fromEntries(Object.entries(parsedMedia.assets).filter(([url]) => resourceUrls.includes(url))) };
   const resources = [...resourceUrls, ...Object.values(media.assets).map((p) => p.poster)].filter((url): url is string => !!url);
-  for (const url of [...imageReferences(body), post.cover, post.flow?.image, post.flow?.contour, ...Object.values(media.assets).map((p) => p.poster)].filter((url): url is string => !!url)) {
+  for (const url of [...imageReferences(body), post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour]), ...Object.values(media.assets).map((p) => p.poster)].filter((url): url is string => !!url)) {
     if (/^(?:https?:|\/\/)/i.test(url)) throw new BlogError(`图片、视频和封面必须使用本篇本地资源，才能冻结旧版：${url}`);
   }
   const dependencies: SourcePost['dependencies'] = [];
   const normalizedAssets = new Map<string, string>();
-  const warnings: string[] = [];
+  const warnings: string[] = [...parsed.warnings];
   for (const url of [...new Set(resources)].sort()) {
     if (/^(https?:|mailto:|tel:|#)/i.test(url) || links.includes(url)) continue;
     if (/^[a-z]+:/i.test(url) || url.startsWith('//')) throw new BlogError(`不允许的资源协议：${url}`);
@@ -59,7 +61,7 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
     const bytes = await readFile(sourceFile);
     if (bytes.length > config.media.maxGitFileMiB * 1024 ** 2) throw new BlogError(`源文件超过 ${config.media.maxGitFileMiB} MiB：${url}`);
     if (bytes.length > 50 * 1024 ** 2) warnings.push(`源文件超过 50 MiB：${url}`);
-    if (url === post.flow?.contour) {
+    if (specs.some((spec) => url === spec.contour)) {
       if (!isContour(JSON.parse(bytes.toString()))) throw new BlogError(`环绕轮廓无效：${url}`);
     }
     dependencies.push({ url, file: local, sourceFile, hash: sha256(bytes), bytes: bytes.length });

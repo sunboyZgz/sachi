@@ -113,7 +113,7 @@ flow:
   defaultY: 86
 ```
 
-首个二级标题前只允许纯文本段落和一张与 `flow.image` 一致的独立静态图片。横竖图按原始比例显示，`width` 是桌面最大宽度（96–360 px，默认 205），最高 360 px；替代文字取自 Markdown，`flow.alt` 可覆盖。省略 `contour` 时 Sharp 从 alpha 生成哈希轮廓，不透明图按矩形处理；显式轮廓继续兼容。源图和配置进入冻结快照，派生轮廓由冻结代码生成，不改写或裁切原图。移动端、打印、无 JavaScript 与引擎错误时保留完整普通 DOM。
+正文中的配置独立图片与相邻连续纯文本自动识别成局部区域，不依赖标题。任意标题、分隔线、富文本和其他普通块是边界；多张配置图片在同一候选区时必须分隔。flow 保留单图对象，支持各图独立配置数组。同一资源重复出现可复用配置。横竖图按完整画布比例显示，width 为显示宽度（96–360 px，默认 205），容器不足才缩小，没有高度上限；替代文字取自 Markdown，flow.alt 可覆盖。省略 contour 时从 alpha 生成哈希轮廓，不透明图按矩形处理。所有源图与手工轮廓进入冻结快照，自动轮廓由冻结源图生成。移动端、打印、无 JavaScript 与引擎错误保留原顺序和完整普通 DOM。
 
 写法与轮廓契约见[环绕手册](../docs-site/writing/flow.md)。公开个人信息只在 `src/config/profile.json` 配置；正式域名只在 `blog.config.json.siteUrl` 配置，见[个人资料](../docs-site/setup/profile.md)、[SEO 检查](../docs-site/setup/seo.md)和[目录职责](../docs-site/reference/project-structure.md)。预览/fixture/未配域名页面不收录，正式 SEO 只读发布清单。
 

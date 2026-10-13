@@ -19,7 +19,7 @@ describe('preview source geometry', () => {
     const source = parsed.flow!.source!;
     expect(source.paragraphs[0].map((chunk) => chunk.map((line) => line.range.start.line))).toEqual([[11], [12, 13]]);
     expect(source.image.start.line).toBe(15);
-    expect(parsed.sourceOrigin).toEqual({ lineOffset: 16 });
+    expect(parsed.sourceOrigin).toEqual({ lineOffset: 10 });
     expect(sourceRangeForOffsets(source.paragraphs[0][1], 0, 6)).toEqual({ start: { line: 12, column: 1 }, end: { line: 12, column: 7 } });
     expect(sourceRangeForOffsets(source.paragraphs[0][1], 7, 10)).toEqual({ start: { line: 13, column: 1 }, end: { line: 13, column: 4 } });
     expect(parseMarkdown(body, flow).flow?.source).toBeUndefined();

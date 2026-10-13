@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import '@/styles/tokens.css';
 import '@/styles/site.css';
 import '@/styles/code-highlight.css';
+import 'katex/dist/katex.min.css';
+import '@/styles/math.css';
 import '@/styles/series.css';
 import { profile, siteAsset } from '@/config/site';
 import { getSeoContext, noIndex } from '@/lib/seo';

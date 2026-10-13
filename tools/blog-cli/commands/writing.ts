@@ -139,7 +139,7 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
   if (command === 'check') {
     if (scanned.issues.length) throw new BlogError(`内容检查未通过：${JSON.stringify(scanned.issues)}`, 3, 'INVALID');
     const selected = selectors.length ? selectPosts(scanned.posts, selectors, { allowFixtures: true }) : scanned.posts;
-    for (const source of selected) await validateMedia(root, config, source.dependencies, source.post.flow?.image);
+    for (const source of selected) await validateMedia(root, config, source.dependencies, source.post.flow);
     print('VALID', { posts: selected.map((source) => ({ id: source.post.id, file: source.sourcePath, dependencies: source.dependencies.map(({ url, bytes, hash }) => ({ url, bytes, hash })), warnings: source.warnings })) }); return true;
   }
   if (command === 'list' || command === 'status') {

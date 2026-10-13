@@ -25,6 +25,8 @@ npm run build:fixtures # 带样例生成静态导出，用于视觉验收
 npm run preview        # 预览 out/，仅监听 127.0.0.1:4173
 ```
 
+调试特殊块 UI 时，运行 `npm run dev:fixtures`，打开 [特殊块排版样例](http://127.0.0.1:4176/article/special-blocks/)；fixture 首页也提供直接入口。样例集中展示公式、11 种代码高亮、长代码、宽表格、引用、列表和脚注，使用博客实际渲染器。测试正文与样式入口见 [排版测试说明](tests/fixtures/README.md)。
+
 `npm run build` 的产物在 `out/`，可直接交给 Nginx、Caddy 或任意静态文件服务器。站点采用目录式 URL 和尾斜杠，例如 `/article/learning-rhythm/`。
 
 ## VS Code 文章预览

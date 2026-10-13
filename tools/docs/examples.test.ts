@@ -15,6 +15,8 @@ describe('single-source synthetic Markdown teaching previews', () => {
     expect(Object.keys(examples)).toEqual(exampleDefinitions.map((definition) => definition.id));
     expect(examples.flow.html).toContain('flow-block'); expect(examples.flow.input.flow?.paragraphs).toHaveLength(3);
     expect(examples.flow.input.flow?.spec.contour).toBe('/examples/illustration-contour.json');
+    expect(examples['flow-multiple'].input.flows.map((flow) => flow.spec.width)).toEqual([180, 240]);
+    expect(examples['flow-multiple'].html.match(/class="flow-block"/g)).toHaveLength(2);
     expect(examples['flow-manual'].input.flow?.spec.contour).toBe('/examples/illustration-mask.json');
     expect(examples.image.html).toContain('<figcaption>纸张、茶杯与一片叶子</figcaption>');
     expect(examples['image-reference'].html).toContain('src="/examples/desk.webp"');

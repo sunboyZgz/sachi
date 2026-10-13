@@ -43,6 +43,27 @@ online: 不改变
 
 6. 在启动服务器的终端按 Ctrl+C 停止。
 
+### VS Code 未保存预览
+
+在项目根目录构建并生成插件：
+
+```sh
+npm run preview:build
+npm run preview:package
+```
+
+将 `tools/vscode-preview/dist/sachi-blog-preview.vsix` 从 VS Code 的“从 VSIX 安装”入口安装。打开文章后运行 **Sachi Blog: 打开文章预览**，输入无需保存即可刷新；普通图片和非互动环绕图片可单击定位源码。
+
+预览默认跟随面板宽度。运行 **Sachi Blog: 切换桌面宽度／响应式预览** 可查看 720px 桌面正文，窄面板横向滚动。设置写法如下，效果紧随配置生效：
+
+```json
+{ "sachiPreview.layoutMode": "responsive" }
+```
+
+改成 `desktop` 可设置默认桌面模式。环绕状态会显示真实布局及降级原因，配置与[多图教学效果](/writing/flow)共用网站解析。插件详细用法见项目 `tools/vscode-preview/README.md`。
+
+引用、列表、表格和代码共用网站排版，不随 VS Code 的浅色或深色主题改变。对照桌面网页时选择桌面模式；对照手机时让响应式面板采用同一宽度。网站显示已保存正文，插件包含未保存修改，比较前先确认两边内容版本一致。
+
 ### 两个终端的日常用法
 
 终端 A 启动预览，并让它持续运行：

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { SourcePost } from './content';
-import { type BlogPost, type Series } from './schema';
+import { flowSpecs, type BlogPost, type Series } from './schema';
 import { scanSeries } from './series';
 import { atomicWrite, BlogError, safeDirectory, safeFile, sha256 } from './files';
 import { createImageContour, imageDimensions } from './flow-assets';
@@ -21,9 +21,10 @@ export async function previewPosts(root: string, sources: SourcePost[], definiti
       await safeDirectory(root, path.relative(root, path.dirname(target))); await atomicWrite(target, bytes);
       assets[dep.url] = { url, type: ['.mp4', '.webm', '.mov', '.m4v'].includes(extension) ? 'video' : ['.png', '.jpg', '.jpeg', '.webp', '.avif', '.svg', '.gif'].includes(extension) ? 'image' : 'file' };
       if (assets[dep.url].type === 'image') {
-        const isFlow = dep.url === source.post.flow?.image;
+        const spec = flowSpecs(source.post.flow).find((spec) => spec.image === dep.url);
+        const isFlow = !!spec;
         Object.assign(assets[dep.url], await imageDimensions(bytes, isFlow));
-        if (isFlow && !source.post.flow?.contour) {
+        if (isFlow && !spec?.contour) {
           const contour = Buffer.from(JSON.stringify(await createImageContour(bytes)));
           const contourUrl = `/media/${source.post.id}/${sha256(contour)}.json`;
           await atomicWrite(path.join(root, 'public', contourUrl.slice(1)), contour);
@@ -37,7 +38,5 @@ export async function previewPosts(root: string, sources: SourcePost[], definiti
   }));
 }
 export function mappedPost(post: BlogPost, assets: BlogPost['assets']): BlogPost {
-  return { ...post, assets, cover: post.cover ? assets[post.cover]?.url ?? post.cover : undefined,
-    flow: post.flow ? { ...post.flow, image: assets[post.flow.image]?.url ?? post.flow.image,
-      contour: post.flow.contour ? assets[post.flow.contour]?.url ?? post.flow.contour : assets[post.flow.image]?.contour } : undefined };
+  return { ...post, assets, cover: post.cover ? assets[post.cover]?.url ?? post.cover : undefined };
 }

@@ -185,6 +185,39 @@ describe('immutable release plans and isolated builds', () => {
     expect(await readFile(path.join(config.deploy!.root, 'shared', 'versions', first.manifest.releaseId, '_next/static/chunks/fixture.js'), 'utf8')).toBe(`/versions/${first.manifest.releaseId}`);
     expect(await exists(path.join(config.deploy!.root, 'shared', 'versions', second.manifest.releaseId, '_next/static/chunks/fixture.js'))).toBe(true);
   });
+  it('freezes every flow image and contour and retains unselected flow revisions', async () => {
+    const { root, config } = await fixture();
+    const a = await article(root, config, 'Flow', 'flow');
+    const b = await article(root, config, 'Other', 'other');
+    const image = await sharp({ create: { width: 100, height: 500, channels: 4, background: 'green' } }).png().toBuffer();
+    await writeFile(path.join(a.directory, 'assets/second.png'), image);
+    await writeFile(path.join(a.directory, 'assets/mask.json'), '{"height":2,"rows":[[0,1],[0,1]]}');
+    const fields = 'flow:\n  - image: ./assets/cover.png\n    width: 180\n    contour: ./assets/mask.json\n  - image: ./assets/second.png\n    width: 240\n';
+    const raw = a.raw.replace('---\n\n', `${fields}---\n\n`).replace('Flow@v1\n\n![封面](./assets/cover.png)', '开头。\n\n![封面](./assets/cover.png)\n\n#### 中段\n\n![第二张][second]\n\n末段。\n\n[second]: ./assets/second.png');
+    await writeFile(path.join(root, a.sourcePath), raw);
+    const source = await readSourcePost(root, a.sourcePath, config);
+    expect(source.dependencies.map((dependency) => dependency.url).sort()).toEqual(['./assets/cover.png', './assets/mask.json', './assets/second.png']);
+    await validateMedia(root, config, source.dependencies, source.post.flow);
+    const first = await publishFixture(root, config, [source, b]);
+    const mapping = first.manifest.assets[a.post.id];
+    expect(mapping['./assets/second.png'].contour).toMatch(/\.json$/);
+    for (const url of [mapping['./assets/cover.png'].url, mapping['./assets/second.png'].url, mapping['./assets/mask.json'].url, mapping['./assets/second.png'].contour!]) {
+      expect(await exists(path.join(first.directory, 'site', url.slice(1)))).toBe(true);
+    }
+    const snapshot = await readSnapshot(root, source.revisionHash);
+    expect(snapshot.post.flow).toEqual(source.post.flow);
+    await writeFile(path.join(root, a.sourcePath), raw.replace('width: 180', 'width: 360').replace('末段。', '未选修订。'));
+    await writeFile(path.join(a.directory, 'assets/second.png'), await sharp({ create: { width: 50, height: 50, channels: 4, background: 'red' } }).png().toBuffer());
+    const changed = await readSourcePost(root, a.sourcePath, config);
+    expect(changed.revisionHash).not.toBe(source.revisionHash);
+    await writeFile(path.join(root, b.sourcePath), b.raw.replace('Other@v1', 'Other@v2'));
+    const second = await publishFixture(root, config, [await readSourcePost(root, b.sourcePath, config)], first.manifest);
+    expect(second.manifest.entries.find((entry) => entry.id === a.post.id)!.revisionHash).toBe(source.revisionHash);
+    expect(second.manifest.assets[a.post.id]).toEqual(mapping);
+    expect((await readSnapshot(root, source.revisionHash)).post.flow).toEqual(snapshot.post.flow);
+    expect(await readFile(path.join(second.directory, 'site/article/flow/index.html'), 'utf8')).not.toContain('未选修订');
+  });
+
   it('does not treat local deletion as withdrawal and preserves first publication time', async () => {
     const { root, config } = await fixture(); const a = await article(root, config, 'A'); const first = await publishFixture(root, config, [a]);
     const plan = createPlan(first.manifest, [], [], { hash: first.manifest.codeHash, commit: null });

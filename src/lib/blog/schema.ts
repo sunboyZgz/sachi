@@ -5,14 +5,17 @@ export const categorySchema = z.enum(['play', 'life', 'learn']);
 export const hashSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const sourcePathSchema = z.string().startsWith('content/').endsWith('.md').refine((value) => !value.includes('\\') && !value.includes('\0') && value.split('/').every((part) => part !== '..' && part !== '.' && part.length > 0));
 export const releaseIdSchema = z.string().regex(/^r-[a-zA-Z0-9-]{8,80}$/);
-export const flowSchema = z.object({
+export const flowSpecSchema = z.object({
   image: z.string().min(1), contour: z.string().min(1).optional(),
   width: z.number().finite().min(96).max(360).optional(),
   alt: z.string().trim().min(1).max(300).optional(),
   defaultX: z.number().min(0).max(1).default(0.53),
   defaultY: z.number().finite().nonnegative().default(86),
 });
-export type FlowSpec = z.infer<typeof flowSchema>;
+export type FlowSpec = z.infer<typeof flowSpecSchema>;
+export const flowSchema = z.union([flowSpecSchema, z.array(flowSpecSchema).min(1)]);
+export type FlowConfig = FlowSpec | FlowSpec[];
+export function flowSpecs(flow?: FlowConfig): FlowSpec[] { return flow ? Array.isArray(flow) ? flow : [flow] : []; }
 
 export const assetSchema = z.object({
   url: z.string(), type: z.enum(['image', 'video', 'file']),

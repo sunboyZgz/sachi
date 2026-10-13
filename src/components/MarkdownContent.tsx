@@ -1,15 +1,22 @@
 import type { ComponentPropsWithoutRef } from 'react';
 import ReactMarkdown, { defaultUrlTransform, type ExtraProps } from 'react-markdown';
+import { visit } from 'unist-util-visit';
+import type { Root } from 'hast';
 import { toString } from 'mdast-util-to-string';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import { remarkArticleStructure } from '../lib/article-structure';
 import type { Asset } from '../lib/blog/schema';
 import { withBasePath } from '../lib/site-path';
 import { remarkFirstLineIndent } from '../lib/remark-first-line-indent';
 import { remarkSourceLines } from '../lib/remark-source-lines';
 import { rehypeCodeHighlight } from '../lib/rehype-code-highlight';
+import { rehypeMath } from '../lib/rehype-math';
 import { sourceAttributes, sourceRange, type SourceAttributes, type SourceOrigin } from '../lib/source-lines';
 import { CodeBlock } from './CodeBlock';
+import { FlowParagraphs } from './FlowParagraphs';
+import { remarkFlowRegions, type FlowRegion } from '../lib/markdown';
+import { flowPositionStorageKey } from '../lib/flow-position-memory';
 
 function resolveAssetUrl(url: string) {
   return url.startsWith('./assets/') ? url.replace('./assets/', '/assets/') : url;
@@ -40,10 +47,10 @@ const headingComponents = {
   h6: (props: ComponentPropsWithoutRef<'h6'> & ExtraProps) => <MarkdownHeading {...props} level={6} />,
 };
 
-function MarkdownImage({ src, alt, asset, source }: ComponentPropsWithoutRef<'img'> & { asset?: Asset; source?: SourceAttributes }) {
+function MarkdownImage({ src, alt, asset, source, flowWidth }: ComponentPropsWithoutRef<'img'> & { asset?: Asset; source?: SourceAttributes; flowWidth?: number }) {
   const safeSrc = typeof src === 'string' ? resolveAssetUrl(src) : '';
   return (
-    <figure {...source}>
+    <figure {...source} className={flowWidth ? "flow-ordinary-image" : undefined} style={flowWidth ? { width: `min(${flowWidth}px, 100%)` } : undefined}>
       {asset?.type === 'video' ? (
         <video src={safeSrc} poster={asset.poster} controls preload="metadata" aria-label={alt || '文章短视频'} />
       ) : (
@@ -55,7 +62,25 @@ function MarkdownImage({ src, alt, asset, source }: ComponentPropsWithoutRef<'im
   );
 }
 
-export function MarkdownContent({ markdown, assets = {}, basePath = process.env.NEXT_PUBLIC_BLOG_BASE_PATH ?? '', sourceOrigin, leadingFlow = false }: { markdown: string; assets?: Record<string, Asset>; basePath?: string; sourceOrigin?: SourceOrigin; leadingFlow?: boolean }) {
+type FlowRenderData = { flowRegion?: FlowRegion; flowKey?: string; layoutMode?: 'responsive' | 'desktop' };
+function FlowContainer({ node, children, ...props }: ComponentPropsWithoutRef<'div'> & ExtraProps) {
+  const data = node?.data as FlowRenderData | undefined;
+  if (!data?.flowRegion) return <div {...props}>{children}</div>;
+  // Writing previews and teaching examples keep their temporary interaction state.
+  const storageKey = data.flowKey && !data.flowRegion.source ? flowPositionStorageKey(data.flowKey, data.flowRegion.id) : undefined;
+  return <FlowParagraphs key={`${data.flowKey}:${data.flowRegion.id}`} {...data.flowRegion} layoutMode={data.layoutMode} storageKey={storageKey} />;
+}
+function rehypeFlowPresentation(options: { flows: FlowRegion[]; flowKey: string; layoutMode: 'responsive' | 'desktop' }) {
+  return (tree: Root) => {
+    const regions = new Map(options.flows.map((region) => [region.id, region]));
+    visit(tree, 'element', (node) => {
+      const flowRegion = regions.get(String(node.properties['data-flow-id']));
+      if (flowRegion) node.data = { ...node.data, flowRegion, flowKey: options.flowKey, layoutMode: options.layoutMode } as typeof node.data;
+    });
+  };
+}
+
+export function MarkdownContent({ markdown, assets = {}, basePath = process.env.NEXT_PUBLIC_BLOG_BASE_PATH ?? '', sourceOrigin, leadingFlow = false, flows = [], flowWidths = {}, flowKey = '', layoutMode = 'responsive' }: { markdown: string; assets?: Record<string, Asset>; basePath?: string; sourceOrigin?: SourceOrigin; leadingFlow?: boolean; flows?: FlowRegion[]; flowWidths?: Record<string, number>; flowKey?: string; layoutMode?: 'responsive' | 'desktop' }) {
   const marker = (node: ExtraProps['node'], kind: string) => sourceOrigin ? sourceAttributes(sourceRange(node?.position, sourceOrigin), kind) : {};
   const localUrl = (url: string) => withBasePath(url, basePath);
   const assetsByUrl = new Map(Object.values(assets).map((asset) => [localUrl(asset.url), asset]));
@@ -66,14 +91,15 @@ export function MarkdownContent({ markdown, assets = {}, basePath = process.env.
   };
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkFirstLineIndent, [remarkArticleStructure, { leadingFlow }], ...(sourceOrigin ? [[remarkSourceLines, sourceOrigin] as [typeof remarkSourceLines, SourceOrigin]] : [])]}
-      rehypePlugins={[rehypeCodeHighlight]}
+      remarkPlugins={[remarkGfm, remarkMath, remarkFirstLineIndent, [remarkArticleStructure, { leadingFlow }], ...(sourceOrigin ? [[remarkSourceLines, sourceOrigin] as [typeof remarkSourceLines, SourceOrigin]] : []), [remarkFlowRegions, { flows, widths: flowWidths }]]}
+      rehypePlugins={[rehypeCodeHighlight, rehypeMath, [rehypeFlowPresentation, { flows, flowKey, layoutMode }]]}
       urlTransform={resolve}
       components={{
         ...headingComponents,
+        div: FlowContainer,
         pre: ({ node, children }) => <CodeBlock source={marker(node, 'code-block')}>{children}</CodeBlock>,
         p: ({ node, children }) => node?.children.some((child) => child.type === 'element' && child.tagName === 'img') ? <div {...marker(node, 'media')} className="markdown-media-paragraph">{children}</div> : <p {...marker(node, 'paragraph')}>{children}</p>,
-        img: (props) => <MarkdownImage {...props} source={marker(props.node, 'image')} asset={typeof props.src === 'string' ? assetsByUrl.get(props.src) : undefined} />,
+        img: (props) => <MarkdownImage {...props} flowWidth={Number(props.node?.properties["data-flow-width"]) || undefined} source={marker(props.node, 'image')} asset={typeof props.src === 'string' ? assetsByUrl.get(props.src) : undefined} />,
         table: ({ node, children }) => (
           <div {...marker(node, 'table')} className="table-scroll" tabIndex={0} aria-label="可横向滚动的表格">
             <table>{children}</table>

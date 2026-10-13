@@ -1,6 +1,5 @@
-import { createElement, Fragment } from 'react';
+import { createElement } from 'react';
 import { MarkdownContent } from '../../src/components/MarkdownContent';
-import { FlowParagraphs } from '../../src/components/FlowParagraphs';
 import type { BlogExampleInput } from './example-types';
 
 /** The real blog renderer, with synthetic documentation data and no site profile. */
@@ -13,8 +12,5 @@ export function ExampleReading({ input }: { input: BlogExampleInput }) {
     ),
     createElement('p', { className: 'entry-kind' }, '条目采用文章封面，正文没有因此自动增加图片。'),
   );
-  return createElement(Fragment, null,
-    input.flow ? createElement(FlowParagraphs, { paragraphs: input.flow.paragraphs, hardLines: input.flow.hardLines, spec: input.flow.spec }) : null,
-    createElement(MarkdownContent, { markdown: input.markdown, assets: input.assets, basePath: '' }),
-  );
+  return createElement(MarkdownContent, { markdown: input.markdown, assets: input.assets, basePath: '', flows: input.flows, flowWidths: input.flowWidths });
 }

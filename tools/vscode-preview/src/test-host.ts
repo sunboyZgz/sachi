@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { PreviewState } from './extension';
 import type { CodeStyleReceipt, PreviewTestClick, RevealSource } from './protocol';
+import type { ArticleStyles } from './style-audit';
 
 export async function run() {
   const workspace = vscode.workspace.workspaceFolders![0].uri.fsPath;
@@ -69,6 +70,21 @@ export async function run() {
     edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), text);
     assert.ok(await vscode.workspace.applyEdit(edit));
   }
+  const parity = await readFile(path.join(workspace, 'rendering-parity.md'), 'utf8');
+  const baseline = JSON.parse(await readFile(path.join(workspace, 'rendering-styles.json'), 'utf8')) as Record<string, ArticleStyles>;
+  await replace(parity);
+  await waitFor((state) => state.receipt?.title === '排版一致性验收', 'shared Markdown parity article rendered');
+  const responsive = await inspectStyles('responsive article matches website breakpoint');
+  assert.deepEqual(responsive.article, baseline[responsive.article['.article-prose'][0]['font-size'] === '17px' ? 'mobile' : 'desktop']);
+  await vscode.commands.executeCommand('sachiPreview.toggleLayout');
+  for (const [theme, kind] of [['Default Light Modern', 'vscode-light'], ['Default Dark Modern', 'vscode-dark']]) {
+    await vscode.workspace.getConfiguration('workbench').update('colorTheme', theme, vscode.ConfigurationTarget.Global);
+    const styles = await inspectStyles(`${theme}: actual article styles`, (receipt) => receipt.theme === kind && receipt.layoutMode === 'desktop');
+    const differences = Object.entries(baseline.desktop).filter(([selector, expected]) => JSON.stringify(styles.article[selector]) !== JSON.stringify(expected));
+    for (const [selector, expected] of differences) console.log(`STYLE DIFFERENCE ${selector}: ${JSON.stringify(expected.map((entry, index) => Object.keys(entry).filter((key) => entry[key] !== styles.article[selector]?.[index]?.[key])))}`);
+    assert.deepEqual(styles.article, baseline.desktop, 'all Markdown blocks and article typography match the real website');
+  }
+  await vscode.commands.executeCommand('sachiPreview.toggleLayout');
   await replace(original.replace('插件验收', '未保存预览').replace('最初正文', '尚未保存的完整正文'));
   await waitFor((state) => state.receipt?.title === '未保存预览' && state.receipt.text.includes('尚未保存的完整正文') && state.message?.type === 'update' && state.message.dirty, 'unsaved editor buffer');
   assert.equal(await readFile(file, 'utf8'), original, 'preview never writes the article');
@@ -103,7 +119,7 @@ export async function run() {
   assert.equal((await locate('target = 2')).kind, 'code');
   assert.equal((await locate('2;')).kind, 'code');
   const savedLong = document.getText();
-  const clickBody = '## 点击标题\n\n::   重复 &#x1f600; &amp; \\*文字。\n\n第二段重复。\n\n**强调重复** 与 `行内代码`。\n\n- 列表正文\n\n> 引用正文\n\n| 列 |\n| --- |\n| 表格正文 |\n\n> ```ts\n> const nestedToken = 2;\n> ```\n\n';
+  const clickBody = '## 点击标题\n\n::   重复 &#x1f600; &amp; \\*文字。\n\n第二段重复。\n\n**强调重复** 与 `行内代码`。\n\n- 列表正文\n\n> *引用正文*\n\n| 列 |\n| --- |\n| 表格正文 |\n\n> ```ts\n> const nestedToken = 2;\n> ```\n\n';
   await replace(original.replace('最初正文。', clickBody));
   await waitFor((state) => !!state.receipt?.text.includes('nestedToken'), 'click-to-source article rendered');
   async function clickSource(action: PreviewTestClick, needle: string, sourceDocument = document) {
@@ -175,6 +191,42 @@ export async function run() {
   await replace(flow);
   await waitFor((state) => !!state.receipt?.flow && !!state.receipt.text.includes('环绕紧凑换行'), 'flow click mapping rendered');
   await clickSource({ text: '环绕紧凑换行', selector: '.flow-block' }, '环绕紧凑换行');
+  await vscode.commands.executeCommand('sachiPreview.toggleLayout');
+  await waitFor((state) => state.message?.type === 'update' && state.message.layoutMode === 'desktop' && !!state.receipt, 'desktop mode selected for this panel');
+  const desktop = await inspectStyles('real Pretext engine in desktop Webview', (receipt) => receipt.flows[0]?.layout === 'wrap');
+  assert.equal(desktop.bodyWidth, 720);
+  assert.equal(desktop.flows[0].width, 205);
+  assert.equal(desktop.flows[0].engine, 'pretext');
+  await clickSource({ text: '图片', image: true, selector: '.flow-obstacle img' }, '![测试形状]');
+  const interactiveBefore = api.getPreviewState().sourceNavigation;
+  for (const action of [{ text: '开启互动', selector: '.flow-controls button' }, { text: '图片', image: true, selector: '.flow-obstacle img' }, { text: '关闭互动', selector: '.flow-controls button' }]) {
+    const sequence = api.getPreviewState().testClick?.sequence ?? 0;
+    api.testPreviewClick(action);
+    await waitFor((state) => (state.testClick?.sequence ?? 0) > sequence && !!state.testClick?.found, `interaction gesture: ${action.text}`);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    assert.equal(api.getPreviewState().sourceNavigation, interactiveBefore, 'interactive image and controls do not move the source caret');
+  }
+  const multiple = original.replace('---\n\n最初正文', 'flow:\n  - image: ./assets/shape.png\n    width: 120\n  - image: ./assets/second.png\n    width: 240\n---\n\n前文 &amp;。\n\n![第一张](./assets/shape.png)\n\n第一图后文。\n\n#### 分隔标题\n\n![第二张][ref]\n\n第二图后文。\n\n---\n\n后面 **强调**。\n\n![普通图片](./assets/shape.png)\n\n[ref]: ./assets/second.png\n\n最初正文');
+  await replace(multiple);
+  await waitFor((state) => !!state.receipt?.text.includes('第二图后文') && !!state.receipt.flow, 'multiple automatic regions rendered');
+  const sizes = await inspectStyles('two real wrapped regions', (receipt) => receipt.flows.length === 2 && receipt.flows.every((flow) => flow.layout === 'wrap'));
+  assert.deepEqual(sizes.flows.map((flow) => flow.width), [120, 240]);
+  await clickSource({ text: '图片', image: true, selector: '.flow-block .flow-obstacle img' }, '![第一张]');
+  await clickSource({ text: '图片', image: true, selector: '.flow-block + .article-heading + .flow-block .flow-obstacle img' }, '![第二张]');
+  await clickSource({ text: '普通图片', image: true, selector: '.flow-ordinary-image img' }, '![普通图片]');
+  await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+  assert.ok(await editor.edit((edit) => edit.setEndOfLine(vscode.EndOfLine.CRLF)));
+  await waitFor((state) => state.message?.type === 'update' && state.message.source.version === document.version && !!state.receipt, 'CRLF unsaved document rendered');
+  assert.equal(document.eol, vscode.EndOfLine.CRLF);
+  await clickSource({ text: '&', selector: '.flow-block' }, '&amp;');
+  await clickSource({ text: '图片', image: true, selector: '.flow-block + .article-heading + .flow-block .flow-obstacle img' }, '![第二张]');
+  await clickSource({ text: '第一图后文', selector: '.flow-visual' }, '第一图后文');
+  await clickSource({ text: '第二图后文', selector: '.flow-visual' }, '第二图后文');
+  await clickSource({ text: '强调', selector: 'strong' }, '强调');
+  await replace(multiple.replace('width: 120', 'width: 360').replace('width: 240', 'width: 180'));
+  await inspectStyles('width edits update both real images', (receipt) => receipt.flows[0]?.width === 360 && receipt.flows[1]?.width === 180);
+  await vscode.commands.executeCommand('sachiPreview.toggleLayout');
+  await waitFor((state) => state.message?.type === 'update' && state.message.layoutMode === 'responsive' && !!state.receipt, 'responsive mode restored');
   await replace(savedLong);
   await waitFor((state) => !!state.receipt?.text.includes('末尾内容'), 'original long article restored');
   await vscode.workspace.getConfiguration('sachiPreview').update('syncScroll', false, vscode.ConfigurationTarget.Workspace);

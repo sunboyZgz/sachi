@@ -1,0 +1,11 @@
+/* KaTeX's font metrics stay intact; surrounding text keeps the blog typography. */
+.article-prose .katex { color: inherit; font-size: 1.08em; }
+.article-prose .math-block { margin: 28px 0; padding: 12px 2px; overflow-x: auto; overflow-y: hidden; }
+.article-prose .math-block .katex-display { margin: 0; }
+.article-prose .math-block .katex-display > .katex { display: block; width: max-content; min-width: 100%; }
+.article-prose .math-block .katex-error { white-space: pre; }
+@media print {
+  .article-prose .math-block { overflow: visible; break-inside: avoid; }
+  .article-prose .math-block .katex-display,
+  .article-prose .math-block .katex-display > .katex { width: auto; white-space: normal; }
+}

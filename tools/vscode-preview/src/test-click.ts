@@ -2,6 +2,20 @@ import type { PreviewTestClick } from './protocol';
 
 /** Development-only DOM gesture driver. All hit testing runs in the real Webview. */
 export function testClick(root: HTMLElement, action: PreviewTestClick) {
+  if (action.image) {
+    const image = root.querySelector<HTMLElement>(action.selector ?? '.article-prose img');
+    if (!image) return false;
+    window.dispatchEvent(new WheelEvent('wheel'));
+    image.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+    const rect = image.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+    document.getSelection()?.removeAllRanges();
+    const options = { bubbles: true, button: 0, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, pointerId: 1 };
+    image.dispatchEvent(new PointerEvent('pointerdown', options));
+    image.dispatchEvent(new PointerEvent('pointerup', options));
+    image.dispatchEvent(new MouseEvent('click', { ...options, detail: 1 }));
+    return true;
+  }
   let occurrence = action.occurrence ?? 0;
   let target: Text | undefined;
   let offset = 0;

@@ -3,7 +3,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { isMap, isScalar, parseDocument } from 'yaml';
 import { imageReferences, markdownReferences, postFromDocument, splitDocument } from '../../../src/lib/blog/document';
 import { safeFile, sha256 } from '../../../src/lib/blog/files';
-import { configSchema, defaultConfig, mediaSchema, type Asset } from '../../../src/lib/blog/schema';
+import { configSchema, defaultConfig, mediaSchema, flowSpecSchema, flowSpecs, type Asset } from '../../../src/lib/blog/schema';
 import { profileSchema } from '../../../src/config/profile-schema';
 import { profile } from '../../../src/config/profile';
 import { parseMarkdown } from '../../../src/lib/markdown';
@@ -15,7 +15,7 @@ type BuildOptions = {
   location: ArticleLocation; raw: string; revision: number; dirty: boolean;
   resourceUri: (file: string) => string;
   readText?: (file: string) => Promise<string>;
-  documentVersion?: number; syncEnabled?: boolean; clickEnabled?: boolean; navigation?: RevealLine;
+  layoutMode?: 'responsive' | 'desktop'; documentVersion?: number; syncEnabled?: boolean; clickEnabled?: boolean; navigation?: RevealLine;
 };
 const imageExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.svg']);
 const videoExtensions = new Set(['.mp4', '.webm', '.mov', '.m4v']);
@@ -56,21 +56,20 @@ export async function buildPreview(options: BuildOptions) {
   const bodyOffset = options.raw.length - bodyRaw.length + (bodyRaw.match(/^\s*/u)?.[0].length ?? 0);
   const beforeBody = options.raw.slice(0, bodyOffset);
   const origin = { lineOffset: (beforeBody.match(/\n/g) ?? []).length, columnOffset: beforeBody.length - beforeBody.lastIndexOf('\n') - 1 };
-  let post;
-  try { post = postFromDocument(location.relative, data, body, config.timezone); }
-  catch (error) {
-    if (data.flow === undefined) throw error;
-    // Other invalid metadata still fails on the second pass, while partial flow keeps the full body.
-    post = postFromDocument(location.relative, { ...data, flow: undefined }, body, config.timezone);
-    warnings.push(`环绕暂用普通排版：${error instanceof Error ? error.message : String(error)}`);
-  }
-  try { parseMarkdown(body, post.flow); }
-  catch (error) {
-    warnings.push(`环绕暂用普通排版：${error instanceof Error ? error.message : String(error)}`);
-    post = { ...post, flow: undefined };
-  }
+  const configs = data.flow === undefined ? [] : Array.isArray(data.flow) ? data.flow : [data.flow];
+  if (Array.isArray(data.flow) && !configs.length) warnings.push('flow 数组为空，环绕暂用普通排版。');
+  const valid = configs.flatMap((value, index) => {
+    const result = flowSpecSchema.safeParse(value);
+    if (result.success) return [result.data];
+    warnings.push(`flow[${index + 1}] 环绕暂用普通排版：${result.error.message}`);
+    return [];
+  });
+  const postFlow = Array.isArray(data.flow) ? valid.length ? valid : undefined : valid[0];
+  let post = postFromDocument(location.relative, { ...data, flow: postFlow }, body, config.timezone);
+  const specs = flowSpecs(post.flow);
+  warnings.push(...parseMarkdown(body, post.flow, {}, origin, { tolerant: true }).warnings);
   const references = markdownReferences(body, { onIssue: (message) => { if (!warnings.includes(message)) warnings.push(message); } });
-  const images = new Set([...imageReferences(body), post.cover, post.flow?.image, post.flow?.contour]);
+  const images = new Set([...imageReferences(body), post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour])]);
   const mediaRaw = location.legacy ? undefined : await optionalText(path.join(path.dirname(location.file), 'media.yaml'), readText);
   let media = mediaSchema.parse({});
   if (mediaRaw) {
@@ -83,7 +82,7 @@ export async function buildPreview(options: BuildOptions) {
   const assets: Record<string, Asset> = {};
   const links = new Map<string, string>();
   const allowedExternal = new Set<string>();
-  const referenced = [...references, post.cover, post.flow?.image, post.flow?.contour].filter((url): url is string => !!url);
+  const referenced = [...references, post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour])].filter((url): url is string => !!url);
   const posters = referenced.flatMap((url) => media.assets[url]?.poster ? [media.assets[url].poster!] : []);
   for (const url of [...new Set([...referenced, ...posters])]) {
     if (url.startsWith('#')) continue;
@@ -120,14 +119,12 @@ export async function buildPreview(options: BuildOptions) {
   for (const [url, preset] of Object.entries(media.assets)) {
     if (assets[url]?.type === 'video' && preset.poster) assets[url].poster = assets[preset.poster]?.url;
   }
-  if (post.flow && (!imageExtensions.has(path.extname(post.flow.image).toLowerCase()) || !assets[post.flow.image]?.url || post.flow.contour && !assets[post.flow.contour]?.url)) {
-    warnings.push('环绕图片或轮廓不可用，暂用普通排版。');
-    post = { ...post, flow: undefined };
+  for (const spec of specs) if (!imageExtensions.has(path.extname(spec.image).toLowerCase()) || !assets[spec.image]?.url || spec.contour && !assets[spec.contour]?.url) {
+    warnings.push(`${spec.image}：环绕图片或轮廓不可用，本区域暂用普通排版。`);
   }
-  post = { ...post, assets, cover: post.cover ? assets[post.cover]?.url : undefined,
-    flow: post.flow ? { ...post.flow, image: assets[post.flow.image].url, contour: post.flow.contour ? assets[post.flow.contour].url : undefined } : undefined };
+  post = { ...post, assets, cover: post.cover ? assets[post.cover]?.url : undefined };
   const styles: string[] = [];
-  for (const name of ['tokens.css', 'site.css', 'code-highlight.css']) {
+  for (const name of ['tokens.css', 'site.css', 'code-highlight.css', 'math.css']) {
     const file = path.join(location.root, 'src/styles', name);
     const info = await stat(file);
     styles.push(`${resourceUri(file)}?v=${info.mtimeMs}-${info.size}`);
@@ -137,7 +134,7 @@ export async function buildPreview(options: BuildOptions) {
     const file = await safeFile(location.root, 'src/assets/avatar/avatar-half.png');
     avatar = `${resourceUri(file)}?v=${sha256(await readFile(file))}`;
   } catch { warnings.push('项目半身头像不可用，使用插件构建时的头像。'); }
-  const message: PreviewData = { type: 'update', revision: options.revision, document: location.file, dirty: options.dirty, post, profile: author, warnings, styles, avatar,
+  const message: PreviewData = { type: 'update', layoutMode: options.layoutMode, revision: options.revision, document: location.file, dirty: options.dirty, post, profile: author, warnings, styles, avatar,
     source: { origin, version: options.documentVersion ?? 0, totalLines: options.raw.split('\n').length, syncEnabled: options.syncEnabled ?? true, clickEnabled: options.clickEnabled ?? true, title, navigation: options.navigation } };
   return { message, links, allowedExternal };
 }
