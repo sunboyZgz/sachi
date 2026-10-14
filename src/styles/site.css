@@ -114,6 +114,18 @@ a:hover .arrow { transform: translateX(4px); }
 .article-intro-rule { width: 42px; height: 1px; background: var(--moss); margin: 32px 0 28px; }
 .article-prose { display: flow-root; font: var(--article-body-size)/1.95 var(--font-body); color: var(--article-body-color); overflow-wrap: anywhere; }
 .article-prose p { margin: 0 0 var(--article-paragraph-gap); }
+/* Poetry keeps authored lines and stanzas on a common reading axis. */
+.article-layout--poem { display: block; max-width: var(--read-width); margin-inline: auto; }
+.article-layout--poem .mobile-toc { display: block; }
+.article-main[data-article-type="poem"] .article-category,
+.article-main[data-article-type="poem"] .article-title { text-align: center; }
+.article-main[data-article-type="poem"] .meta { justify-content: center; }
+.article-main[data-article-type="poem"] .article-intro-rule { margin-inline: auto; }
+.article-prose--poem .poem-stanza { text-align: center; margin-bottom: var(--space-8); }
+.article-prose--poem .article-heading { text-align: center; }
+
+.article-prose .markdown-text-larger { font-size: 1.2em; }
+.article-prose .markdown-text-smaller { font-size: .85em; }
 .article-prose h1 { --heading-size: var(--article-h1-size); --heading-leading: 1.28; --heading-before: var(--article-h1-before); --heading-after: var(--article-h1-after); --heading-stack-gap: 32px; }
 .article-prose h2 { --heading-size: var(--article-h2-size); --heading-leading: 1.34; --heading-before: var(--article-h2-before); --heading-after: var(--article-h2-after); --heading-stack-gap: 24px; }
 .article-prose h3 { --heading-size: var(--article-h3-size); --heading-leading: 1.42; --heading-before: var(--article-h3-before); --heading-after: var(--article-h3-after); --heading-stack-gap: 16px; }

@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const categoryNames = { play: '闲暇娱乐', life: '生活旁白', learn: '蘸豆！！' } as const;
 export const categorySchema = z.enum(['play', 'life', 'learn']);
+export const articleTypeSchema = z.enum(['article', 'poem']);
+export type ArticleType = z.infer<typeof articleTypeSchema>;
 export const hashSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const sourcePathSchema = z.string().startsWith('content/').endsWith('.md').refine((value) => !value.includes('\\') && !value.includes('\0') && value.split('/').every((part) => part !== '..' && part !== '.' && part.length > 0));
 export const releaseIdSchema = z.string().regex(/^r-[a-zA-Z0-9-]{8,80}$/);
@@ -41,8 +43,11 @@ export const postSchema = z.object({
   tags: z.array(z.string().min(1)).default([]), status: z.string().optional(),
   minutes: z.number().int().positive(), summary: z.string().optional(),
   cover: z.string().optional(), flow: flowSchema.optional(),
+  type: articleTypeSchema.optional(),
   assets: z.record(z.string(), assetSchema).default({}),
   series: seriesRefSchema.optional(),
+}).superRefine((post, context) => {
+  if (post.type === 'poem' && post.flow !== undefined) context.addIssue({ code: 'custom', path: ['flow'], message: '诗歌模式暂不支持 flow 环绕；请删除 flow 或切换为 article。' });
 });
 export type BlogPost = z.infer<typeof postSchema>;
 

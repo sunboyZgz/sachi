@@ -6,7 +6,7 @@ import { renderToString } from 'react-dom/server';
 import { parse } from 'yaml';
 import sharp from 'sharp';
 import { atomicWrite, exists, writeJson } from '../../src/lib/blog/files';
-import { flowSchema, flowSpecs, type Asset } from '../../src/lib/blog/schema';
+import { articleTypeSchema, flowSchema, flowSpecs, type Asset } from '../../src/lib/blog/schema';
 import { createImageContour } from '../../src/lib/blog/flow-assets';
 import { markdownReferences, splitDocument } from '../../src/lib/blog/content';
 import { parseMarkdown } from '../../src/lib/markdown';
@@ -18,6 +18,8 @@ const project = fileURLToPath(new URL('../../', import.meta.url));
 const katexDirectory = path.join(project, 'node_modules/katex/dist');
 export const examplesDirectory = path.join(project, 'docs-site/.vitepress/examples');
 export const exampleDefinitions = [
+  { id: 'text-size', title: '行内放大、缩小与自定义倍数', page: 'writing/text-size.md', height: 470 },
+  { id: 'poem', title: '诗歌逐行换行与居中', page: 'writing/poetry.md', height: 450 },
   { id: 'flow', title: '透明图片自动环绕', page: 'writing/flow.md', height: 780 },
   { id: 'flow-multiple', title: '正文多图自动识别', page: 'writing/flow.md', height: 1200 },
   { id: 'flow-manual', title: '手工轮廓环绕', page: 'writing/flow.md', height: 650 },
@@ -56,8 +58,10 @@ export async function loadExamples(base = '/', sources = examplesDirectory) {
     if (definition.id === 'media') mapping['./assets/demo.mp4'].poster = `${base}examples/poster.png`;
     const rawFlow = data.flow ? flowSchema.parse(data.flow) : undefined;
     if (flowSpecs(rawFlow).some((spec) => !mapping[spec.image] || spec.contour && !mapping[spec.contour])) throw new Error(`环绕教学资源未声明：${definition.id}`);
-    const parsed = parseMarkdown(bodyRaw.trim(), rawFlow, mapping);
+    const type = data.type === undefined ? undefined : articleTypeSchema.parse(data.type);
+    const parsed = parseMarkdown(bodyRaw.trim(), rawFlow, mapping, undefined, { type });
     const input: BlogExampleInput = { markdown: parsed.markdown, assets: mapping, flow: parsed.flow, flows: parsed.flows, flowWidths: parsed.flowWidths };
+    if (type === 'poem') { input.type = type; input.title = String(data.title); }
     if (definition.id === 'cover') {
       if (typeof data.title !== 'string' || typeof data.cover !== 'string' || data.featured !== true || mapping[data.cover]?.type !== 'image') throw new Error('封面教学元数据无效。');
       input.cover = { title: data.title, image: mapping[data.cover].url, url: `${base}examples/article-note.html` };

@@ -15,7 +15,7 @@ scope: reference
 | [init](/reference/commands/init) | 配置向导；不建立根项目 Git 仓库或连接服务器 |
 | [doctor](/reference/commands/doctor) | 只读环境检查 |
 | [search](/reference/commands/search) | 根据中文标题或关键词查找本地文章 ID |
-| [new](/reference/commands/new) | 选择三个栏目之一，再输入标题 |
+| [new](/reference/commands/new) | 选择栏目、文章类型，再输入标题 |
 | [series](/reference/commands/series) | 查找、创建系列，或按 ID 插入章节 |
 | [draft](/reference/commands/draft) | 主动全量留存稿件、查看差异、直接回档与撤销 |
 | [toy](/reference/commands/toy) | 准备本地作品资料；待媒体处理，不上传或公开 |

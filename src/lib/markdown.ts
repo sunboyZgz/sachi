@@ -5,7 +5,9 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import { analyzeArticleStructure, type ArticleHeading } from './article-structure';
-import { flowSpecs, type Asset, type FlowSpec, type FlowConfig } from './blog/schema';
+import { flowSpecs, type ArticleType, type Asset, type FlowSpec, type FlowConfig } from './blog/schema';
+import { remarkPoetry } from './remark-poetry';
+import { remarkTextSize } from './remark-text-size';
 import { visit } from 'unist-util-visit';
 import { firstLineIndent, remarkFirstLineIndent } from './remark-first-line-indent';
 import { normalizeFlowText, sourceRange, type FlowSourceMap, type SourceLine, type SourceOrigin } from './source-lines';
@@ -20,6 +22,7 @@ export type FlowRegion = {
 };
 export type ParsedMarkdown = {
   markdown: string;
+  type?: ArticleType;
   headings: ArticleHeading[];
   description: string;
   sourceOrigin?: SourceOrigin;
@@ -91,11 +94,12 @@ export function imageResolver(tree: Root) {
   return (node: Image | ImageReference) => node.type === 'image' ? node.url : definitions.get(node.identifier.toUpperCase());
 }
 
-export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<string, Asset> = {}, origin?: SourceOrigin, options: { tolerant?: boolean } = {}): ParsedMarkdown {
-  const processor = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkFirstLineIndent);
+export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<string, Asset> = {}, origin?: SourceOrigin, options: { tolerant?: boolean; type?: ArticleType } = {}): ParsedMarkdown {
+  const poem = options.type === 'poem';
+  const processor = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkTextSize).use(remarkPoetry, { enabled: poem }).use(remarkFirstLineIndent);
   const tree = processor.runSync(processor.parse(body), body) as Root;
   const headings = analyzeArticleStructure(tree);
-  const description = tree.children.filter((node): node is Paragraph => node.type === 'paragraph').map(paragraphDescription).find(Boolean)?.slice(0, 140) ?? '';
+  const description = tree.children.filter((node): node is Paragraph => node.type === 'paragraph').map((node) => poem ? node.children.map((child) => child.type === 'break' ? ' ' : paragraphDescription({ ...node, children: [child] })).join('') : paragraphDescription(node)).find(Boolean)?.slice(0, 140) ?? '';
   const flows: FlowRegion[] = [];
   const warnings: string[] = [];
   const errors: string[] = [];
@@ -104,7 +108,8 @@ export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<
   const flowWidths: Record<string, number> = {};
   const atLine = (line?: number) => line === undefined ? '?' : line + (origin?.lineOffset ?? 0);
   const issue = (message: string) => { errors.push(message); warnings.push(`环绕暂用普通排版：${message}`); };
-  flowSpecs(config).forEach((spec, index) => {
+  if (poem && config) issue('诗歌模式暂不支持 flow 环绕；请删除 flow 或切换为 article。');
+  flowSpecs(poem ? undefined : config).forEach((spec, index) => {
     const key = flowResource(spec.image);
     if (specs.has(key)) { invalid.add(key); issue(`flow[${index + 1}] 配置重复：${spec.image}`); }
     else specs.set(key, spec);
@@ -162,7 +167,7 @@ export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<
     start = end;
   }
   if (errors.length && !options.tolerant) throw new Error(errors.join('\n'));
-  return { markdown: body, headings, description, flows, flow: flows[0] ?? null, flowWidths, warnings, ...(origin ? { sourceOrigin: origin } : {}) };
+  return { markdown: body, headings, description, flows, flow: flows[0] ?? null, flowWidths, warnings, ...(options.type ? { type: options.type } : {}), ...(origin ? { sourceOrigin: origin } : {}) };
 }
 
 /** Replace only recognized blocks after full-tree heading and source analysis. */

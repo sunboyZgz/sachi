@@ -62,7 +62,7 @@ export async function pageMetadata(options: Parameters<typeof createPageMetadata
 }
 
 export function postDescription(post: BlogPost) {
-  return post.summary ?? parseMarkdown(post.body, post.flow, post.assets).description;
+  return post.summary ?? parseMarkdown(post.body, post.flow, post.assets, undefined, { type: post.type }).description;
 }
 
 function person(context: SeoContext) {

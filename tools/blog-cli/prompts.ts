@@ -1,6 +1,6 @@
 import { stdin, stderr } from 'node:process';
 import { BlogError } from '../../src/lib/blog/files';
-import { categoryNames, postSchema } from '../../src/lib/blog/schema';
+import { articleTypeSchema, categoryNames, postSchema, type ArticleType } from '../../src/lib/blog/schema';
 
 export type Choice = { name: string; value: string; description?: string };
 export type Validator = (value: string) => true | string | Promise<true | string>;
@@ -11,7 +11,11 @@ export type PromptDriver = {
   checkbox: (message: string, choices: Choice[]) => Promise<string[]>;
   confirm: (message: string) => Promise<boolean>;
 };
-export type NewPostOptions = { category?: string; title?: string; slug?: string };
+export type NewPostOptions = { category?: string; title?: string; slug?: string; type?: ArticleType };
+export const articleTypeChoices: Choice[] = [
+  { name: '普通 Markdown', value: 'article', description: '段落排版；回车沿用 Markdown 软换行规则' },
+  { name: '诗歌 Markdown', value: 'poem', description: '回车即诗行换行，空行分诗节；标题与诗行居中' },
+];
 
 async function promptResult<T>(action: () => Promise<T>): Promise<T> {
   try { return await action(); }
@@ -56,20 +60,22 @@ export function validateTitle(value: string): true | string {
   return value.trim() ? true : '标题不能为空，请输入文章标题。';
 }
 
-export async function collectNewPostOptions(options: NewPostOptions, prompts: PromptDriver) {
+export async function collectNewPostOptions(options: NewPostOptions, prompts: PromptDriver, settings: { articleTypes?: boolean } = {}) {
   const choices = Object.entries(categoryNames).map(([value, name]) => ({ name, value }));
   const findCategory = (value: string) => choices.find((choice) => choice.value === value || choice.name === value);
   if (options.category !== undefined && !findCategory(options.category)) throw new BlogError('栏目只能是闲暇娱乐、生活旁白或蘸豆！！（也支持 play/life/learn）。', 2);
   const titleValidation = options.title === undefined ? true : validateTitle(options.title);
   if (titleValidation !== true) throw new BlogError(titleValidation, 2);
   if (options.slug !== undefined && !postSchema.shape.slug.safeParse(options.slug).success) throw new BlogError('slug 只能包含字母、数字、下划线或短横线，且必须以字母或数字开头。', 2);
+  if (options.type !== undefined && !articleTypeSchema.safeParse(options.type).success) throw new BlogError('文章类型只能是 article（普通 Markdown）或 poem（诗歌）。', 2);
   const missing = [options.category === undefined ? '--category' : null, options.title === undefined ? '--title' : null].filter(Boolean);
   if (missing.length && !prompts.enabled) throw new BlogError(`非交互或 --json 模式需要提供 ${missing.join(' 和 ')}；在终端运行 npm run blog -- new 可选择栏目并输入标题。`, 2, 'INPUT_REQUIRED');
 
   const category = findCategory(options.category ?? await prompts.select('选择文章栏目', choices));
   if (!category) throw new BlogError('请选择有效栏目。', 2);
+  const type = settings.articleTypes === false ? undefined : options.type ?? (prompts.enabled ? articleTypeSchema.parse(await prompts.select('文章类型', articleTypeChoices)) : undefined);
   const title = options.title ?? await prompts.input('文章标题', validateTitle);
   const finalTitleValidation = validateTitle(title);
   if (finalTitleValidation !== true) throw new BlogError(finalTitleValidation, 2);
-  return { category: category.name, title: title.trim(), slug: options.slug };
+  return { category: category.name, title: title.trim(), slug: options.slug, ...(type === undefined ? {} : { type }) };
 }

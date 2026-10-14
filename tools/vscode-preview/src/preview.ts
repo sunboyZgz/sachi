@@ -114,12 +114,13 @@ export async function buildPreview(options: BuildOptions) {
     warnings.push(`flow[${index + 1}] 环绕暂用普通排版：${result.error.message}`);
     return [];
   });
-  const postFlow = Array.isArray(data.flow) ? valid.length ? valid : undefined : valid[0];
+  if (data.type === 'poem' && data.flow !== undefined) warnings.push('诗歌模式暂不支持 flow 环绕；请删除 flow 或切换为 article。当前保留普通图片与完整诗歌。');
+  const postFlow = data.type === 'poem' ? undefined : Array.isArray(data.flow) ? valid.length ? valid : undefined : valid[0];
   const legacy = location.detached ? data.createdAt === undefined && data.date !== undefined : location.legacy;
   const relative = location.detached ? legacy ? path.basename(location.file) : `${categoryNames[categorySchema.parse(data.category ?? location.pathCategory)]}/preview/index.md` : location.relative;
   let post = postFromDocument(relative, { ...data, flow: postFlow }, body, config.timezone);
   const specs = flowSpecs(post.flow);
-  warnings.push(...parseMarkdown(body, post.flow, {}, origin, { tolerant: true }).warnings);
+  warnings.push(...parseMarkdown(body, post.flow, {}, origin, { tolerant: true, type: post.type }).warnings);
   const references = markdownReferences(body, { onIssue: (message) => { if (!warnings.includes(message)) warnings.push(message); } });
   const images = new Set([...imageReferences(body), post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour])]);
   const mediaRaw = legacy ? undefined : await optionalText(path.join(path.dirname(location.file), 'media.yaml'), readText);

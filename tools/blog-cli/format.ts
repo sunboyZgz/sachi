@@ -3,6 +3,7 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { remarkTextSize } from '../../src/lib/remark-text-size';
 import { visit } from 'unist-util-visit';
 import { splitDocument } from '../../src/lib/blog/document';
 import { createSourceMapper } from '../../src/lib/source-text-map';
@@ -24,7 +25,7 @@ function spacingExceptions(extra: string[]) {
 /** Insert spaces into original source ranges, never serialize a Markdown tree. */
 export function formatMarkdownSpacing(body: string, ignoredWords: string[] = []) {
   const exceptions = spacingExceptions(ignoredWords);
-  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkMath).parse(body);
+  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkTextSize).parse(body);
   const mapper = createSourceMapper(body, { lineOffset: 0 });
   const starts = [0, ...[...body.matchAll(/\r\n|\n|\r/g)].map((match) => match.index + match[0].length)];
   const offset = (point: { line: number; column: number }) => starts[point.line - 1] + point.column - 1;
@@ -47,7 +48,7 @@ export function formatMarkdownSpacing(body: string, ignoredWords: string[] = [])
       const label = node.children.map((child) => child.type === 'text' ? child.value : '').join('');
       if (node.url.startsWith('mailto:') || [label, `http://${label}`, `https://${label}`].includes(node.url)) return barrier();
     }
-    if (!['emphasis', 'strong', 'delete', 'link', 'linkReference'].includes(node.type) || !('children' in node)) return barrier();
+    if (!['emphasis', 'strong', 'delete', 'textSize', 'link', 'linkReference'].includes(node.type) || !('children' in node)) return barrier();
     const result = node.children.flatMap((child) => characters(child as PhrasingContent));
     if (result.length && node.position) {
       // Outside spaces belong outside **markers** and [labels](destinations).

@@ -6,7 +6,7 @@ import { categoryNames, configSchema, releaseIdSchema, postSchema, seriesRefSche
 import { type CommandName, type Invocation } from './arguments';
 import { validateConfig, storePath } from './config';
 import { deployAction } from './deploy';
-import { type Choice, type PromptDriver, validateTitle } from './prompts';
+import { articleTypeChoices, type Choice, type PromptDriver, validateTitle } from './prompts';
 import { freshDestination } from './state';
 import { releaseCurrent } from './delivery';
 import { githubTarget } from './pages';
@@ -18,7 +18,7 @@ import { draftRestoreHistory } from './writing-transactions';
 
 const nonempty = (value: string): true | string => value.trim() ? true : '请输入非空内容。';
 export const mainChoices: Choice[] = [
-  { name: '新建文章 · new', value: 'new', description: '选择栏目，输入标题；自动生成写作目录' },
+  { name: '新建文章 · new', value: 'new', description: '选择栏目和普通／诗歌类型，输入标题；自动生成写作目录' },
   { name: '预览首页或文章 · dev', value: 'dev', description: '先在本地检查阅读效果，不上线' },
   { name: '检查 Markdown 与资源 · check', value: 'check', description: '检查元数据、引用、图片与视频' },
   { name: '发布选中文章 · publish', value: 'publish', description: '默认不勾选任何文章；先看计划，再确认上线' },
@@ -108,6 +108,7 @@ async function collectMetadata(root: string, config: BlogConfig, invocation: Inv
   if (mode === 'init') { invocation.options.init = true; return; }
   const fieldChoices = [
     { name: '标题', value: 'title' }, { name: '标签', value: 'tags' }, { name: '摘要', value: 'summary' },
+    { name: '文章类型（普通 Markdown / 诗歌）', value: 'type' },
     { name: '封面路径', value: 'cover' }, { name: '项目状态', value: 'status' },
     { name: '阅读分钟数', value: 'minutes' }, { name: '栏目精选', value: 'featured' },
     { name: '未发布文章的 URL slug', value: 'slug' },
@@ -130,7 +131,8 @@ async function collectMetadata(root: string, config: BlogConfig, invocation: Inv
         const order = Number(await prompts.input('章节序号', (text) => Number.isSafeInteger(Number(text)) && Number(text) > 0 ? true : '请输入正整数。', { default: String(suggested.order) }));
         value = { id: choice, order };
       }
-    } else if (field === 'featured') value = await prompts.select('是否作为栏目精选？', [{ name: '否', value: 'false' }, { name: '是', value: 'true' }]) === 'true';
+    } else if (field === 'type') value = await prompts.select('文章类型', [...articleTypeChoices].sort((a, b) => Number(b.value === (post?.type ?? 'article')) - Number(a.value === (post?.type ?? 'article'))));
+    else if (field === 'featured') value = await prompts.select('是否作为栏目精选？', [{ name: '否', value: 'false' }, { name: '是', value: 'true' }]) === 'true';
     else if (field === 'tags') value = (await prompts.input('标签（逗号分隔，留空清除）', () => true, { default: post?.tags.join(', ') })).split(/[,，]/).map((tag) => tag.trim()).filter(Boolean);
     else {
       const validation = field === 'title' ? validateTitle : field === 'minutes' ? (text: string): true | string => !text || /^\d+$/.test(text) && Number(text) > 0 ? true : '请输入正整数，或留空恢复自动计算。' : field === 'slug' ? (text: string): true | string => /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/.test(text) ? true : '请输入有效 slug。' : () => true as const;
@@ -298,7 +300,7 @@ export async function completeInvocation(root: string, config: BlogConfig, origi
     } else if (command === 'meta') {
       const choice = await prompts.select('选择文章或输入手写文档路径', [...scanned.posts.map(articleChoice), { name: '手动输入文档路径', value: 'manual' }]);
       invocation.selectors = [choice === 'manual' ? await prompts.input('文章目录或 Markdown 路径', nonempty) : choice];
-      if (!options.init && !options.set?.length && !options.title && !options.slug) await collectMetadata(root, config, invocation, scanned.posts, prompts);
+      if (!options.init && !options.set?.length && !options.title && !options.slug && !options.type) await collectMetadata(root, config, invocation, scanned.posts, prompts);
     } else {
       if (command === 'publish' && !config.deploy && !config.pages && !options['pages-remote']) throw new BlogError('尚未配置部署。可先用本地构建检查，或进入配置向导。', 2);
       const catalogue = await scanSeries(root);
@@ -307,7 +309,7 @@ export async function completeInvocation(root: string, config: BlogConfig, origi
       else invocation.selectors = await selectArticles(prompts, scanned.posts.filter((source) => !source.post.fixture), true);
       invocation.guided = true;
     }
-  } else if (command === 'meta' && !options.init && !options.set?.length && !options.title && !options.slug) await collectMetadata(root, config, invocation, (await scanContent(root, config)).posts, prompts);
+  } else if (command === 'meta' && !options.init && !options.set?.length && !options.title && !options.slug && !options.type) await collectMetadata(root, config, invocation, (await scanContent(root, config)).posts, prompts);
   if (invocation.guided && (['format', 'build', 'publish', 'push', 'unpublish', 'rollback', 'sync', 'restore', 'recover'].includes(command!) || command === 'draft' && ['save', 'export', 'restore', 'undo', 'migrate'].includes(invocation.draftAction!)) && !options['dry-run']) {
     const mode = await prompts.select('执行方式', [{ name: '只查看计划（不提交、不写入、不上线）', value: 'plan' }, { name: command === 'build' ? '确认后本地构建（不上线）' : '查看计划并确认后执行', value: 'execute' }]);
     options['dry-run'] = mode === 'plan';

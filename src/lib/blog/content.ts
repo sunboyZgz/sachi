@@ -26,7 +26,7 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
   const directory = path.dirname(file);
   const post = postFromDocument(relative, data, body, config.timezone);
   const beforeBody = raw.slice(0, raw.length - bodyRaw.length + (bodyRaw.match(/^\s*/u)?.[0].length ?? 0));
-  const parsed = parseMarkdown(body, post.flow, {}, { lineOffset: (beforeBody.match(/\n/g) ?? []).length, columnOffset: beforeBody.length - beforeBody.lastIndexOf('\n') - 1 });
+  const parsed = parseMarkdown(body, post.flow, {}, { lineOffset: (beforeBody.match(/\n/g) ?? []).length, columnOffset: beforeBody.length - beforeBody.lastIndexOf('\n') - 1 }, { type: post.type });
   const specs = flowSpecs(post.flow);
   for (const spec of specs) if (!/\.(?:png|jpe?g|webp|avif|svg|gif)$/i.test(spec.image)) throw new BlogError(`flow.image 必须是本篇的静态图片：${spec.image}`);
   if (!legacy && await exists(path.join(directory, 'layout.yaml'))) throw new BlogError('使用 frontmatter.flow 配置环绕，不支持第二份 layout.yaml。');

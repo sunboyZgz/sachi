@@ -4,6 +4,11 @@ import type { BlogExampleInput } from './example-types';
 
 /** The real blog renderer, with synthetic documentation data and no site profile. */
 export function ExampleReading({ input }: { input: BlogExampleInput }) {
+  if (input.type === 'poem') return createElement('div', { className: 'article-main', 'data-article-type': 'poem' },
+    createElement('h1', { className: 'article-title' }, input.title),
+    createElement('div', { className: 'article-intro-rule', 'aria-hidden': true }),
+    createElement('div', { className: 'article-prose article-prose--poem' }, createElement(MarkdownContent, { markdown: input.markdown, type: input.type, assets: input.assets, basePath: '' })),
+  );
   if (input.cover) return createElement('section', { className: 'directory-column', 'aria-label': '栏目重点条目示意' },
     createElement('p', { className: 'entry-kind' }, '生活旁白 · 栏目重点条目示意'),
     createElement('div', { className: 'featured-entry' },

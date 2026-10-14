@@ -5,6 +5,7 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { remarkTextSize } from '../remark-text-size';
 import { visit } from 'unist-util-visit';
 import { BlogError, sha256 } from './files';
 import { categoryNames, categorySchema, flowSchema, postSchema } from './schema';
@@ -30,7 +31,7 @@ export function dayInTimezone(value: string, timezone: string) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
 }
 export function markdownReferences(body: string, options: { onIssue?: (message: string) => void } = {}) {
-  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkMath).parse(body) as Root;
+  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkTextSize).parse(body) as Root;
   const definitions = new Map<string, string>();
   visit(tree, 'definition', (node) => { definitions.set(node.identifier.toLowerCase(), node.url); });
   const urls: string[] = [];
@@ -51,7 +52,7 @@ export function markdownReferences(body: string, options: { onIssue?: (message: 
 }
 
 export function imageReferences(body: string) {
-  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkMath).parse(body) as Root;
+  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkTextSize).parse(body) as Root;
   const definitions = new Map<string, string>();
   visit(tree, 'definition', (node) => { definitions.set(node.identifier.toLowerCase(), node.url); });
   const urls: string[] = [];

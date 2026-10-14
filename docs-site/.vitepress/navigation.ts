@@ -8,6 +8,8 @@ export const navigation = [
   ] },
   { text: '写作与素材', collapsed: true, items: [
     { text: '新建文章', link: '/writing/new' },
+    { text: '写诗与居中排版', link: '/writing/poetry' },
+    { text: '调整文字字号', link: '/writing/text-size' },
     { text: '查找文章与系列 ID', link: '/writing/find' },
     { text: '组织系列文章', link: '/writing/series' },
     { text: '准备玩具作品资料', link: '/writing/toys' },

@@ -13,6 +13,12 @@ describe('single-source synthetic Markdown teaching previews', () => {
   it('renders custom resources and reading controls through the real blog components', async () => {
     const { examples, css } = await loadExamples();
     expect(Object.keys(examples)).toEqual(exampleDefinitions.map((definition) => definition.id));
+    expect(examples['text-size'].html).toContain('class="markdown-text-larger" style="font-size:2em"');
+    expect(examples['text-size'].html).toContain('class="markdown-text-smaller" style="font-size:0.5em"');
+    expect(examples.poem.input.type).toBe('poem');
+    expect(examples.poem.html).toContain('article-prose--poem');
+    expect(examples.poem.html.match(/class="poem-stanza"/g)).toHaveLength(2);
+    expect(examples.poem.html.match(/<br\/>/g)).toHaveLength(2);
     expect(examples.flow.html).toContain('flow-block'); expect(examples.flow.input.flow?.paragraphs).toHaveLength(3);
     expect(examples.flow.input.flow?.spec.contour).toBe('/examples/illustration-contour.json');
     expect(examples['flow-multiple'].input.flows.map((flow) => flow.spec.width)).toEqual([180, 240]);

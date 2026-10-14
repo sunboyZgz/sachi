@@ -1,11 +1,12 @@
 import { Command, CommanderError, Option } from 'commander';
 import { BlogError } from '../../src/lib/blog/files';
-import type { BlogConfig } from '../../src/lib/blog/schema';
+import type { ArticleType, BlogConfig } from '../../src/lib/blog/schema';
 
 export type CommandName = 'init' | 'doctor' | 'new' | 'search' | 'series' | 'toy' | 'draft' | 'list' | 'status' | 'meta' | 'format' | 'dev' | 'check' | 'build' | 'publish' | 'push' | 'unpublish' | 'history' | 'rollback' | 'sync' | 'restore' | 'recover' | 'wizard';
 export type CliOptions = {
   root?: string; json?: boolean; yes?: boolean; 'dry-run'?: boolean; remote?: boolean;
   category?: string; title?: string; slug?: string; timezone?: string; post?: string;
+  type?: ArticleType;
   set?: string[]; init?: boolean; to?: string; resume?: string; destination?: string;
   ignore?: string[]; note?: string;
   'git-remote'?: string; visibility?: string; 'accept-baseline'?: boolean; export?: boolean;
@@ -42,9 +43,10 @@ export function createCliProgram(onInvoke: (invocation: Invocation) => void = ()
     .option('--pages-remote <地址>', '保存 GitHub Pages 目标仓库地址');
   define('doctor', '只读环境检查').option('--remote', '检查已配置的部署环境');
   define('search', '根据中文标题或关键词查找本地文章 ID', '[关键词]');
-  define('new', '选择三个栏目之一，再输入标题')
+  define('new', '选择栏目、文章类型，再输入标题')
     .option('--category <栏目>', '闲暇娱乐 / 生活旁白 / 蘸豆！！，或 play/life/learn')
     .option('--title <标题>', '文章标题').option('--slug <slug>', '可选固定 URL；默认使用 UUID')
+    .addOption(new Option('--type <类型>', 'article 普通 Markdown / poem 诗歌；未指定时使用模板或普通文章').choices(['article', 'poem']))
     .option('--series <系列>', '所属系列 ID 或 slug', (value: string) => [value]).option('--order <序号>', '章节正整数序号；缺省建议最大值 + 1', Number);
   const series = program.command('series').description('查找、创建系列，或按 ID 插入章节').helpOption('-h, --help', '显示系列帮助');
   series.action(() => onInvoke({ command: 'series', selectors: [], options: series.optsWithGlobals() }));
@@ -90,9 +92,10 @@ export function createCliProgram(onInvoke: (invocation: Invocation) => void = ()
   }
   for (const name of ['list', 'status'] as const) define(name, name === 'list' ? '列出文章' : '查看文章与备份状态').option('--remote', '只读核实服务器当前清单');
   define('meta', '选择文章，查看或修改元数据', '[article]')
-    .option('--init', '补齐手写文章的 ID 与创建时间')
+    .option('--init', '补齐手写文章的 ID 与创建时间；未填写类型时可选择普通／诗歌')
     .option('--set <字段=YAML值>', '可重复使用', (value: string, previous: string[] = []) => [...previous, value])
-    .option('--title <标题>', '修改标题').option('--slug <slug>', '修改从未发布文章的 slug');
+    .option('--title <标题>', '修改标题').option('--slug <slug>', '修改从未发布文章的 slug')
+    .addOption(new Option('--type <类型>', '切换文章类型：article 普通 Markdown / poem 诗歌').choices(['article', 'poem']));
   define('format', '为选中文章正文补中英文空格；先看差异，再确认写入', '[articles...]')
     .option('--ignore <词语>', '保留词语原写法，可重复；默认保留 A股/B股/H股/A站/B站', (value: string, previous: string[] = []) => [...previous, value]);
   define('dev', '选择首页或文章，启动现有本地预览', '[article]').option('--post <文章>', '预览文章');

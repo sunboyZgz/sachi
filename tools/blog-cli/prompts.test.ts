@@ -5,7 +5,7 @@ import { collectNewPostOptions, createTerminalPrompts, type PromptDriver } from 
 function driver(category = 'life', enabled = true) {
   return {
     enabled,
-    select: vi.fn<PromptDriver['select']>(async () => category),
+    select: vi.fn<PromptDriver['select']>(async (message) => message === '文章类型' ? 'article' : category),
     input: vi.fn<PromptDriver['input']>(async () => '  一篇新文章  '),
     checkbox: vi.fn<PromptDriver['checkbox']>(async () => []),
     confirm: vi.fn<PromptDriver['confirm']>(async () => false),
@@ -21,7 +21,7 @@ function terminal() {
 describe('new post selection flow', () => {
   it.each([['play', '闲暇娱乐'], ['life', '生活旁白'], ['learn', '蘸豆！！']])('offers the three fixed categories and resolves %s', async (value, name) => {
     const prompts = driver(value);
-    expect(await collectNewPostOptions({}, prompts)).toEqual({ category: name, title: '一篇新文章', slug: undefined });
+    expect(await collectNewPostOptions({}, prompts)).toEqual({ category: name, title: '一篇新文章', slug: undefined, type: 'article' });
     expect(prompts.select).toHaveBeenCalledWith('选择文章栏目', [
       { name: '闲暇娱乐', value: 'play' }, { name: '生活旁白', value: 'life' }, { name: '蘸豆！！', value: 'learn' },
     ]);
@@ -31,10 +31,10 @@ describe('new post selection flow', () => {
   it('only asks for missing values', async () => {
     const titleOnly = driver();
     expect(await collectNewPostOptions({ title: '已有标题' }, titleOnly)).toMatchObject({ category: '生活旁白', title: '已有标题' });
-    expect(titleOnly.select).toHaveBeenCalledOnce(); expect(titleOnly.input).not.toHaveBeenCalled();
+    expect(titleOnly.select).toHaveBeenCalledTimes(2); expect(titleOnly.input).not.toHaveBeenCalled();
     const categoryOnly = driver();
     expect(await collectNewPostOptions({ category: '蘸豆！！' }, categoryOnly)).toMatchObject({ category: '蘸豆！！', title: '一篇新文章' });
-    expect(categoryOnly.select).not.toHaveBeenCalled(); expect(categoryOnly.input).toHaveBeenCalledOnce();
+    expect(categoryOnly.select).toHaveBeenCalledOnce(); expect(categoryOnly.input).toHaveBeenCalledOnce();
   });
   it('keeps complete script arguments non-interactive', async () => {
     const prompts = driver('life', false);

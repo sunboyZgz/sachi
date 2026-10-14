@@ -6,7 +6,9 @@ import { toString } from 'mdast-util-to-string';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { remarkArticleStructure } from '../lib/article-structure';
-import type { Asset } from '../lib/blog/schema';
+import type { ArticleType, Asset } from '../lib/blog/schema';
+import { remarkPoetry } from '../lib/remark-poetry';
+import { remarkTextSize } from '../lib/remark-text-size';
 import { withBasePath } from '../lib/site-path';
 import { remarkFirstLineIndent } from '../lib/remark-first-line-indent';
 import { remarkSourceLines } from '../lib/remark-source-lines';
@@ -80,7 +82,7 @@ function rehypeFlowPresentation(options: { flows: FlowRegion[]; flowKey: string;
   };
 }
 
-export function MarkdownContent({ markdown, assets = {}, basePath = process.env.NEXT_PUBLIC_BLOG_BASE_PATH ?? '', sourceOrigin, leadingFlow = false, flows = [], flowWidths = {}, flowKey = '', layoutMode = 'responsive' }: { markdown: string; assets?: Record<string, Asset>; basePath?: string; sourceOrigin?: SourceOrigin; leadingFlow?: boolean; flows?: FlowRegion[]; flowWidths?: Record<string, number>; flowKey?: string; layoutMode?: 'responsive' | 'desktop' }) {
+export function MarkdownContent({ markdown, type, assets = {}, basePath = process.env.NEXT_PUBLIC_BLOG_BASE_PATH ?? '', sourceOrigin, leadingFlow = false, flows = [], flowWidths = {}, flowKey = '', layoutMode = 'responsive' }: { markdown: string; type?: ArticleType; assets?: Record<string, Asset>; basePath?: string; sourceOrigin?: SourceOrigin; leadingFlow?: boolean; flows?: FlowRegion[]; flowWidths?: Record<string, number>; flowKey?: string; layoutMode?: 'responsive' | 'desktop' }) {
   const marker = (node: ExtraProps['node'], kind: string) => sourceOrigin ? sourceAttributes(sourceRange(node?.position, sourceOrigin), kind) : {};
   const localUrl = (url: string) => withBasePath(url, basePath);
   const assetsByUrl = new Map(Object.values(assets).map((asset) => [localUrl(asset.url), asset]));
@@ -91,14 +93,14 @@ export function MarkdownContent({ markdown, assets = {}, basePath = process.env.
   };
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkMath, remarkFirstLineIndent, [remarkArticleStructure, { leadingFlow }], ...(sourceOrigin ? [[remarkSourceLines, sourceOrigin] as [typeof remarkSourceLines, SourceOrigin]] : []), [remarkFlowRegions, { flows, widths: flowWidths }]]}
+      remarkPlugins={[remarkGfm, remarkMath, remarkTextSize, [remarkPoetry, { enabled: type === 'poem' }], remarkFirstLineIndent, [remarkArticleStructure, { leadingFlow }], ...(sourceOrigin ? [[remarkSourceLines, sourceOrigin] as [typeof remarkSourceLines, SourceOrigin]] : []), [remarkFlowRegions, { flows, widths: flowWidths }]]}
       rehypePlugins={[rehypeCodeHighlight, rehypeMath, [rehypeFlowPresentation, { flows, flowKey, layoutMode }]]}
       urlTransform={resolve}
       components={{
         ...headingComponents,
         div: FlowContainer,
         pre: ({ node, children }) => <CodeBlock source={marker(node, 'code-block')}>{children}</CodeBlock>,
-        p: ({ node, children }) => node?.children.some((child) => child.type === 'element' && child.tagName === 'img') ? <div {...marker(node, 'media')} className="markdown-media-paragraph">{children}</div> : <p {...marker(node, 'paragraph')}>{children}</p>,
+        p: ({ node, children }) => node?.children.some((child) => child.type === 'element' && child.tagName === 'img') ? <div {...marker(node, 'media')} className="markdown-media-paragraph">{children}</div> : <p {...marker(node, 'paragraph')} className={node?.properties['data-poem-stanza'] ? 'poem-stanza' : undefined}>{children}</p>,
         img: (props) => <MarkdownImage {...props} flowWidth={Number(props.node?.properties["data-flow-width"]) || undefined} source={marker(props.node, 'image')} asset={typeof props.src === 'string' ? assetsByUrl.get(props.src) : undefined} />,
         table: ({ node, children }) => (
           <div {...marker(node, 'table')} className="table-scroll" tabIndex={0} aria-label="可横向滚动的表格">

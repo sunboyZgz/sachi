@@ -56,12 +56,12 @@ describe('guided writing without parameter memorization', () => {
     expect(mainChoices.map((choice) => choice.value)).toEqual(['new', 'dev', 'check', 'publish', 'push', 'meta', 'format', 'draft', 'search', 'series', 'toy', 'status', 'build', 'sync', 'unpublish', 'resume', 'history', 'rollback', 'restore', 'recover', 'init', 'doctor', 'quit']);
     expect(new Set(mainChoices.map((choice) => choice.value)).size).toBe(mainChoices.length);
   });
-  it('enters the main menu, chooses the category and only asks for a title', async () => {
+  it('enters the main menu, chooses the category and article type before asking for a title', async () => {
     const { root, config } = await fixture(); capture();
-    const prompts = driver(['new', 'learn'], [], ['向导新文章']);
+    const prompts = driver(['new', 'learn', 'article'], [], ['向导新文章']);
     await main(['--root', root], { prompts });
     const post = (await scanContent(root, config)).posts.find((source) => source.post.title === '向导新文章');
-    expect(post?.post.category).toBe('learn'); expect(post?.sourcePath).toContain('蘸豆！！');
+    expect(post?.post.category).toBe('learn'); expect(post?.post.type).toBe('article'); expect(post?.sourcePath).toContain('蘸豆！！');
     expect(await exists(path.join(root, '.git'))).toBe(false);
   });
   it('exits the main menu without creating durable storage', async () => {
@@ -71,7 +71,7 @@ describe('guided writing without parameter memorization', () => {
   });
   it('does not leave a new article or empty directory after input cancellation', async () => {
     const { root, config } = await fixture(); capture(); const before = (await scanContent(root, config)).posts.length;
-    const prompts = driver(['new', 'life']);
+    const prompts = driver(['new', 'life', 'article']);
     prompts.input.mockRejectedValueOnce(new BlogError('已取消', 130, 'CANCELLED'));
     await expect(main(['--root', root], { prompts })).rejects.toMatchObject({ code: 130 });
     expect((await scanContent(root, config)).posts).toHaveLength(before); expect(await exists(path.join(root, '.blog'))).toBe(false);

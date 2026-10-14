@@ -1,8 +1,9 @@
 import path from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { execa } from 'execa';
 import { scanContent, selectPosts } from '../../../src/lib/blog/content';
-import { BlogError, exists, withLock, writeJson } from '../../../src/lib/blog/files';
+import { BlogError, exists, safeFile, withLock, writeJson } from '../../../src/lib/blog/files';
+import { splitDocument } from '../../../src/lib/blog/document';
 import { categoryNames, configSchema, categorySchema, postSchema, seriesRefSchema } from '../../../src/lib/blog/schema';
 import { scanSeries, selectSeries } from '../../../src/lib/blog/series';
 import { editSeries, newSeries, seriesAssignment } from '../series';
@@ -12,9 +13,9 @@ import { backupPlan } from '../git';
 import { articleStates } from '../plan';
 import { run } from '../process';
 import { cacheCurrent } from '../snapshot';
-import { editMeta, newPost, parseAssignments } from '../writing';
+import { defaultPoemBody, editMeta, newPost, parseAssignments } from '../writing';
 import { validateMedia } from '../media';
-import { collectNewPostOptions } from '../prompts';
+import { articleTypeChoices, collectNewPostOptions } from '../prompts';
 import { cachedManifest } from '../state';
 import { pagesStatus, resolvePagesTarget } from '../pages';
 import { releaseCurrent } from '../delivery';
@@ -60,7 +61,7 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
       return true;
     }
     if (action === 'new') {
-      const values = await collectNewPostOptions(options, prompts);
+      const values = await collectNewPostOptions(options, prompts, { articleTypes: false });
       const description = options.description ?? (prompts.enabled ? await prompts.input('系列简介（可留空）', () => true) : undefined);
       if (options['dry-run']) { print('PLANNED', { ...values, description }); return true; }
       await confirm(`创建系列 ${values.title}，不发布文章。`);
@@ -98,6 +99,11 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
     if (!await exists(template)) {
       const { atomicWrite } = await import('../../../src/lib/blog/files');
       await atomicWrite(template, '## 开始\n\n在这里写正文。\n');
+    }
+    const poemTemplate = path.join(root, 'templates', 'poem.md');
+    if (!await exists(poemTemplate)) {
+      const { atomicWrite } = await import('../../../src/lib/blog/files');
+      await atomicWrite(poemTemplate, `---\ntype: poem\n---\n\n${defaultPoemBody}`);
     }
     print('INITIALIZED', { timezone: initialized.timezone, git: initialized.git ? 'configured' : 'disabled', deploy: initialized.deploy ? 'configured' : 'disabled' }); return true;
   }
@@ -139,6 +145,20 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
     const changes = parseAssignments(options.set ?? []);
     if (options.title) changes.title = options.title;
     if (options.slug) changes.slug = options.slug;
+    if (options.type) changes.type = options.type;
+    let currentType: unknown = found?.post.type, currentFlow: unknown = found?.post.flow;
+    if (options.init) {
+      const relative = selector.replace(/\/$/, '').replace(/^\.\//, '').replace(/^content\//, '');
+      const file = relative.endsWith('.md') ? relative : `${relative}/index.md`;
+      const { data } = splitDocument(await readFile(await safeFile(path.join(root, 'content'), file), 'utf8'));
+      currentType = data.type; currentFlow = data.flow;
+      if (prompts.enabled && data.type === undefined && !Object.hasOwn(changes, 'type')) changes.type = await prompts.select('文章类型', articleTypeChoices);
+    }
+    if (changes.type !== undefined && changes.type !== null) postSchema.shape.type.parse(changes.type);
+    const nextType = Object.hasOwn(changes, 'type') ? changes.type : currentType;
+    const nextFlow = Object.hasOwn(changes, 'flow') ? changes.flow : currentFlow;
+    if (nextType !== undefined && nextType !== null) postSchema.shape.type.parse(nextType);
+    if (nextType === 'poem' && nextFlow !== undefined && nextFlow !== null) throw new BlogError('诗歌模式暂不支持 flow 环绕；请同时设置 flow=null 或切换为 article。', 2);
     if (!options.init && !Object.keys(changes).length) { print('READ', found?.post ?? { file: selector }); return true; }
     await assertNoPendingWrites(root);
     const cached = await cachedManifest(root);

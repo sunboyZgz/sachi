@@ -51,7 +51,7 @@ function Article({ data, parsed }: { data: PreviewData; parsed: ParsedMarkdown }
   return <>
     <div className="preview-status" role="status">实时预览<button type="button" onClick={() => vscode.postMessage({ type: 'toggleLayout' })}>{layoutMode === 'desktop' ? '桌面宽度 · 切换响应式' : '响应式 · 切换桌面宽度'}</button><span>{data.dirty ? '含未保存修改' : '已保存'}</span></div>
     {data.warnings.length ? <aside className="preview-notice" role="status">{data.warnings.map((warning, index) => <p key={index}>{warning}</p>)}</aside> : null}
-    <main className="article-main preview-main">
+    <main className="article-main preview-main" data-article-type={data.post.type}>
       <div {...sourceAttributes({ start: { line: 1, column: 1 }, end: { line: Math.max(1, data.source.origin.lineOffset), column: 1 } }, 'metadata')}><ArticleIntro post={data.post} /></div>
       <div className="article-intro-rule" aria-hidden="true" />
       <PreviewBoundary key={data.document} data={data}>
@@ -87,7 +87,7 @@ async function update(message: RenderMessage) {
   if (message.type !== 'update') return;
   let data = message;
   const warnings = [...message.warnings];
-  const parsed = parseMarkdown(data.post.body, data.post.flow, data.post.assets, data.source.origin, { tolerant: true });
+  const parsed = parseMarkdown(data.post.body, data.post.flow, data.post.assets, data.source.origin, { tolerant: true, type: data.post.type });
   for (const warning of parsed.warnings) if (!warnings.includes(warning)) warnings.push(warning);
   await Promise.all(parsed.flows.map(async (region) => {
     if (region.spec.contour) return;

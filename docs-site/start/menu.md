@@ -35,6 +35,7 @@ online: 不改变
    ```text
    今天想做什么？ → 新建文章 · new
    选择文章栏目 → 生活旁白
+   文章类型     → 普通 Markdown
    文章标题 → 秋天的一杯茶
    ```
 
@@ -51,11 +52,12 @@ online: 不改变
 ```text
 今天想做什么？ → 新建文章 · new
 选择文章栏目   → 生活旁白
+文章类型       → 普通 Markdown / 诗歌 Markdown
 文章标题       → 秋天的一杯茶
-结果           → CREATED，显示 file、id、slug、url
+结果           → CREATED，显示 file、id、slug、url、type
 ```
 
-菜单中的英文是操作标识，不需要输入它。想跳过第一层菜单，直接运行 `npm run blog -- new`；栏目和标题仍会按步骤询问。
+菜单中的英文是操作标识，不需要输入它。想跳过第一层菜单，直接运行 `npm run blog -- new`；栏目、类型和标题仍会按步骤询问。选择“诗歌 Markdown”会写入 type: poem，无需逐行添加反斜杠与居中标记，见[诗歌教程](/writing/poetry)。已有文章可在“查看或修改文章信息”的字段菜单中切换类型。
 
 记得中文名称却不记得 ID 时，选“查找文章 ID”，输入关键词即可。系列管理中的“查找系列 ID”“新建系列”“按 ID 插入文章”各自完成一项操作，见[查找教程](/writing/find)和[系列教程](/writing/series)。
 

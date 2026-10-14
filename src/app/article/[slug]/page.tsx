@@ -34,15 +34,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!post) notFound();
   const category = getCategory(post.category);
   if (!category) notFound();
-  const parsed = parseMarkdown(post.body, post.flow, post.assets);
+  const parsed = parseMarkdown(post.body, post.flow, post.assets, undefined, { type: post.type });
   const series = await getPostSeries(post);
 
   return (
     <div className="article-shell">
       <JsonLd data={await articleJsonLd(post)} />
       <Header backHref={`/category/${category.id}/`} backLabel={category.name} />
-      <div className="article-layout">
-        <main id="main" className="article-main" tabIndex={-1}>
+      <div className={`article-layout${post.type === 'poem' ? ' article-layout--poem' : ''}`}>
+        <main id="main" className="article-main" data-article-type={post.type} tabIndex={-1}>
           <ArticleIntro post={post} />
           {series ? <p className="article-series"><Link href={`/series/${series.slug}/`}>{series.title} · 第 {String(post.series!.order).padStart(2, '0')} 篇</Link></p> : null}
           <MobileArticleToc headings={parsed.headings} />
@@ -55,7 +55,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             {post.fixture ? <span className="micro">本文为排版示例，非已发布内容。</span> : null}
           </div>
         </main>
-        <DesktopArticleToc headings={parsed.headings} />
+        {post.type === 'poem' ? null : <DesktopArticleToc headings={parsed.headings} />}
       </div>
       <Footer note={post.fixture ? '文章页 · 阅读排版样板' : '文章页'} />
     </div>
