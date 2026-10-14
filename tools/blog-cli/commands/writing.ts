@@ -22,9 +22,22 @@ import type { CommandContext } from '../context';
 import { searchNames } from '../search';
 import { commitSeriesInsertion, describeInsertion, prepareSeriesInsertion } from '../series-insertion';
 import { assertNoPendingWrites, recoverWritingTransactions } from '../writing-transactions';
+import { commitFormat, describeFormat, prepareFormat } from '../format';
 export async function executeWriting(context: CommandContext): Promise<boolean> {
   const { root, config, invocation, prompts, print, confirm } = context;
   const { command, selectors, options } = invocation;
+  if (command === 'format') {
+    if (options['dry-run']) { print('PLANNED', (await prepareFormat(root, selectors, options.ignore)).result); return true; }
+    await withLock(cachePath(root, 'writing.lock'), async () => {
+      const recovered = await withLock(cachePath(root, 'publish.lock'), () => recoverWritingTransactions(root));
+      const plan = await prepareFormat(root, selectors, options.ignore);
+      if (!plan.files.length) { print('UNCHANGED', { ...plan.result, recovered }); return; }
+      await confirm(describeFormat(plan.result));
+      const result = await withLock(cachePath(root, 'publish.lock'), () => commitFormat(root, plan));
+      print('UPDATED', { ...result, recovered });
+    });
+    return true;
+  }
   if (command === 'search' || command === 'series' && invocation.seriesAction === 'search') {
     if (!selectors[0]) throw new BlogError('请提供中文名称或关键词。', 2, 'INPUT_REQUIRED');
     print('READ', await searchNames(root, command === 'search' ? 'article' : 'series', selectors[0])); return true;

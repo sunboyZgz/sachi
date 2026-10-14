@@ -12,6 +12,9 @@ import { releaseCurrent } from './delivery';
 import { githubTarget } from './pages';
 import { scanSeries } from '../../src/lib/blog/series';
 import { seriesAssignment } from './series';
+import { articleCatalogue } from './catalogue';
+import { draftCatalogue, draftDestination } from './drafts';
+import { draftRestoreHistory } from './writing-transactions';
 
 const nonempty = (value: string): true | string => value.trim() ? true : '请输入非空内容。';
 export const mainChoices: Choice[] = [
@@ -21,6 +24,8 @@ export const mainChoices: Choice[] = [
   { name: '发布选中文章 · publish', value: 'publish', description: '默认不勾选任何文章；先看计划，再确认上线' },
   { name: '推送冻结版本 · push', value: 'push', description: '服务器部署 + blog 分支触发 Pages；main 保持不变' },
   { name: '查看或修改文章信息 · meta', value: 'meta' },
+  { name: '整理正文中英文空格 · format', value: 'format', description: '明确选择文章，先看逐行差异；保留代码、公式和资源路径' },
+  { name: '留存与回看稿件 · draft', value: 'draft', description: '主动全量保存正文与资源；查看修改过程、直接回档与撤销' },
   { name: '查找文章 ID · search', value: 'search', description: '输入中文标题或关键词，只列候选' },
   { name: '系列管理 · series', value: 'series', description: '维护系列名称、简介和所属栏目' },
   { name: '准备作品资料 · toy', value: 'toy', description: '逐项录入或填写 YAML；待媒体处理，不上传、不进入舞台' },
@@ -177,6 +182,62 @@ export async function completeInvocation(root: string, config: BlogConfig, origi
   }
   if (!prompts.enabled) return invocation;
   const { command, options } = invocation;
+  if (command === 'draft') {
+    if (!invocation.draftAction) {
+      const selected = await prompts.select('稿件历史', [{ name: '主动全量留存当前稿', value: 'save' }, { name: '查看稿件历史', value: 'list' }, { name: '直接回档正文与资源', value: 'restore' }, { name: '撤销一次回档', value: 'undo' }, { name: '阅读一份原稿', value: 'show' }, { name: '对比稿件差异', value: 'diff' }, { name: '取回旧稿到新目录', value: 'export' }, { name: '转换旧对象格式稿件', value: 'migrate' }]);
+      if (!['save', 'list', 'show', 'diff', 'export', 'restore', 'undo', 'migrate'].includes(selected)) throw new BlogError('未知稿件操作。', 2);
+      invocation.draftAction = selected as Invocation['draftAction'];
+    }
+    const action = invocation.draftAction;
+    if (action === 'save') {
+      if (!invocation.selectors.length) {
+        const catalogue = await articleCatalogue(root);
+        if (!catalogue.articles.length) throw new BlogError('没有可留存的正式文章，请先新建或补齐文章身份。', 2, 'INPUT_REQUIRED', catalogue.issues);
+        const choices = catalogue.articles.map((article) => ({ name: `${article.title} · ${categoryNames[article.category]}`, value: article.id, description: article.file }));
+        const id = await prompts.select('选择要留存的文章', choices);
+        if (!choices.some((choice) => choice.value === id)) throw new BlogError('请选择有效文章。', 2);
+        invocation.selectors = [id]; invocation.guided = true;
+      }
+      if (options.note === undefined && !options.yes) options.note = await prompts.input('稿件备注（可留空，例如初稿、重写了结尾）', (value) => value.length <= 1000 && !value.includes('\0') ? true : '备注最多 1000 字符，不允许空字符。');
+    } else if (action === 'undo') {
+      if (!invocation.selectors.length) {
+        const history = await draftRestoreHistory(root);
+        if (!history.length) throw new BlogError('尚无已完成回档记录。', 2, 'INPUT_REQUIRED');
+        const choices = history.map((entry) => ({ name: `${entry.articleId} · ${entry.createdAt}`, value: entry.id }));
+        const id = await prompts.select('选择要撤销的回档', choices);
+        if (!choices.some((choice) => choice.value === id)) throw new BlogError('请选择有效回档记录。', 2);
+        invocation.selectors = [id]; invocation.guided = true;
+      }
+    } else if (action !== 'list' && action !== 'migrate') {
+      const catalogue = await draftCatalogue(root);
+      if (!invocation.selectors.length) {
+        if (!catalogue.drafts.length) throw new BlogError('尚无留存稿件，请先 draft save。', 2, 'INPUT_REQUIRED', catalogue.issues);
+        const choices = catalogue.drafts.toReversed().map((record) => ({ name: `${record.title} · 第 ${record.sequence} 稿${record.note ? ` · ${record.note}` : ''}`, value: record.id, description: `${record.createdAt} · ${record.id}` }));
+        const id = await prompts.select(action === 'diff' ? '选择要对比的旧稿' : '选择稿件', choices);
+        if (!choices.some((choice) => choice.value === id)) throw new BlogError('请选择有效稿件。', 2);
+        invocation.selectors = [id]; invocation.guided = true;
+      }
+      if (action === 'diff' && invocation.guided && !invocation.selectors[1]) {
+        const previous = catalogue.drafts.find((record) => record.id === invocation.selectors[0]);
+        const choices = [{ name: '当前已保存的文章', value: 'working' }, ...catalogue.drafts.filter((record) => record.articleId === previous?.articleId && record.id !== previous?.id).map((record) => ({ name: `第 ${record.sequence} 稿 · ${record.note || record.createdAt}`, value: record.id }))];
+        const id = await prompts.select('对比哪一稿？', choices);
+        if (!choices.some((choice) => choice.value === id)) throw new BlogError('请选择有效对比目标。', 2);
+        if (id !== 'working') invocation.selectors.push(id);
+      }
+      if (action === 'export' && !options.destination) options.destination = await prompts.input('取回到尚不存在的独立目录（保留当前稿）', async (value) => {
+        try { await draftDestination(root, value); return true; } catch (error) { return (error as Error).message; }
+      });
+    }
+  }
+  if (command === 'format' && !invocation.selectors.length) {
+    const { articles, issues } = await articleCatalogue(root);
+    if (!articles.length) throw new BlogError('没有可格式化的正式文章，请先新建或补齐文章身份。', 2, 'INPUT_REQUIRED', issues);
+    const choices = articles.map((article) => ({ name: `${article.title} · ${categoryNames[article.category]}`, value: article.file, description: `${article.file} · ${article.id}` }));
+    const selected = await prompts.checkbox('明确选择要整理空格的文章（默认不勾选）', choices);
+    if (!selected.length || new Set(selected).size !== selected.length || selected.some((file) => !choices.some((choice) => choice.value === file))) throw new BlogError('必须明确选择有效文章，不会默认格式化全部文章。', 2);
+    invocation.selectors = selected;
+    invocation.guided = true;
+  }
   if (command === 'toy' && !invocation.toyAction) {
     const selected = await prompts.select('作品资料管理（当前仅本地准备）', [{ name: '逐项录入作品', value: 'add' }, { name: '从填写文件录入作品', value: 'file' }, { name: '生成填写模板', value: 'template' }, { name: '查看作品 ID 与状态', value: 'list' }, { name: '重新检查作品', value: 'check' }]);
     if (!['add', 'file', 'template', 'list', 'check'].includes(selected)) throw new BlogError('未知作品资料操作。', 2);
@@ -247,7 +308,7 @@ export async function completeInvocation(root: string, config: BlogConfig, origi
       invocation.guided = true;
     }
   } else if (command === 'meta' && !options.init && !options.set?.length && !options.title && !options.slug) await collectMetadata(root, config, invocation, (await scanContent(root, config)).posts, prompts);
-  if (invocation.guided && ['build', 'publish', 'push', 'unpublish', 'rollback', 'sync', 'restore', 'recover'].includes(command!) && !options['dry-run']) {
+  if (invocation.guided && (['format', 'build', 'publish', 'push', 'unpublish', 'rollback', 'sync', 'restore', 'recover'].includes(command!) || command === 'draft' && ['save', 'export', 'restore', 'undo', 'migrate'].includes(invocation.draftAction!)) && !options['dry-run']) {
     const mode = await prompts.select('执行方式', [{ name: '只查看计划（不提交、不写入、不上线）', value: 'plan' }, { name: command === 'build' ? '确认后本地构建（不上线）' : '查看计划并确认后执行', value: 'execute' }]);
     options['dry-run'] = mode === 'plan';
     if (command === 'build' && mode === 'execute' && !options.export) options.export = await prompts.confirm('是否额外导出到 out/？旧 out 会保留为备份。');

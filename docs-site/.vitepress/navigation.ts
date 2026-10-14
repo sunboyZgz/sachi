@@ -12,6 +12,8 @@ export const navigation = [
     { text: '组织系列文章', link: '/writing/series' },
     { text: '准备玩具作品资料', link: '/writing/toys' },
     { text: '修改文章信息', link: '/writing/edit-meta' },
+    { text: '整理正文中英文空格', link: '/writing/format' },
+    { text: '留存与回看稿件', link: '/writing/drafts' },
     { text: '接入手写文章与固定 URL', link: '/writing/identity' },
     { text: '添加图片与封面', link: '/writing/images' },
     { text: '添加短视频', link: '/writing/video' },

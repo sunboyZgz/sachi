@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { parseCli } from './arguments';
 
 describe('Commander command boundary', () => {
+  it('parses manual draft save, comparison and non-overwriting export commands', () => {
+    expect(parseCli(['draft', 'save', 'post', '--note', '重写了结尾', '--dry-run'])).toMatchObject({ command: 'draft', draftAction: 'save', selectors: ['post'], options: { note: '重写了结尾', 'dry-run': true } });
+    expect(parseCli(['draft', 'diff', 'old-id', 'new-id', '--json'])).toMatchObject({ command: 'draft', draftAction: 'diff', selectors: ['old-id', 'new-id'], options: { json: true } });
+    expect(parseCli(['draft', 'export', 'id', '--destination', './old-draft'])).toMatchObject({ command: 'draft', draftAction: 'export', options: { destination: './old-draft' } });
+    expect(parseCli(['draft', 'restore', 'id', '--dry-run'])).toMatchObject({ command: 'draft', draftAction: 'restore', selectors: ['id'], options: { 'dry-run': true } });
+    expect(parseCli(['draft', 'undo', 'transaction', '--yes'])).toMatchObject({ command: 'draft', draftAction: 'undo', selectors: ['transaction'], options: { yes: true } });
+    expect(parseCli(['draft', 'migrate', 'post', '--json'])).toMatchObject({ command: 'draft', draftAction: 'migrate', selectors: ['post'], options: { json: true } });
+    expect(parseCli(['draft', '--dry-run'])).toMatchObject({ command: 'draft', options: { 'dry-run': true } });
+    expect(() => parseCli(['draft', 'save', 'a', 'b'])).toThrow();
+  });
+  it('parses explicit format selections and repeated spacing exceptions', () => {
+    expect(parseCli(['format', 'one', 'two', '--ignore', '维生素B12', '--ignore', 'OpenAI', '--dry-run', '--json'])).toMatchObject({ command: 'format', selectors: ['one', 'two'], options: { ignore: ['维生素B12', 'OpenAI'], 'dry-run': true, json: true } });
+    expect(parseCli(['format', '--help']).help).toContain('--ignore');
+  });
   it('parses name queries and ID-only series insertion with explicit order', () => {
     expect(parseCli(['search', '博客 玩具', '--json'])).toMatchObject({ command: 'search', selectors: ['博客 玩具'], options: { json: true } });
     expect(parseCli(['series', 'search', '我学会了'])).toMatchObject({ command: 'series', seriesAction: 'search', selectors: ['我学会了'] });

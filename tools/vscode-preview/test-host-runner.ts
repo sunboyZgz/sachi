@@ -56,12 +56,38 @@ try {
   await sharp({ create: { width: 160, height: 120, channels: 4, background: { r: 89, g: 107, b: 80, alpha: 1 } } }).png().toFile(path.join(workspace, 'content/闲暇娱乐/2026-10-10/assets/shape.png'));
   await sharp({ create: { width: 100, height: 500, channels: 4, background: 'green' } }).png().toFile(path.join(workspace, 'content/闲暇娱乐/2026-10-10/assets/second.png'));
   await writeFile(path.join(workspace, 'content/闲暇娱乐/2026-10-10/assets/demo.mp4'), Buffer.alloc(0));
+  const archived = path.join(workspace, '.blog-store/drafts/versions/teaching/saved/content/闲暇娱乐/2026-10-10');
+  await mkdir(path.join(archived, 'assets'), { recursive: true });
+  const flowBody = '这里是旧稿的连贯正文，用于验证任意位置的文章仍能形成真实环绕。'.repeat(12) + '\n\n![归档图](./assets/shape.png)\n\n#### 旧稿后文\n\n旧稿原文仍可定位。\n\n```ts\nconst archived = "old";\n```';
+  await writeFile(path.join(archived, 'index.md'), article('档案里的初稿', flowBody).replace('---\n\n', 'flow:\n  image: ./assets/shape.png\n  width: 180\n---\n\n'));
+  await sharp({ create: { width: 120, height: 90, channels: 4, background: '#ad6147' } }).png().toFile(path.join(archived, 'assets/shape.png'));
+  const exported = path.join(workspace, 'draft-review/first');
+  await mkdir(path.join(exported, 'content'), { recursive: true }); await mkdir(path.join(exported, 'public/assets'), { recursive: true });
+  await writeFile(path.join(exported, 'content/old-note.md'), '---\ntitle: 导出旧文章\ncategory: life\ndate: 2026-10-10\n---\n\n导出稿正文。\n\n![旧稿图片](/assets/legacy.png)');
+  await sharp({ create: { width: 80, height: 60, channels: 4, background: '#596b50' } }).png().toFile(path.join(exported, 'public/assets/legacy.png'));
+  const offline = path.join(temporary, 'offline');
+  await mkdir(path.join(offline, 'assets'), { recursive: true });
+  const singleFile = path.join(offline, '离线文章.md');
+  const standalone = article('独立文件预览', flowBody.replaceAll('旧稿', '离线').replace('旧稿原文仍可定位', '离线原文仍可定位')).replace('---\n\n', 'category: life\nflow:\n  image: ./assets/shape.png\n  width: 180\n---\n\n');
+  await writeFile(singleFile, standalone.replaceAll('\n', '\r\n'));
+  await copyFile(path.join(archived, 'assets/shape.png'), path.join(offline, 'assets/shape.png'));
+  await writeFile(path.join(offline, '邻稿.md'), article('独立邻稿', '邻稿正文。').replace('---\n\n', 'category: learn\n---\n\n'));
+  const plainWorkspace = path.join(temporary, 'plain-workspace');
+  await mkdir(plainWorkspace);
+  const workspaceFile = path.join(temporary, 'test.code-workspace');
+  await writeFile(workspaceFile, JSON.stringify({ folders: [{ path: workspace }, { path: plainWorkspace }] }));
   const executable = process.env.VSCODE_EXECUTABLE ?? '/Applications/Visual Studio Code.app/Contents/MacOS/Code';
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
-  const child = spawn(executable, [workspace, `--extensionDevelopmentPath=${path.join(root, 'tools/vscode-preview')}`, `--extensionTestsPath=${path.join(root, 'tools/vscode-preview/dist/test-host.cjs')}`, `--user-data-dir=${path.join(temporary, 'user-data')}`, `--extensions-dir=${path.join(temporary, 'extensions')}`, '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust', '--disable-updates', '--disable-telemetry', '--disable-gpu'], { env, stdio: 'inherit' });
-  const timeout = setTimeout(() => child.kill(), 120_000);
-  const code = await new Promise<number>((resolve, reject) => { child.on('error', reject); child.on('exit', (exit) => resolve(exit ?? 1)); });
-  clearTimeout(timeout);
+  async function host(target: string, name: string, extras: Record<string, string> = {}) {
+    // Keep macOS's Unix-domain IPC socket path below its 103-character limit.
+    const userDirectory = name === 'workspace' ? 'u' : 's';
+    const child = spawn(executable, [target, `--extensionDevelopmentPath=${path.join(root, 'tools/vscode-preview')}`, `--extensionTestsPath=${path.join(root, 'tools/vscode-preview/dist/test-host.cjs')}`, `--user-data-dir=${path.join(temporary, userDirectory)}`, `--extensions-dir=${path.join(temporary, `e-${userDirectory}`)}`, '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust', '--disable-updates', '--disable-telemetry', '--disable-gpu'], { env: { ...env, ...extras }, stdio: 'inherit' });
+    const timeout = setTimeout(() => child.kill(), 150_000);
+    try { return await new Promise<number>((resolve, reject) => { child.on('error', reject); child.on('exit', (exit) => resolve(exit ?? 1)); }); }
+    finally { clearTimeout(timeout); }
+  }
+  const code = await host(workspaceFile, 'workspace', { SACHI_PREVIEW_EXTERNAL_FILE: singleFile });
   if (code !== 0) process.exitCode = code;
+  else { const singleCode = await host(singleFile, 'single-file', { SACHI_PREVIEW_SINGLE_FILE: singleFile }); if (singleCode !== 0) process.exitCode = singleCode; }
 } finally { server.kill('SIGTERM'); await rm(temporary, { recursive: true, force: true }); }

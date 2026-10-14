@@ -12,14 +12,39 @@ npm run preview:build
 npm run preview:package
 ```
 
-生成 `tools/vscode-preview/dist/sachi-blog-preview.vsix`。在 VS Code 扩展页面的 `…` 菜单选择 **从 VSIX 安装**，选中该文件。需要 VS Code 1.96 或以上，以及受信任的本地或 Remote SSH 工作区。构建沿用博客的 Node.js 20.9 要求；打包工具 VSCE 4 需要 Node.js 22，首次打包会下载固定版本工具，安装现成 VSIX 时无需 Node.js。
+生成 `tools/vscode-preview/dist/sachi-blog-preview.vsix`。在 VS Code 扩展页面的 `…` 菜单选择 **从 VSIX 安装**，选中该文件。需要 VS Code 1.96 或以上，以及受信任的本地文件或 Remote SSH 工作区。单独打开本地文件也可使用，无需打开整个项目。构建沿用博客的 Node.js 20.9 要求；打包工具 VSCE 4 需要 Node.js 22，首次打包会下载固定版本工具，安装现成 VSIX 时无需 Node.js。
 
-1. 在 VS Code 中打开博客项目文件夹。
-2. 打开 `content/<栏目>/<日期[-序号]>/index.md`。
+1. 在 VS Code 中打开博客项目文件夹，或直接打开一份文章文件。
+2. 打开 `content/<栏目>/<日期[-序号]>/index.md`、完整稿件中的原文、导出的旧稿，或任意位置符合博客元数据格式的 `.md`。
 3. 点击编辑器右上角的预览图标，或命令面板运行 **Sachi Blog: 打开文章预览**。快捷键：macOS `⌘⌥V`，Windows/Linux `Ctrl+Alt+V`。
 4. 继续输入即可实时预览。命令 **Sachi Blog: 刷新文章预览** 可手动刷新。
 
-兼容旧 `content/*.md`；`tests/fixtures/content/` 只在明确打开其中的文件时预览。普通 README、文档站 Markdown 和其他仓库不会替代当前文章。
+兼容旧 `content/*.md`；`tests/fixtures/content/` 只在明确打开其中的文件时预览。普通 README 和只有教程元数据的 Markdown 不会替代当前文章。其他仓库中符合博客文章格式的文件也可预览。
+
+## 任意目录中的文章与旧稿
+
+完整稿件或导出目录保留原栏目路径时，不需要修改文章：直接打开其中的 `content/<栏目>/<日期>/index.md` 即可。插件使用这份文章自己的 `assets/` 与 `media.yaml`；旧式导出稿使用该导出目录的 `public/assets/`，不会借用当前工作文章的同名图片。
+
+例如将一篇文章单独放在 `~/writing/随笔.md`，无法从路径识别栏目时，在 frontmatter 中显式保留栏目：
+
+```markdown
+---
+id: 51f3e126-f6a0-4ef3-a4fb-6dca72b85afd
+title: 独立目录里的文章
+category: life
+createdAt: "2026-10-10T09:00:00+08:00"
+---
+
+正文照常书写。
+
+![插画](./assets/illustration.png)
+```
+
+图片位于 `~/writing/assets/illustration.png`。打开文件后运行预览命令，即可显示“生活旁白”、文章标题、日期与图片；输入、源行跟随和单击反向定位与正式文章一致。`category` 使用 `play/life/learn`；位于三个中文栏目目录内时也可由路径识别，不会给缺少栏目线索的文件猜测栏目。旧式独立文章使用 `title/category/date`，本地图片同样放在旁边的 `assets/`。
+
+位于 Sachi 项目中、只打开项目中的子文件夹，或只有一个 Sachi 工作区时，继续读取对应项目的实时样式、公开个人资料与头像。没有关联项目时使用 VSIX 自带的博客样式和署名，多项目工作区中不会随意选用其他项目的配置。预览额外位置的文章不表示 CLI 自动将它加入正式内容目录或发布集合。
+
+查看归档无需复制回正式 `content/`。预览不会修改文件；如果手动改写存档的原文或素材，稿件完整性校验会失败。继续写作应编辑当前文章，回档使用 CLI 的 `draft restore`。
 
 默认跟随当前文章编辑器。设置 `sachiPreview.followActiveEditor` 为 `false` 可固定当前文章；再次执行打开预览命令可切换。`sachiPreview.debounceMs` 可调整刷新等待时间。刷新通过消息更新 React 内容，保留同一篇文章的阅读位置，不重新加载整个 Webview。
 
@@ -104,7 +129,7 @@ console.log(title);
 
 不标语言，或标注 `text`、`plaintext`、未知语言时，保留深灰色纯文本，不自动猜测。高亮异常也保留完整原文。行内代码继承所在段落、标题或链接的文字颜色；博客和预览使用同一浅色主题，不跟随 VS Code 的深色主题。高亮保留空格、空行、末尾换行、代码复制和编辑器逐行定位。
 
-已有插件升级到 0.4.0 时，重新构建、打包并安装 VSIX；后续修改项目的 `code-highlight.css` 会实时刷新预览。
+已有插件升级到 0.4.2 时，重新构建、打包并安装 VSIX；后续修改关联项目的 `code-highlight.css` 会实时刷新预览。
 
 紧凑换行与缩进可以组合：
 
@@ -129,7 +154,7 @@ console.log(title);
 - **Webview**：直接使用博客的 `ArticleIntro`、`ArticleProse`、`MarkdownContent`、`FlowParagraphs` 和 `AuthorSignatureView`，读取根项目的 tokens.css/site.css/code-highlight.css。预览字体、颜色、正文尺寸、语法高亮和栏目差异与博客使用同一实现。
 - **自动轮廓**：Webview 用 Canvas 采样，发布端继续使用 Sharp；共用 alpha 边界算法，最高 256 px 采样，不把 Sharp 原生模块装进插件。两种图像缩放器在边缘采样上可能有细微差异，最终发布验收仍以博客构建为准。
 - **源行定位**：预览独立启用 AST 源位置标记，环绕将 Pretext 的字素游标映射回源文字范围。发布博客默认不启用这些标记。定位与正文消息分别传输，用文档路径、版本和序号过滤过期请求。
-- **隔离**：不启动 Next.js、不执行工作区脚本、不写回文章，不读取 .blog-store，不构建或发布。图片与附件限定本篇 assets（旧文使用 public/assets），拒绝越界和符号链接；Webview 有 CSP，关闭时清理监听与任务。
+- **隔离**：不启动 Next.js、不执行工作区脚本、不写回文章，不构建或发布。明确打开 `.blog-store` 中的稿件时只读取该文章及其资源，不扫描其他稿件或发布集合。图片与附件限定本篇 assets（旧内容集合使用各自 public/assets），拒绝越界和符号链接；Webview 有 CSP，关闭时清理监听与任务。
 - **打包**：esbuild 把共享组件和依赖打包到 VSIX；项目 CSS、个人资料和头像会实时读取。共享 TypeScript 渲染组件或插件源码变化后重新构建并安装 VSIX。
 
 ## 验证与开发
@@ -142,6 +167,6 @@ npm run test:browser
 npm run preview:package
 ```
 
-`preview:test:host` 在临时内容仓库和独立 VS Code 用户目录中运行真实 Extension Host/Webview 测试，检查未保存正文、错误恢复、自动轮廓、源行/代码行/表格定位、编辑器滚动、关闭跟随与手动定位、资源刷新、快速输入、切换文章和关闭清理。不访问实际 GitHub 或服务器。默认使用 macOS 的 `/Applications/Visual Studio Code.app/Contents/MacOS/Code`，其他安装位置通过 `VSCODE_EXECUTABLE` 指定桌面可执行文件。
+`preview:test:host` 在临时多文件夹工作区和独立 VS Code 用户目录中运行真实 Extension Host/Webview 测试，检查未保存正文、错误恢复、自动轮廓、源行/代码行/表格定位、编辑器滚动、关闭跟随与手动定位、资源刷新、快速输入、切换文章和关闭清理。同时验证完整稿件、导出的旧式文章、工作区外的独立文章和样式切换；第二个隔离窗口验证没有工作区的单文件预览、环绕、资源刷新与双向定位。不访问实际 GitHub 或服务器。默认使用 macOS 的 `/Applications/Visual Studio Code.app/Contents/MacOS/Code`，其他安装位置通过 `VSCODE_EXECUTABLE` 指定桌面可执行文件。
 
 Webview 与资源访问参考 [VS Code 官方 Webview API](https://code.visualstudio.com/api/extension-guides/webview)；安装包参考 [官方扩展打包文档](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#packaging-extensions)。本插件使用本地标识 `sachi-local.sachi-blog-preview`，无需发布到 Marketplace。

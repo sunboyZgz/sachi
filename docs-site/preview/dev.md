@@ -54,6 +54,25 @@ npm run preview:package
 
 将 `tools/vscode-preview/dist/sachi-blog-preview.vsix` 从 VS Code 的“从 VSIX 安装”入口安装。打开文章后运行 **Sachi Blog: 打开文章预览**，输入无需保存即可刷新；普通图片和非互动环绕图片可单击定位源码。
 
+插件也支持[完整稿件](/writing/drafts)中的原文、导出的旧稿和任意位置符合博客格式的 Markdown。直接打开旧稿目录中的 `content/<栏目>/<日期>/index.md`，即可预览当时的原文及其 `assets/`，不需要放回当前内容目录。旧式导出稿从自己的 `public/assets/` 读取资源。
+
+如果文章单独存为 `~/writing/随笔.md`，在 frontmatter 中提供栏目即可：
+
+```markdown
+---
+id: 51f3e126-f6a0-4ef3-a4fb-6dca72b85afd
+title: 独立文章
+category: life
+createdAt: "2026-10-10T09:00:00+08:00"
+---
+
+正文。
+
+![插画](./assets/illustration.png)
+```
+
+打开该文件后运行预览命令，会显示“生活旁白”、标题、日期和 `~/writing/assets/illustration.png`。不必打开整个项目；没有关联的 Sachi 项目时使用插件自带样式与署名。栏目也可由三个中文栏目目录识别；普通 README、教程 Markdown 不会替换当前文章。此能力只扩展插件预览范围，CLI 的正式文章目录与发布规则不变。
+
 预览默认跟随面板宽度。运行 **Sachi Blog: 切换桌面宽度／响应式预览** 可查看 720px 桌面正文，窄面板横向滚动。设置写法如下，效果紧随配置生效：
 
 ```json

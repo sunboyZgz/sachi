@@ -7,6 +7,7 @@ import type { CodeStyleReceipt, PreviewTestClick, RevealSource } from './protoco
 import type { ArticleStyles } from './style-audit';
 
 export async function run() {
+  if (process.env.SACHI_PREVIEW_SINGLE_FILE) return standaloneTest(process.env.SACHI_PREVIEW_SINGLE_FILE);
   const workspace = vscode.workspace.workspaceFolders![0].uri.fsPath;
   const file = path.join(workspace, 'content/闲暇娱乐/2026-10-10/index.md');
   const original = await readFile(file, 'utf8');
@@ -44,14 +45,14 @@ export async function run() {
     const styles = await inspectStyles(`${theme}: actual Webview code colors`, (receipt) => receipt.theme === kind);
     assert.equal(styles.blocks.length, 2);
     for (const code of styles.blocks) {
-      assert.equal(code.color, 'rgb(63, 70, 63)');
-      assert.equal(code.background, 'rgb(238, 238, 229)');
+      assert.equal(code.color, 'rgb(52, 60, 54)');
+      assert.equal(code.background, 'rgb(242, 243, 239)');
     }
     assert.equal(styles.blocks[0].text, 'const value = "<tag>&";\n\n// 中文注释\nconsole.log(value, 1);\n');
-    assert.equal(styles.blocks[0].tokens['hljs-keyword'], 'rgb(67, 83, 61)');
-    assert.equal(styles.blocks[0].tokens['hljs-string'], 'rgb(121, 80, 44)');
-    assert.equal(styles.blocks[0].tokens['hljs-comment'], 'rgb(98, 107, 96)');
-    assert.equal(styles.blocks[0].tokens['hljs-number'], 'rgb(118, 81, 124)');
+    assert.equal(styles.blocks[0].tokens['hljs-keyword'], 'rgb(73, 100, 71)');
+    assert.equal(styles.blocks[0].tokens['hljs-string'], 'rgb(134, 89, 56)');
+    assert.equal(styles.blocks[0].tokens['hljs-comment'], 'rgb(98, 107, 101)');
+    assert.equal(styles.blocks[0].tokens['hljs-number'], 'rgb(52, 60, 54)');
     assert.deepEqual(styles.blocks[1].tokens, {});
     assert.equal(styles.blocks[1].text, '理解工具解决的问题 -> 理解项目的宏观架构\n');
     assert.equal(styles.inline.length, 2);
@@ -60,11 +61,11 @@ export async function run() {
   const highlightFile = path.join(workspace, 'src/styles/code-highlight.css');
   const highlightCss = await readFile(highlightFile, 'utf8');
   const styleBefore = api.getPreviewState().message;
-  await writeFile(highlightFile, highlightCss.replace('color: #43533d;', 'color: #203421;'));
+  await writeFile(highlightFile, highlightCss.replace('color: #496447;', 'color: #203421;'));
   await waitFor((state) => state.message?.type === 'update' && styleBefore?.type === 'update' && state.message.styles[2] !== styleBefore.styles[2] && !!state.receipt, 'shared highlight stylesheet refresh');
   await inspectStyles('new highlight color applied without reinstalling', (receipt) => receipt.blocks[0]?.tokens['hljs-keyword'] === 'rgb(32, 52, 33)');
   await writeFile(highlightFile, highlightCss);
-  await inspectStyles('shared highlight color restored', (receipt) => receipt.blocks[0]?.tokens['hljs-keyword'] === 'rgb(67, 83, 61)');
+  await inspectStyles('shared highlight color restored', (receipt) => receipt.blocks[0]?.tokens['hljs-keyword'] === 'rgb(73, 100, 71)');
   async function replace(text: string) {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), text);
@@ -254,6 +255,42 @@ export async function run() {
   await waitFor((state) => state.message?.type === 'update' && assetBefore?.type === 'update' && state.message.post.assets['./assets/shape.png']?.url !== assetBefore.post.assets['./assets/shape.png']?.url, 'asset watcher invalidates cache');
   for (let index = 0; index < 8; index += 1) await replace(original.replace('插件验收', `连续输入 ${index}`));
   await waitFor((state) => state.receipt?.title === '连续输入 7', 'latest edit wins');
+  const archivedFile = path.join(workspace, '.blog-store/drafts/versions/teaching/saved/content/闲暇娱乐/2026-10-10/index.md');
+  const archived = await vscode.workspace.openTextDocument(archivedFile);
+  await vscode.window.showTextDocument(archived, vscode.ViewColumn.One);
+  await waitFor((state) => state.receipt?.title === '档案里的初稿' && !!state.receipt.flow, 'archive outside formal content follows automatically');
+  const archiveState = api.getPreviewState().message;
+  assert.ok(archiveState?.type === 'update');
+  assert.ok(decodeURIComponent(archiveState.post.assets['./assets/shape.png'].url).includes('.blog-store/drafts/versions/teaching/saved'));
+  await vscode.commands.executeCommand('sachiPreview.toggleLayout');
+  await inspectStyles('archive uses real local image and Pretext engine', (receipt) => receipt.flows[0]?.layout === 'wrap' && receipt.flows[0].width === 180);
+  await clickSource({ text: '图片', image: true, selector: '.flow-obstacle img' }, '![归档图]', archived);
+  await clickSource({ text: '旧稿原文仍可定位' }, '旧稿原文仍可定位', archived);
+  const exported = await vscode.workspace.openTextDocument(path.join(workspace, 'draft-review/first/content/old-note.md'));
+  await vscode.window.showTextDocument(exported, vscode.ViewColumn.One);
+  await waitFor((state) => state.receipt?.title === '导出旧文章', 'exported legacy Markdown follows');
+  const exportState = api.getPreviewState().message;
+  assert.ok(exportState?.type === 'update');
+  assert.ok(decodeURIComponent(exportState.post.assets['/assets/legacy.png'].url).includes('draft-review/first/public/assets/legacy.png'));
+  await clickSource({ text: '图片', image: true, selector: '.article-prose img' }, '![旧稿图片]', exported);
+  await vscode.window.showTextDocument(archived, vscode.ViewColumn.One);
+  await waitFor((state) => state.receipt?.title === '档案里的初稿', 'project styles available before external preview');
+  await writeFile(highlightFile, highlightCss.replace('color: #496447;', 'color: #203421;'));
+  await inspectStyles('project CSS override before detached file switch', (receipt) => receipt.blocks[0]?.tokens['hljs-keyword'] === 'rgb(32, 52, 33)');
+  const outside = await vscode.workspace.openTextDocument(process.env.SACHI_PREVIEW_EXTERNAL_FILE!);
+  const outsideEditor = await vscode.window.showTextDocument(outside, vscode.ViewColumn.One);
+  await waitFor((state) => state.receipt?.title === '独立文件预览' && state.message?.type === 'update' && state.message.styles.length === 0, 'external article follows without belonging to either workspace');
+  const bundled = await inspectStyles('bundled styles replace project styles for external article', (receipt) => receipt.blocks[0]?.tokens['hljs-keyword'] === 'rgb(73, 100, 71)' && receipt.flows[0]?.layout === 'wrap');
+  assert.equal(bundled.bodyWidth, 720);
+  await clickSource({ text: '离线原文仍可定位' }, '离线原文仍可定位', outside);
+  const point = outside.positionAt(outside.getText().indexOf('离线原文仍可定位'));
+  outsideEditor.selection = new vscode.Selection(point, point);
+  await vscode.commands.executeCommand('sachiPreview.revealLine');
+  await waitFor((state) => state.navigation?.document === outside.uri.fsPath && state.navigation.requestedLine === point.line + 1 && state.navigation.visible, 'external article keeps source following');
+  assert.ok(await outsideEditor.edit((edit) => edit.insert(outside.positionAt(outside.getText().length), '\n\n外部未保存内容。')));
+  await waitFor((state) => !!state.receipt?.text.includes('外部未保存内容') && state.message?.type === 'update' && state.message.dirty, 'detached unsaved content refreshes');
+  await writeFile(highlightFile, highlightCss);
+  await vscode.commands.executeCommand('sachiPreview.toggleLayout');
   const second = await vscode.workspace.openTextDocument(path.join(workspace, 'content/生活旁白/2026-10-10/index.md'));
   await vscode.window.showTextDocument(second, vscode.ViewColumn.One);
   await waitFor((state) => state.receipt?.title === '另一篇文章', 'follows active article');
@@ -268,4 +305,64 @@ export async function run() {
   await vscode.commands.executeCommand('workbench.action.closeEditorsInOtherGroups');
   await waitFor((state) => state.document === undefined, 'closing preview releases state');
   console.log('Sachi preview Extension Host integration passed.');
+}
+
+async function standaloneTest(file: string) {
+  assert.equal(vscode.workspace.workspaceFolders?.length ?? 0, 0, 'single file does not need a workspace');
+  const extension = vscode.extensions.getExtension<{ getPreviewState(): PreviewState; inspectCodeStyles(): void; testPreviewClick(action: PreviewTestClick): void }>('sachi-local.sachi-blog-preview');
+  assert.ok(extension);
+  const api = await extension.activate();
+  async function waitFor(predicate: (state: PreviewState) => boolean, label: string) {
+    const deadline = Date.now() + 20_000;
+    while (Date.now() < deadline) {
+      const state = api.getPreviewState();
+      if (predicate(state)) { console.log(`PASS single-file ${label}`); return state; }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error(`${label}: ${JSON.stringify(api.getPreviewState())}`);
+  }
+  const document = await vscode.workspace.openTextDocument(file);
+  const editor = await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+  await vscode.commands.executeCommand('sachiPreview.open');
+  await waitFor((state) => state.receipt?.title === '独立文件预览' && state.message?.type === 'update' && state.message.styles.length === 0, 'bundled rendering ready');
+  await vscode.commands.executeCommand('sachiPreview.toggleLayout');
+  let sequence = 0;
+  let wrapped = false;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    api.inspectCodeStyles();
+    const state = await waitFor((state) => (state.codeStyles?.sequence ?? 0) > sequence, 'computed styles');
+    sequence = state.codeStyles!.sequence;
+    if (state.codeStyles!.flows[0]?.layout === 'wrap') {
+      assert.equal(state.codeStyles!.flows[0].width, 180);
+      assert.equal(state.codeStyles!.blocks[0].tokens['hljs-keyword'], 'rgb(73, 100, 71)');
+      wrapped = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  assert.ok(wrapped, 'single-file preview runs the real wrap engine');
+  const asset = path.join(path.dirname(file), 'assets/shape.png');
+  const before = api.getPreviewState().message;
+  await writeFile(asset, await readFile(asset));
+  await waitFor((state) => before?.type === 'update' && state.message?.type === 'update' && state.message.post.assets['./assets/shape.png'].url !== before.post.assets['./assets/shape.png'].url && !!state.receipt, 'resource watcher refreshes local assets');
+  const point = document.positionAt(document.getText().indexOf('离线原文仍可定位'));
+  editor.selection = new vscode.Selection(point, point);
+  await vscode.commands.executeCommand('sachiPreview.revealLine');
+  await waitFor((state) => state.navigation?.requestedLine === point.line + 1 && state.navigation.visible, 'editor follows source line');
+  const currentText = document.getText();
+  api.testPreviewClick({ text: '离线原文仍可定位' });
+  await waitFor((state) => !!state.sourceNavigation?.accepted && !!state.testClick?.found, 'click locates actual standalone source');
+  assert.ok(vscode.window.activeTextEditor?.selection.active.isEqual(point));
+  assert.equal(document.getText(), currentText);
+  assert.ok(await editor.edit((edit) => edit.insert(document.positionAt(currentText.length), '\r\n\r\n单文件未保存内容。')));
+  await waitFor((state) => !!state.receipt?.text.includes('单文件未保存内容') && state.message?.type === 'update' && state.message.dirty, 'unsaved buffer refresh');
+  assert.ok(!(await readFile(file, 'utf8')).includes('单文件未保存内容'));
+  const readme = await vscode.workspace.openTextDocument({ language: 'markdown', content: '# 普通 README' });
+  await vscode.window.showTextDocument(readme, vscode.ViewColumn.One);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal(api.getPreviewState().document, document.uri.fsPath, 'unrelated Markdown does not replace the article');
+  const neighbour = await vscode.workspace.openTextDocument(path.join(path.dirname(file), '邻稿.md'));
+  await vscode.window.showTextDocument(neighbour, vscode.ViewColumn.One);
+  await waitFor((state) => state.receipt?.title === '独立邻稿', 'follows another valid file without a workspace');
+  console.log('Sachi single-file Extension Host integration passed.');
 }

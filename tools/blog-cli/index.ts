@@ -15,6 +15,7 @@ import { executeWriting } from './commands/writing';
 import { executeToys } from './commands/toys';
 import { executeBackup } from './commands/backup';
 import { executeReleases } from './commands/releases';
+import { executeDrafts } from './commands/drafts';
 import { assertNoPendingWrites } from './writing-transactions';
 
 export async function main(argv = process.argv.slice(2), runtime: { prompts?: PromptDriver } = {}) {
@@ -44,7 +45,7 @@ export async function main(argv = process.argv.slice(2), runtime: { prompts?: Pr
     },
     confirm: confirmation(invocation, prompts, (description) => { if (!options.json) console.error(description); }),
   };
-  for (const execute of [executeToys, executeWriting, executeBackup, executeReleases]) if (await execute(context)) return;
+  for (const execute of [executeDrafts, executeToys, executeWriting, executeBackup, executeReleases]) if (await execute(context)) return;
   throw new BlogError(`未知命令：${command}。使用 --help。`, 2);
 }
 

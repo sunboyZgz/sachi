@@ -2,17 +2,18 @@ import { Command, CommanderError, Option } from 'commander';
 import { BlogError } from '../../src/lib/blog/files';
 import type { BlogConfig } from '../../src/lib/blog/schema';
 
-export type CommandName = 'init' | 'doctor' | 'new' | 'search' | 'series' | 'toy' | 'list' | 'status' | 'meta' | 'dev' | 'check' | 'build' | 'publish' | 'push' | 'unpublish' | 'history' | 'rollback' | 'sync' | 'restore' | 'recover' | 'wizard';
+export type CommandName = 'init' | 'doctor' | 'new' | 'search' | 'series' | 'toy' | 'draft' | 'list' | 'status' | 'meta' | 'format' | 'dev' | 'check' | 'build' | 'publish' | 'push' | 'unpublish' | 'history' | 'rollback' | 'sync' | 'restore' | 'recover' | 'wizard';
 export type CliOptions = {
   root?: string; json?: boolean; yes?: boolean; 'dry-run'?: boolean; remote?: boolean;
   category?: string; title?: string; slug?: string; timezone?: string; post?: string;
   set?: string[]; init?: boolean; to?: string; resume?: string; destination?: string;
+  ignore?: string[]; note?: string;
   'git-remote'?: string; visibility?: string; 'accept-baseline'?: boolean; export?: boolean;
   pages?: boolean; 'pages-remote'?: string; 'setup-pages'?: boolean;
   series?: string[]; order?: number; description?: string;
   file?: string; output?: string; 'video-overflow'?: 'reject' | 'trim-start';
 };
-export type Invocation = { command?: CommandName; selectors: string[]; options: CliOptions; guided?: boolean; configDraft?: BlogConfig; help?: string; seriesAction?: 'new' | 'list' | 'meta' | 'search' | 'add'; toyAction?: 'add' | 'template' | 'list' | 'check' };
+export type Invocation = { command?: CommandName; selectors: string[]; options: CliOptions; guided?: boolean; configDraft?: BlogConfig; help?: string; seriesAction?: 'new' | 'list' | 'meta' | 'search' | 'add'; toyAction?: 'add' | 'template' | 'list' | 'check'; draftAction?: 'save' | 'list' | 'show' | 'diff' | 'export' | 'restore' | 'undo' | 'migrate' };
 
 export function createCliProgram(onInvoke: (invocation: Invocation) => void = () => {}, onOutput: (text: string) => void = () => {}): Command {
   const program = new Command().name('blog').description('Sachi Blog · 本地 Markdown 写作与显式发布')
@@ -59,6 +60,21 @@ export function createCliProgram(onInvoke: (invocation: Invocation) => void = ()
       onInvoke({ command: 'series', seriesAction: action, selectors: child.processedArgs.flat().filter((value): value is string => typeof value === 'string'), options });
     });
   }
+  const draft = program.command('draft').description('主动全量留存稿件、查看差异、直接回档与撤销').helpOption('-h, --help', '显示稿件帮助');
+  draft.action(() => onInvoke({ command: 'draft', selectors: [], options: Object.fromEntries(Object.entries(draft.optsWithGlobals()).map(([key, value]) => [key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`), value])) as CliOptions }));
+  for (const action of ['save', 'list', 'show', 'diff', 'export', 'restore', 'undo', 'migrate'] as const) {
+    const child = draft.command(action).description({ save: '独立全量保存原文与本地资源；缺失资源时拒绝，可写备注', list: '只读列出全部或某篇文章的稿件历史与实际目录', show: '只读显示一份稿件的原始 Markdown', diff: '对比两份稿件；省略新稿件时对比当前稿', export: '将旧稿与素材导出到独立新目录，不覆盖当前稿', restore: '备份当前文件后，直接恢复指定稿件的正文与资源', undo: '撤销一次回档；回档后有额外编辑时拒绝覆盖', migrate: '把完整的旧对象式稿件转为独立全量目录，保留 ID 与原记录' }[action]).helpOption('-h, --help', '显示帮助');
+    if (action === 'save' || action === 'list' || action === 'migrate') child.argument('[article]', '文章 ID、slug 或路径');
+    if (action === 'save') child.option('--note <备注>', '稿件阶段或修改原因，最多 1000 字符');
+    if (action === 'show' || action === 'export' || action === 'restore') child.argument('[稿件ID]', '完整稿件 UUID，可通过 draft list 查找');
+    if (action === 'undo') child.argument('[回档记录ID]', 'draft restore 输出的回档事务 UUID');
+    if (action === 'diff') child.argument('[旧稿件ID]', '完整稿件 UUID').argument('[新稿件ID]', '同篇文章的另一稿 UUID；缺省为当前已保存的文章');
+    if (action === 'export') child.option('--destination <新目录>', '尚不存在的独立目录，保留原文与素材路径');
+    child.action(() => {
+      const options = Object.fromEntries(Object.entries(child.optsWithGlobals()).map(([key, value]) => [key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`), value])) as CliOptions;
+      onInvoke({ command: 'draft', draftAction: action, selectors: child.processedArgs.flat().filter((value): value is string => typeof value === 'string'), options });
+    });
+  }
   const toy = program.command('toy').description('准备本地作品资料；待媒体处理，不上传或公开').helpOption('-h, --help', '显示作品帮助');
   toy.action(() => onInvoke({ command: 'toy', selectors: [], options: toy.optsWithGlobals() }));
   for (const action of ['add', 'template', 'list', 'check'] as const) {
@@ -77,6 +93,8 @@ export function createCliProgram(onInvoke: (invocation: Invocation) => void = ()
     .option('--init', '补齐手写文章的 ID 与创建时间')
     .option('--set <字段=YAML值>', '可重复使用', (value: string, previous: string[] = []) => [...previous, value])
     .option('--title <标题>', '修改标题').option('--slug <slug>', '修改从未发布文章的 slug');
+  define('format', '为选中文章正文补中英文空格；先看差异，再确认写入', '[articles...]')
+    .option('--ignore <词语>', '保留词语原写法，可重复；默认保留 A股/B股/H股/A站/B站', (value: string, previous: string[] = []) => [...previous, value]);
   define('dev', '选择首页或文章，启动现有本地预览', '[article]').option('--post <文章>', '预览文章');
   define('check', '检查全部或选中的文章', '[articles...]');
   define('build', '选择文章生成发布包，不上线', '[articles...]').option('--export', '导出到 out/；保留旧目录备份').option('--accept-baseline', '接受全站代码/配置基线变更')

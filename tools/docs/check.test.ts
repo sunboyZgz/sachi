@@ -50,7 +50,7 @@ describe('task-oriented CLI handbook', () => {
     expect(browserTokenize('blog publish --dry-run')).toEqual(tokenizeChinese('blog publish --dry-run'));
   });
   it('covers every command and keeps generated flags aligned with actual help', async () => {
-    expect(await checkDocs()).toEqual({ pages: 67, commands: 21 });
+    expect(await checkDocs()).toEqual({ pages: 71, commands: 23 });
     for (const command of commandCatalog()) {
       const page = referencePages()[`reference/commands/${command.name}.md`];
       const help = parseCli([command.name, '--help']).help;
@@ -71,7 +71,7 @@ describe('task-oriented CLI handbook', () => {
     const root = await fixture();
     await mkdir(path.join(root, 'node_modules'));
     await symlink(source, path.join(root, 'node_modules', 'dependency'));
-    expect(await checkDocs(root)).toEqual({ pages: 67, commands: 21 });
+    expect(await checkDocs(root)).toEqual({ pages: 71, commands: 23 });
   });
   it('rejects task pages without result verification', async () => {
     const root = await fixture(); const file = path.join(root, 'writing/new.md');

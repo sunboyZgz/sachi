@@ -26,7 +26,7 @@ online: 不改变
 
 4. 退出码 4：基线或并发变化。重新查服务器并计划，不修改旧摘要绕过比较。
 
-   系列插入返回 WRITING_RECOVERY_REQUIRED 时，不继续写作修改或发布，先按下方恢复记录处理；只读查找仍可运行：
+   系列插入或正文格式化返回 WRITING_RECOVERY_REQUIRED 时，不继续写作修改或发布，先按下方恢复记录处理；只读查找仍可运行：
 
    ```sh
    npm run blog -- search "朝思暮想"
@@ -59,6 +59,14 @@ online: 不改变
 | 状态 | 意味着什么 | 安全的下一步 |
 | --- | --- | --- |
 | PLANNED | 只看计划，没冻结或上线 | 核对后重新进入执行 |
+| draft SAVED / EXPORTED | 稿件已留存 / 已取回到独立新目录 | 记录稿件 ID；当前文章和公开版本保持原样 |
+| draft RESTORED / UNDONE | 正文与资源已直接回档 / 回档已撤销 | 保留回档记录 ID；公开版本保持原样 |
+| draft MIGRATED | 旧稿已转成独立完整目录，原 ID 保留 | 核对目录；原记录暂时保留 |
+| DRAFT_INCOMPLETE | 稿件引用的资源缺失、在远端或无法核对 | 补齐当时的本地资源；不登记不完整版本，不用当前素材冒充旧素材 |
+| DRAFT_RESTORE_CONFLICT | 原路径已被占用、共享素材冲突或已发布 URL 不一致 | 核对具体冲突，先 export 回看；不覆盖其他文章 |
+| DRAFT_INVALID | 稿件记录或文件损坏、路径异常 | 保留历史并检查具体文件，从完整备份取回；不修改摘要绕过校验 |
+| DRAFT_EXPORT_INCOMPLETE | 导出未完成，部分新目录保留 | 核对失败原因，使用另一个新目录重试 |
+| format UPDATED / UNCHANGED | 本地正文空格已保存 / 无需修改 | 预览确认；公开修订仍需明确发布 |
 | PREPARED | 作品本地资料已登记，待媒体处理 | 保留原文件；不代表已压缩、上传或进入舞台 |
 | LOCAL_VALID | 作品本地资料、原媒体及公网地址复查通过 | 仍待媒体处理；压缩后大小与保留秒数未知 |
 | INVALID_TOY / INVALID_PROJECT_URL / PROJECT_URL_UNREACHABLE | 作品资料、媒体或匿名公网检查失败 | 根据错误修正字段、文件或项目地址；不跳过校验 |
@@ -111,6 +119,16 @@ npm run blog -- series add <文章ID> --series <系列ID> --order 2
 发现额外编辑时返回 WRITING_RECOVERY_CONFLICT 或带同类原因的 WRITING_RECOVERY_REQUIRED，恢复记录和额外编辑都保留。先按 `details` 核对文件，保存额外编辑的独立副本，再用记录中的 before/after 对照修复；原文件必须明确回到其中一种状态后，才能再次安全恢复。文件缺失也必须先恢复原稿，不能用空文件代替。`--dry-run` 不执行恢复，不写记录。
 
 ALREADY_IN_SERIES 表示文章已经归组，add 不自动换系列；SOURCE_MISSING 表示需要顺延的公开章节缺少本地源文件。修正原始问题后重试，不使用相似名称代替完整 ID。
+
+正文格式化使用同一套恢复记录、锁和摘要校验。格式化中断后，重新执行对应的 format 命令，先恢复，再展示新的差异并确认；预演不会恢复：
+
+```sh
+npm run blog -- format <文章>
+```
+
+操作边界及逐行输出见[正文空格整理](/writing/format)。
+
+主动留存稿件时出现 SOURCE_CHANGED，表示确认后的原文、素材或历史有变化；重新核对并生成留存计划即可。存档本身不修改源稿；`draft restore` 直接恢复本地正文和资源，先保存二进制备份到写作事务目录，`draft undo` 可撤销。回档中断后重新执行原命令会先恢复未完成事务，额外编辑冲突时保留记录并拒绝覆盖；预演不恢复。查询、导出与完整备份方式见[留存与回档稿件](/writing/drafts)。
 
 ### 求助时保留什么
 

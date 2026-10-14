@@ -1,6 +1,8 @@
 import type { Plan } from './plan';
 import { categoryNames } from '../../src/lib/blog/schema';
 import { describeInsertion, type InsertionResult } from './series-insertion';
+import { describeFormat, type FormatResult } from './format';
+import { describeDraft, draftArchivePath, type DraftRecord, type DraftPlan } from './drafts';
 
 export function describePlan(plan: Plan): string {
   const titles = (ids: string[]) => ids.map((id) => plan.manifest.entries.find((entry) => entry.id === id)?.title ?? id);
@@ -24,6 +26,26 @@ export function humanResult(command: string, status: string, data: unknown): str
   if (typeof data === 'string') return `${heading}\n${data}`;
   if (!data || typeof data !== 'object') return `${heading}\n${String(data)}`;
   const record = data as Record<string, unknown>;
+  if (command === 'draft') {
+    if (Array.isArray(record.drafts)) return ['稿件历史（本地）：',
+      ...(record.drafts as DraftRecord[]).map((draft) => `${draft.title} · 第 ${draft.sequence} 稿 · ${draft.createdAt}\n  备注：${draft.note || '未填写'}\n  稿件 ID：${draft.id}\n  文章 ID：${draft.articleId}\n  ${draft.schemaVersion === 2 ? `完整目录：${draftArchivePath(draft)}\n  原文：${draftArchivePath(draft)}/${draft.sourcePath}` : '旧对象格式：可用 draft migrate 转换完整稿件'}`),
+      record.drafts.length ? '' : '尚无留存稿件。', ...((record.issues ?? []) as Array<{ file: string; message: string }>).map((issue) => `读取问题：${issue.file} · ${issue.message}`)].filter(Boolean).join('\n');
+    if (typeof record.markdown === 'string') {
+      const draft = record.record as DraftRecord;
+      return `稿件：${draft.title} · 第 ${draft.sequence} 稿 · ${draft.note || '未填写备注'}\n时间：${draft.createdAt}\nID：${draft.id}\n\n${record.markdown}`;
+    }
+    if (typeof record.patch === 'string') return [`稿件对比：${record.title}\n${record.from} → ${record.to === 'working' ? '当前稿' : record.to}`, record.changed ? record.patch : '原文与素材没有变化。',
+      ...((record.files ?? []) as Array<{ file: string; before: string | null; after: string | null }>).map((entry) => `文件${!entry.before ? '新增' : !entry.after ? '移除' : '变化'}：${entry.file}`)].join('\n');
+    if (Array.isArray(record.migrated)) return [status === 'PLANNED' ? '旧稿完整目录转换计划（未写入）' : '旧稿完整目录转换完成',
+      ...(record.migrated as Array<{ id: string; title: string; archivePath: string }>).map((entry) => `${entry.title} · ${entry.id}\n  ${entry.archivePath}`), record.migrated.length ? '原 ID、时间、备注与旧记录保留。' : '没有需要转换的旧稿。'].join('\n');
+    if (record.undo) return [`${status === 'PLANNED' ? '撤销回档计划（未写入）' : '回档已撤销'}：${record.undo}`, record.transaction ? `新回档记录 ID：${record.transaction}` : '', '只影响本地文件，公开版本保持原样。'].filter(Boolean).join('\n');
+    if (Array.isArray(record.changes)) return [status === 'PLANNED' ? '回档计划（未写入）' : record.changed ? '正文与资源已回档' : '当前文件已是此版本，无需回档',
+      `文章：${record.title} · ${record.articleId}\n目标稿件：${record.id}`, ...(record.changes as Array<{ file: string; action: string }>).map((entry) => `${entry.action} · ${entry.file}`),
+      record.transaction ? `回档记录 ID：${record.transaction}\n撤销命令：npm run blog -- draft undo ${record.transaction}\n当前文件备份：${record.backupPath}` : '', '只修改本地文件，未发布。'].filter(Boolean).join('\n');
+    if (record.destination) return [`稿件${status === 'PLANNED' ? '导出计划（未写入）' : '已取回到新目录'}：${record.title}`, `ID：${record.id}`, `目录：${record.destination}`, record.sourceFile ? `原文：${record.sourceFile}` : '', '当前文章保持原样。', ...((record.warnings ?? []) as string[]).map((warning) => `提示：${warning}`)].filter(Boolean).join('\n');
+    return [`${status === 'PLANNED' ? '留存计划（未写入）' : '稿件已留存'}`, describeDraft(data as DraftPlan), record.id ? `稿件 ID：${record.id}\n时间：${record.createdAt}\n记录：${record.recordFile}` : '执行后才生成稿件 ID。'].join('\n');
+  }
+  if (command === 'format') return `format：${status === 'UNCHANGED' ? '无需修改' : statusNames[status] ?? status}\n${describeFormat(data as FormatResult)}${status === 'PLANNED' ? '\n未写入文件。' : status === 'UPDATED' ? '\n格式化已保存，尚未发布。' : ''}${Array.isArray(record.recovered) && record.recovered.length ? `\n已恢复上次未完成的写作事务：${record.recovered.join('、')}` : ''}`;
   if (command === 'toy') {
     const issues = (record.issues ?? []) as Array<{ file: string; message: string }>;
     if (Array.isArray(record.toys)) {

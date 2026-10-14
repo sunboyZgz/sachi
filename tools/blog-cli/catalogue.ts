@@ -4,6 +4,15 @@ import { splitDocument } from '../../src/lib/blog/document';
 import { BlogError, exists, safeFile, sha256 } from '../../src/lib/blog/files';
 import { categoryNames, categorySchema, postSchema, seriesRefSchema, type BlogPost } from '../../src/lib/blog/schema';
 
+export function matchingArticles(root: string, articles: ArticleIdentity[], selector: string) {
+  const file = (path.isAbsolute(selector) ? path.relative(root, selector) : selector).replace(/^\.\//, '').split(path.sep).join('/').replace(/\/$/, '');
+  return articles.filter((source) => {
+    const { data } = splitDocument(source.raw);
+    const slug = source.file.endsWith('/index.md') ? data.slug ?? source.id : path.basename(source.file, '.md');
+    return source.id.toLowerCase() === selector.toLowerCase() || slug === selector || source.file === file || source.file.replace(/\/index.md$/, '') === file;
+  });
+}
+
 export type ArticleIdentity = {
   id: string; title: string; category: BlogPost['category']; file: string; raw: string;
   series?: BlogPost['series'];

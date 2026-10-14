@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { articleLocation, buildPreview, findInternalTarget, internalOrigin, type ArticleLocation } from './preview';
+import { buildPreview, findInternalTarget, internalOrigin, locateArticle, type ArticleLocation } from './preview';
 import { currentSourceRequest } from './source-request';
 import type { CodeStyleReceipt, NavigationReceipt, PreviewTestClick, PreviewTestReceipt, RenderMessage, RenderReceipt, RevealLine, RevealSource, SourceNavigationReceipt, ViewMessage } from './protocol';
 
@@ -16,17 +16,7 @@ async function readText(file: string) {
 
 async function locate(document: vscode.TextDocument) {
   if (document.languageId !== 'markdown' || !['file', 'vscode-remote'].includes(document.uri.scheme)) return null;
-  const workspace = vscode.workspace.getWorkspaceFolder(document.uri);
-  if (!workspace) return null;
-  let root = path.dirname(document.uri.fsPath);
-  for (;;) {
-    try {
-      const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
-      if (packageJson.name === 'sachi-blog') return articleLocation(root, document.uri.fsPath);
-    } catch { /* Walk up through article directories to the project. */ }
-    if (root === workspace.uri.fsPath || path.dirname(root) === root) return null;
-    root = path.dirname(root);
-  }
+  return locateArticle(document.uri.fsPath, document.getText(), vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath));
 }
 
 class Preview implements vscode.Disposable {
@@ -57,10 +47,10 @@ class Preview implements vscode.Disposable {
 
   async open(document = vscode.window.activeTextEditor?.document) {
     const generation = ++this.follows;
-    if (!document) { void vscode.window.showInformationMessage('请先打开 content/ 中的博客文章。'); return; }
+    if (!document) { void vscode.window.showInformationMessage('请先打开符合博客格式的 Markdown 文章。'); return; }
     const location = await locate(document);
     if (generation !== this.follows) return;
-    if (!location) { void vscode.window.showInformationMessage('请打开 Sachi Blog 项目中的 content/<栏目>/<日期>/index.md 或旧 content/*.md。'); return; }
+    if (!location) { void vscode.window.showInformationMessage('请选择带博客 frontmatter 的 Markdown：标题、文章 ID 和创建时间（旧格式为 date）；独立文件还需 category: play/life/learn 或所属栏目目录。'); return; }
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel('sachiPreview', 'Sachi Blog 文章预览', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, { enableScripts: true, retainContextWhenHidden: true });
       this.panel.onDidDispose(() => this.close(), undefined, this.context.subscriptions);
@@ -109,14 +99,16 @@ class Preview implements vscode.Disposable {
     this.target = undefined;
     if (this.navigationTimer) clearTimeout(this.navigationTimer);
     this.panel!.title = `文章预览 · ${path.basename(path.dirname(document.uri.fsPath))}`;
-    const roots = [vscode.Uri.joinPath(this.context.extensionUri, 'dist'), vscode.Uri.file(path.join(location.root, 'src/styles')), vscode.Uri.file(path.join(location.root, 'src/assets/avatar')),
-      vscode.Uri.file(location.legacy ? path.join(location.root, 'public/assets') : path.join(path.dirname(location.file), 'assets'))];
+    const roots = [vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
+      ...(location.projectRoot ? [vscode.Uri.file(path.join(location.projectRoot, 'src/styles')), vscode.Uri.file(path.join(location.projectRoot, 'src/assets/avatar'))] : []), vscode.Uri.file(location.assetRoot)];
     this.panel!.webview.options = { enableScripts: true, localResourceRoots: roots };
     for (const watcher of this.watchers) watcher.dispose();
     this.watchers = [];
     const patterns = [
-      new vscode.RelativePattern(path.dirname(location.file), '{index.md,media.yaml,assets/**}'),
-      new vscode.RelativePattern(location.root, '{blog.config.json,src/config/profile.json,src/styles/*.css,src/assets/avatar/avatar-half.png,public/assets/**,content/series/*.yaml,tests/fixtures/content/series/*.yaml}'),
+      new vscode.RelativePattern(path.dirname(location.file), '*.{md,yaml}'),
+      new vscode.RelativePattern(location.assetRoot, '**/*'),
+      new vscode.RelativePattern(location.contentRoot, 'series/*.yaml'),
+      ...(location.projectRoot ? [new vscode.RelativePattern(location.projectRoot, '{blog.config.json,src/config/profile.json,src/styles/*.css,src/assets/avatar/avatar-half.png}')] : []),
     ];
     for (const pattern of patterns) {
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
@@ -127,7 +119,7 @@ class Preview implements vscode.Disposable {
   changed(document: vscode.TextDocument) {
     if (!this.panel || !this.location) return;
     const file = document.uri.fsPath;
-    if (document === this.document || file === path.join(path.dirname(this.location.file), 'media.yaml') || file === path.join(this.location.root, 'blog.config.json') || file === path.join(this.location.root, 'src/config/profile.json')) this.refresh();
+    if (document === this.document || file === path.join(path.dirname(this.location.file), 'media.yaml') || this.location.projectRoot && [path.join(this.location.projectRoot, 'blog.config.json'), path.join(this.location.projectRoot, 'src/config/profile.json')].includes(file)) this.refresh();
   }
 
   private syncEnabled() { return vscode.workspace.getConfiguration('sachiPreview').get<boolean>('syncScroll', true); }

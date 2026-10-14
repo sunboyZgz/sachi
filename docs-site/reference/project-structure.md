@@ -5,6 +5,8 @@ scope: reference
 
 # 项目目录职责
 
+主动留存的稿件历史在 `.blog-store/drafts/versions/<文章ID>/<稿件ID>/`：每稿独立全量保存原文、素材和预设，`draft.json` 记录时间、备注与文件清单，可以直接打开或独立备份。旧 `records/objects` 格式仍可读取并转换。回档前的实际文件另存在 `.blog-store/writing-transactions/`，CLI 支持撤销回档。它们是私有持久资料，不是 `.blog/` 缓存，不进入公开集合；使用方式见[稿件留存与回档](/writing/drafts)。
+
 正式项目直接位于 `sachi/` 根目录，不在视觉交接包中开发。无需把内容、头像或使用手册复制到另一个项目。
 
 ```text

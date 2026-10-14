@@ -304,9 +304,9 @@ test('keeps code colors readable under host styles and wide highlighted lines in
   // VS Code gives code its own theme color instead of inheriting the blog's ink.
   await page.addStyleTag({ content: 'code, a code { color: #e9b662; }' });
   const code = page.locator('.code-block pre code').first();
-  await expect(code).toHaveCSS('color', 'rgb(63, 70, 63)');
-  await expect(code.locator('.hljs-keyword').first()).toHaveCSS('color', 'rgb(67, 83, 61)');
-  await expect(code.locator('.hljs-string').first()).toHaveCSS('color', 'rgb(121, 80, 44)');
+  await expect(code).toHaveCSS('color', 'rgb(52, 60, 54)');
+  await expect(code.locator('.hljs-keyword').first()).toHaveCSS('color', 'rgb(73, 100, 71)');
+  await expect(code.locator('.hljs-string').first()).toHaveCSS('color', 'rgb(134, 89, 56)');
   await page.locator('.article-prose').evaluate((prose) => {
     const paragraph = document.createElement('p');
     paragraph.innerHTML = '行内 <code>inline</code> 和 <a href="#main"><code>link</code></a>。';
@@ -318,7 +318,7 @@ test('keeps code colors readable under host styles and wide highlighted lines in
     pre.append(plain);
     prose.append(paragraph, pre);
   });
-  await expect(page.locator('#plain-code-probe code')).toHaveCSS('color', 'rgb(63, 70, 63)');
+  await expect(page.locator('#plain-code-probe code')).toHaveCSS('color', 'rgb(52, 60, 54)');
   expect(await page.locator('#plain-code-probe code span').count()).toBe(0);
   await expect(page.locator('#code-color-probe > code')).toHaveCSS('color', 'rgb(63, 70, 63)');
   await expect(page.locator('#code-color-probe a code')).toHaveCSS('color', 'rgb(67, 83, 61)');
@@ -422,7 +422,7 @@ test('keeps the complete original paragraphs readable for printing', async ({ pa
   await expect(page.locator('.heading-link').first()).toBeHidden();
   await expect(page.locator('.code-block pre code').first()).toBeVisible();
   await expect(page.locator('.code-block .hljs-keyword').first()).toBeVisible();
-  await expect(page.locator('.code-block .hljs-keyword').first()).toHaveCSS('color', 'rgb(67, 83, 61)');
+  await expect(page.locator('.code-block .hljs-keyword').first()).toHaveCSS('color', 'rgb(73, 100, 71)');
   await expect(page.locator('.code-block pre').first()).toHaveCSS('padding-top', '22px');
 });
 

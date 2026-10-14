@@ -135,8 +135,8 @@ a:hover .arrow { transform: translateX(4px); }
 .article-prose blockquote { margin: 28px 0; padding: 8px 0 8px 24px; background: transparent; border: 0; border-left: 2px solid var(--moss); color: var(--moss-dark); }
 .article-prose blockquote p { margin: 0; }
 .article-prose code { color: inherit; font: .83em/1.7 var(--font-mono); background: var(--tint); padding: 2px 5px; border-radius: 2px; }
-.article-prose pre { margin: 28px 0; padding: 22px 24px; overflow-x: auto; background: #eeeee5; border: 1px solid var(--rule); }
-.article-prose pre code { display: block; color: var(--article-body-color); background: none; padding: 0; font-size: 13px; line-height: 1.9; }
+.article-prose pre { margin: 28px 0; padding: 22px 24px; overflow-x: auto; background: #f2f3ef; border: 1px solid #dde1d8; }
+.article-prose pre code { display: block; color: #343c36; background: none; padding: 0; font-size: 13px; line-height: 1.9; }
 .code-block { position: relative; margin: 28px 0; }
 .article-prose .code-block pre { margin: 0; padding-top: 58px; }
 .code-copy { position: absolute; top: 8px; right: 12px; min-width: 64px; min-height: 44px; padding: 4px 10px; border: 0; background: transparent; color: var(--moss-dark); font: 12px/1.5 var(--font-ui); }

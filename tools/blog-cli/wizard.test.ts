@@ -53,7 +53,7 @@ afterEach(async () => { vi.restoreAllMocks(); for (const directory of temporary.
 describe('guided writing without parameter memorization', () => {
   it('puts the everyday writing workflow first and exposes every practical operation', () => {
     expect(mainChoices.slice(0, 4).map((choice) => choice.value)).toEqual(['new', 'dev', 'check', 'publish']);
-    expect(mainChoices.map((choice) => choice.value)).toEqual(['new', 'dev', 'check', 'publish', 'push', 'meta', 'search', 'series', 'toy', 'status', 'build', 'sync', 'unpublish', 'resume', 'history', 'rollback', 'restore', 'recover', 'init', 'doctor', 'quit']);
+    expect(mainChoices.map((choice) => choice.value)).toEqual(['new', 'dev', 'check', 'publish', 'push', 'meta', 'format', 'draft', 'search', 'series', 'toy', 'status', 'build', 'sync', 'unpublish', 'resume', 'history', 'rollback', 'restore', 'recover', 'init', 'doctor', 'quit']);
     expect(new Set(mainChoices.map((choice) => choice.value)).size).toBe(mainChoices.length);
   });
   it('enters the main menu, chooses the category and only asks for a title', async () => {

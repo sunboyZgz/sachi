@@ -107,6 +107,9 @@ async function update(message: RenderMessage) {
     if (!link) { link = document.createElement('link'); link.id = id; link.rel = 'stylesheet'; document.head.append(link); }
     if (link.href !== data.styles[index]) link.href = data.styles[index];
   }
+  for (const link of document.querySelectorAll<HTMLLinkElement>('link[id^="project-style-"]')) {
+    if (Number(link.id.slice('project-style-'.length)) >= data.styles.length) link.remove();
+  }
   document.getElementById('preview-error')?.remove();
   current = data;
   flushSync(() => root.render(<Article data={data} parsed={parsed} />));

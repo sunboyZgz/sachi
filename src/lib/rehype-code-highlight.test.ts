@@ -44,9 +44,8 @@ describe('shared code highlighting', () => {
   it('keeps every palette color above 4.5:1 against the actual code background', async () => {
     const theme = await readFile(new URL('../styles/code-highlight.css', import.meta.url), 'utf8');
     const site = await readFile(new URL('../styles/site.css', import.meta.url), 'utf8');
-    const tokens = await readFile(new URL('../styles/tokens.css', import.meta.url), 'utf8');
     const background = site.match(/\.article-prose pre \{[^}]*background: (#[\da-f]{6})/i)![1];
-    const body = tokens.match(/--article-body-color: (#[\da-f]{6})/i)![1];
+    const body = site.match(/\.article-prose pre code \{[^}]*color: (#[\da-f]{6})/i)![1];
     function luminance(hex: string) {
       const [red, green, blue] = hex.slice(1).match(/../g)!.map((part) => parseInt(part, 16) / 255).map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
       return red * 0.2126 + green * 0.7152 + blue * 0.0722;

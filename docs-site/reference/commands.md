@@ -17,10 +17,12 @@ scope: reference
 | [search](/reference/commands/search) | 根据中文标题或关键词查找本地文章 ID |
 | [new](/reference/commands/new) | 选择三个栏目之一，再输入标题 |
 | [series](/reference/commands/series) | 查找、创建系列，或按 ID 插入章节 |
+| [draft](/reference/commands/draft) | 主动全量留存稿件、查看差异、直接回档与撤销 |
 | [toy](/reference/commands/toy) | 准备本地作品资料；待媒体处理，不上传或公开 |
 | [list](/reference/commands/list) | 列出文章 |
 | [status](/reference/commands/status) | 查看文章与备份状态 |
 | [meta](/reference/commands/meta) | 选择文章，查看或修改元数据 |
+| [format](/reference/commands/format) | 为选中文章正文补中英文空格；先看差异，再确认写入 |
 | [dev](/reference/commands/dev) | 选择首页或文章，启动现有本地预览 |
 | [check](/reference/commands/check) | 检查全部或选中的文章 |
 | [build](/reference/commands/build) | 选择文章生成发布包，不上线 |
