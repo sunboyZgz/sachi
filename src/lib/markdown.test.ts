@@ -138,6 +138,21 @@ describe('automatic local flow regions', () => {
     expect(parsed.flows).toHaveLength(1);
     expect(parsed.markdown).toBe(body);
   });
+  it.each([
+    '::前文。\n![图](./assets/a.png)\n::后文。',
+    '::前文。\n\n![图](./assets/a.png)\n::后文。',
+    '::前文。\n![图](./assets/a.png)\n\n::后文。',
+  ])('explains missing paragraph separators and preserves ordinary fallback: %s', (body) => {
+    expect(() => parseMarkdown(body, spec('./assets/a.png'))).toThrow('前后各空一行');
+    const fallback = parseMarkdown(body, spec('./assets/a.png'), {}, undefined, { tolerant: true });
+    expect(fallback.flows).toEqual([]); expect(fallback.markdown).toBe(body);
+    expect(fallback.warnings.join(' ')).not.toContain('未出现在正文');
+    const separated = body.replace('![图](./assets/a.png)', '\n![图](./assets/a.png)\n');
+    const corrected = parseMarkdown(separated, spec('./assets/a.png'));
+    expect(corrected.flows).toHaveLength(1); expect(corrected.warnings).toEqual([]);
+    expect(corrected.flows[0].paragraphs).toEqual(['\u2003\u2003前文。', '\u2003\u2003后文。']);
+    expect(corrected.markdown).toBe(separated);
+  });
   it('does not merge settings when two source resources share a frozen display URL', () => {
     const assets = Object.fromEntries(['a', 'b'].map((name) => [`./assets/${name}.png`, { url: '/media/same.png', type: 'image' as const, width: 100, height: 200 }]));
     const parsed = parseMarkdown('正文。\n\n![甲](./assets/a.png)\n\n---\n\n正文。\n\n![乙](./assets/b.png)', [spec('./assets/a.png', 120), spec('./assets/b.png', 360)], assets);

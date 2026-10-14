@@ -127,9 +127,9 @@ export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<
     if (!spec) return;
     seen.add(spec);
     const top = parent?.type === 'paragraph' && tree.children.includes(parent) && parent.children.length === 1;
-    if (!top) issue(`第 ${atLine(node.position?.start.line)} 行：${spec.image} 不是独立的正文图片段落，嵌套或富文本图片保留普通 Markdown。`);
+    if (!top) issue(`第 ${atLine(node.position?.start.line)} 行：${spec.image} 不是独立的正文图片段落。请把图片语句放在正文顶层，前后各空一行；嵌套或富文本图片保留普通 Markdown。`);
   });
-  for (const spec of new Set(specs.values())) if (!seen.has(spec)) issue(`flow.image 未出现在正文：${spec.image}`);
+  for (const spec of new Set(specs.values())) if (!seen.has(spec)) issue(`flow.image 未出现在正文：${spec.image}。flow 只配置排版，请在正文添加 ![图片](${spec.image})，前后各空一行。`);
   const bodyLines = body.split('\n');
   const mapper = origin ? createSourceMapper(body, origin) : undefined;
   const eligible = (node: Root['children'][number]) => node.type === 'definition' || node.type === 'paragraph' && (isPlainParagraph(node) || node.children.length === 1 && (node.children[0].type === 'image' || node.children[0].type === 'imageReference') && specs.has(keyFor(node.children[0])));

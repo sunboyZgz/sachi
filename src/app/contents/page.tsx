@@ -35,30 +35,32 @@ export default async function ContentsPage() {
                   <Link href={`/category/${category.id}/`}>{category.name}</Link>
                 </h2>
                 <div className="column-rule" aria-hidden="true" />
-                {featured ? (
-                  <>
-                    <div className="featured-entry">
-                      <Link href={`/article/${featured.slug}/`}>
-                        <span className="entry-kind">精选</span>
-                        <h3>{featured.title}</h3>
-                      </Link>
-                      <Link href={`/article/${featured.slug}/`} tabIndex={-1} aria-hidden="true">
-                        <Image src={featured.cover ?? category.image} alt="" width={112} height={98} loading="eager" />
-                      </Link>
-                    </div>
-                    <ul className="plain-entries">
-                      {ordinary.map((post) => (
-                        <li key={post.slug}>
-                          <Link href={`/article/${post.slug}/`}>
-                            <span>{post.title}</span><Arrow />
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <p className="directory-empty">这里还没有公开文章。</p>
-                )}
+                <div className="directory-content">
+                  {featured ? (
+                    <>
+                      <div className="featured-entry">
+                        <Link href={`/article/${featured.slug}/`}>
+                          <span className="entry-kind">精选</span>
+                          <h3>{featured.title}</h3>
+                        </Link>
+                        <Link href={`/article/${featured.slug}/`} tabIndex={-1} aria-hidden="true">
+                          <Image src={featured.cover ?? category.image} alt="" width={112} height={98} loading="eager" />
+                        </Link>
+                      </div>
+                      <ul className="plain-entries">
+                        {ordinary.map((post) => (
+                          <li key={post.slug}>
+                            <Link href={`/article/${post.slug}/`}>
+                              <span>{post.title}</span><Arrow />
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p className="directory-empty">这里还没有公开文章。</p>
+                  )}
+                </div>
                 <Link className="quiet-link column-all" href={`/category/${category.id}/`}>
                   查看全部 <Arrow />
                 </Link>

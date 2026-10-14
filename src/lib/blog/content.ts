@@ -80,6 +80,7 @@ export async function scanContent(root: string, config: BlogConfig, contentDir: 
     if (item.isFile() && item.name.endsWith('.md')) files.push(`content/${item.name}`);
     if (!item.isDirectory() || !Object.values(categoryNames).includes(item.name as typeof categoryNames.play)) continue;
     for (const date of await readdir(path.join(base, item.name), { withFileTypes: true })) {
+      if (date.isFile() && ['.DS_Store', '.gitkeep'].includes(date.name)) continue;
       if (!date.isDirectory() || !/^\d{4}-\d{2}-\d{2}(?:-\d{2,})?$/.test(date.name)) {
         issues.push({ file: `content/${item.name}/${date.name}`, message: '日期目录无效或不是普通目录。' }); continue;
       }

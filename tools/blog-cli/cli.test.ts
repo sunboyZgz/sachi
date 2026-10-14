@@ -11,6 +11,7 @@ import { exists, readJson, sha256, walk, withLock, writeJson } from '../../src/l
 import { defaultConfig, type BlogConfig, type Manifest } from '../../src/lib/blog/schema';
 import { loadConfig, storePath } from './config';
 import { newPost, editMeta } from './writing';
+import { articleCatalogue } from './catalogue';
 import { articleStates, createPlan, validateArticleLinks } from './plan';
 import { readSnapshot, saveSnapshot, codeBaseline, cacheCurrent } from './snapshot';
 import { buildRelease, verifyPackage } from './site';
@@ -89,6 +90,31 @@ describe('local writing and shared content adapter', () => {
     expect(results.map((item) => item.file).sort()).toEqual(['content/蘸豆！！/2026-10-03-02/index.md', 'content/蘸豆！！/2026-10-03-03/index.md', 'content/蘸豆！！/2026-10-03/index.md'].sort());
     const scan = await scanContent(root, config);
     expect(scan.issues).toEqual([]); expect(scan.posts[0].post.category).toBe('learn'); expect(scan.posts[0].post.minutes).toBeGreaterThan(0);
+  });
+  it('ignores regular Finder metadata and directory placeholders in both article scanners', async () => {
+    const { root, config } = await fixture(); const source = await article(root, config, 'A');
+    const ignored = [path.join(root, 'content'), path.dirname(source.directory), source.directory]
+      .flatMap((directory) => ['.DS_Store', '.gitkeep'].map((name) => path.join(directory, name)));
+    for (const file of ignored) await writeFile(file, 'local directory metadata');
+    const scan = await scanContent(root, config), catalogue = await articleCatalogue(root);
+    expect(scan.issues).toEqual([]); expect(catalogue.issues).toEqual([]);
+    expect(scan.posts.map((item) => item.post.id)).toEqual([source.post.id]);
+    expect(catalogue.articles.map((item) => item.id)).toEqual([source.post.id]);
+    for (const file of ignored) expect(await readFile(file, 'utf8')).toBe('local directory metadata');
+  });
+  it('still rejects invalid article directories and symlinks with metadata filenames', async () => {
+    const { root, config } = await fixture(); const source = await article(root, config, 'A');
+    const category = path.dirname(source.directory);
+    await mkdir(path.join(category, '.DS_Store'));
+    await symlink(source.directory, path.join(category, '.gitkeep'));
+    await mkdir(path.join(category, 'notes'));
+    await writeFile(path.join(category, 'notes.txt'), 'not an article directory');
+    for (const scan of [await scanContent(root, config), await articleCatalogue(root)]) {
+      expect(scan.issues.map((issue) => issue.file).sort()).toEqual(
+        ['.DS_Store', '.gitkeep', 'notes', 'notes.txt'].map((name) => `content/生活旁白/${name}`).sort(),
+      );
+      expect(scan.issues.every((issue) => issue.message === '日期目录无效或不是普通目录。')).toBe(true);
+    }
   });
   it('preserves YAML comments and unrelated metadata', async () => {
     const { root, config } = await fixture(); const source = await article(root, config, 'A');
