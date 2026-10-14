@@ -2,7 +2,7 @@
   "name": "sachi-blog-preview",
   "displayName": "Sachi Blog 文章预览",
   "description": "使用 Sachi Blog 真实排版，实时预览未保存的文章与图文环绕。",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "publisher": "sachi-local",
   "license": "MIT",

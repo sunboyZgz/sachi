@@ -4,8 +4,8 @@ import type { BlogPost } from '../lib/blog/schema';
 
 export function ArticleIntro({ post }: { post: BlogPost }) {
   const categoryName = getCategory(post.category)!.name;
-  const items = post.category === 'play' ? [post.status, ...post.tags]
-    : post.category === 'learn' ? [categoryName, ...post.tags, `约 ${post.minutes} 分钟`] : [categoryName];
+  const items = [post.status, ...post.tags, ...(post.category === 'learn' ? [`约 ${post.minutes} 分钟`] : [])]
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
   return <>
     <p className="article-category">{categoryName}</p>
     <h1 className="article-title">{post.title}</h1>
