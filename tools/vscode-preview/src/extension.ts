@@ -1,12 +1,14 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { buildPreview, findInternalTarget, internalOrigin, locateArticle, type ArticleLocation } from './preview';
 import { currentSourceRequest } from './source-request';
+import { imageWindowEdit } from './image-window-edit';
+import type { ImageWindowReceipt, SetImageWindow } from './protocol';
 import type { CodeStyleReceipt, NavigationReceipt, PreviewTestClick, PreviewTestReceipt, RenderMessage, RenderReceipt, RevealLine, RevealSource, SourceNavigationReceipt, ViewMessage } from './protocol';
 
-export type PreviewState = { message?: RenderMessage; receipt?: RenderReceipt; document?: string; navigation?: NavigationReceipt; codeStyles?: CodeStyleReceipt; sourceNavigation?: SourceNavigationReceipt; testClick?: PreviewTestReceipt };
+export type PreviewState = { message?: RenderMessage; receipt?: RenderReceipt; document?: string; navigation?: NavigationReceipt; codeStyles?: CodeStyleReceipt; sourceNavigation?: SourceNavigationReceipt; testClick?: PreviewTestReceipt; imageWindow?: ImageWindowReceipt };
 type SourceJump = { document: vscode.TextDocument; version: number; point: vscode.Position; inFlight: boolean; until: number };
 
 async function readText(file: string) {
@@ -37,6 +39,7 @@ class Preview implements vscode.Disposable {
   private cursorAt = 0;
   private inspectionSequence = 0;
   private lastSourceSequence = 0;
+  private lastImageWindowSequence = 0;
   private testSequence = 0;
   private editorColumn = vscode.ViewColumn.One;
   private renderedRaw?: string;
@@ -62,6 +65,7 @@ class Preview implements vscode.Disposable {
         if (message?.type === 'revealed' && message.receipt?.document === this.document?.uri.fsPath && message.receipt.version === this.document.version && message.receipt.sequence === this.target?.sequence) this.state.navigation = message.receipt;
         if (message?.type === 'codeStyles' && message.receipt?.revision === this.state.message?.revision && message.receipt.sequence === this.inspectionSequence) this.state.codeStyles = message.receipt;
         if (message?.type === 'revealSource') void this.revealSource(message);
+        if (message?.type === 'setImageWindow') void this.setImageWindow(message);
         if (message?.type === 'previewClickTested' && message.receipt?.sequence === this.testSequence) this.state.testClick = message.receipt;
       }, undefined, this.context.subscriptions);
       this.setDocument(document, location);
@@ -86,6 +90,7 @@ class Preview implements vscode.Disposable {
 
   private setDocument(document: vscode.TextDocument, location: ArticleLocation) {
     this.lastSourceSequence = 0;
+    this.lastImageWindowSequence = 0;
     this.editorColumn = vscode.window.visibleTextEditors.find((editor) => editor.document === document)?.viewColumn ?? this.editorColumn;
     this.revision += 1;
     this.document = document;
@@ -226,6 +231,37 @@ class Preview implements vscode.Disposable {
     } catch (error) { void vscode.window.showWarningMessage(`无法打开链接：${error instanceof Error ? error.message : String(error)}`); }
   }
 
+  private async setImageWindow(request: SetImageWindow) {
+    const panel = this.panel, document = this.document, displayed = this.state.message;
+    const receipt: ImageWindowReceipt = { document: request.document, sequence: request.sequence, accepted: false, message: '' };
+    try {
+      if (!panel || !document || document.isClosed || displayed?.type !== 'update' ||
+        request.document !== document.uri.fsPath || request.revision !== displayed.revision || request.version !== document.version ||
+        this.revision !== displayed.revision || !Number.isSafeInteger(request.sequence) || request.sequence <= this.lastImageWindowSequence ||
+        document.getText() !== this.renderedRaw) throw new Error('文章或预览已更新，请重新打开图片裁剪。');
+      if (document.uri.fsPath.split(path.sep).join('/').includes('/.blog-store/drafts/')) throw new Error('归档稿件保持只读；请先导出到新目录或回档，再调整图片窗口。');
+      if (typeof request.reference !== 'string' || !displayed.post.assets[request.reference]?.url || displayed.post.assets[request.reference]?.type !== 'image') throw new Error('此图片资源不可用，请先修正本地图片引用。');
+      if (!Number.isSafeInteger(request.line) || !Number.isSafeInteger(request.column) || request.line < 1 || request.column < 1) throw new Error('图片源码位置无效。');
+      const asset = displayed.post.assets[request.reference];
+      const file = this.links.get(asset.url);
+      if (!file) throw new Error('原图路径不可用，请刷新预览。');
+      const info = await stat(file);
+      if (new URL(asset.url).searchParams.get('v') !== `${info.mtimeMs}-${info.size}`) throw new Error('原图片已发生变化，请重新打开裁剪。');
+      if (this.panel !== panel || this.document !== document || this.revision !== displayed.revision || document.version !== request.version || document.getText() !== this.renderedRaw) throw new Error('文章或预览已更新，请重新打开图片裁剪。');
+      const change = imageWindowEdit(document.getText(), request.reference, { line: request.line, column: request.column }, request.window);
+      this.lastImageWindowSequence = request.sequence;
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(document.uri, new vscode.Range(document.positionAt(change.start), document.positionAt(change.end)), change.text);
+      if (!await vscode.workspace.applyEdit(edit)) throw new Error('编辑器未能应用图片窗口，请检查文件是否只读。');
+      receipt.accepted = true; receipt.message = '图片窗口已写入文章，可用撤销恢复。';
+      this.refresh();
+    } catch (error) { receipt.message = error instanceof Error ? error.message : String(error); }
+    if (this.panel === panel) {
+      this.state.imageWindow = receipt;
+      void panel?.webview.postMessage({ type: 'imageWindowResult', receipt });
+    }
+  }
+
   private async revealSource(request: RevealSource) {
     const panel = this.panel;
     const displayed = this.state.message;
@@ -294,6 +330,10 @@ class Preview implements vscode.Disposable {
     setTimeout(() => { if (this.panel === panel) void panel.webview.postMessage({ type: 'testPreviewClick', sequence, action }); }, 150);
   }
 
+  testImageWindow(request: SetImageWindow) {
+    if (this.context.extensionMode !== vscode.ExtensionMode.Production) return this.setImageWindow(request);
+  }
+
   async testSourceRequest(request: RevealSource) {
     if (this.context.extensionMode !== vscode.ExtensionMode.Production) await this.revealSource(request);
   }
@@ -354,5 +394,5 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeTextEditorVisibleRanges((event) => preview.navigate(event.textEditor, 'scroll')),
     vscode.workspace.onDidChangeConfiguration((event) => { if (event.affectsConfiguration('sachiPreview')) preview.settingsChanged(); }),
   );
-  return { getPreviewState: () => preview.state, inspectCodeStyles: () => preview.inspectCodeStyles(), testPreviewClick: (action: PreviewTestClick) => preview.testPreviewClick(action), testSourceRequest: (request: RevealSource) => preview.testSourceRequest(request) };
+  return { getPreviewState: () => preview.state, inspectCodeStyles: () => preview.inspectCodeStyles(), testPreviewClick: (action: PreviewTestClick) => preview.testPreviewClick(action), testSourceRequest: (request: RevealSource) => preview.testSourceRequest(request), testImageWindow: (request: SetImageWindow) => preview.testImageWindow(request) };
 }

@@ -57,7 +57,7 @@ export async function editMeta(root: string, selector: string, changes: Record<s
   const { document, data, bodyRaw } = splitDocument(original);
   if (initialize && !data.id) document.set('id', randomUUID());
   if (initialize && !data.createdAt) document.set('createdAt', new Date().toISOString());
-  const allowed = new Set(['title', 'tags', 'summary', 'cover', 'status', 'minutes', 'featured', 'flow', 'slug', 'series', 'type']);
+  const allowed = new Set(['title', 'tags', 'summary', 'cover', 'status', 'minutes', 'featured', 'flow', 'imageWindows', 'slug', 'series', 'type']);
   for (const [field, value] of Object.entries(changes)) {
     if (!allowed.has(field)) throw new BlogError(`不能通过 meta 修改字段：${field}`, 2);
     if (value === null && ['title', 'slug'].includes(field)) throw new BlogError(`不能删除 ${field}。`, 2);

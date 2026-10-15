@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from 'react';
+import { Component, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { ArticleIntro } from '../../../src/components/ArticleIntro';
@@ -14,6 +14,9 @@ import { inspectArticleStyles } from './style-audit';
 import { sourceAttributes } from '../../../src/lib/source-lines';
 import type { HostMessage, PreviewData, RenderMessage, ViewMessage } from './protocol';
 import './webview.css';
+import { ImageCropDialog } from './ImageCropDialog';
+import { isFullImageWindow, type ImageCropTarget, type ImageWindow } from '../../../src/lib/image-window';
+import type { ImageWindowReceipt } from './protocol';
 
 declare function acquireVsCodeApi(): {
   postMessage(message: ViewMessage): void;
@@ -31,6 +34,22 @@ let latest = 0;
 let current: PreviewData | undefined;
 let scrollFrame = 0;
 let layoutMode: 'responsive' | 'desktop' = vscode.getState()?.layoutMode ?? 'responsive';
+let imageWindowSequence = 0;
+const pendingWindows = new Map<number, (receipt: ImageWindowReceipt) => void>();
+
+function applyImageWindow(data: PreviewData, target: ImageCropTarget, window: ImageWindow): Promise<ImageWindowReceipt> {
+  if (!target.source) return Promise.reject(new Error('图片源码位置不可用，请刷新预览后重试。'));
+  const sequence = ++imageWindowSequence;
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      pendingWindows.delete(sequence);
+      resolve({ document: data.document, sequence, accepted: false, message: '编辑器未响应，请刷新预览后重试。' });
+    }, 15_000);
+    pendingWindows.set(sequence, (receipt) => { clearTimeout(timeout); pendingWindows.delete(sequence); resolve(receipt); });
+    vscode.postMessage({ type: 'setImageWindow', document: data.document, version: data.source.version, revision: data.revision, sequence,
+      line: target.source!.start.line, column: target.source!.start.column, reference: target.reference, window: isFullImageWindow(window) ? null : window });
+  });
+}
 
 class PreviewBoundary extends Component<{ children: ReactNode; data: PreviewData }, { failed: boolean; revision: number }> {
   state = { failed: false, revision: this.props.data.revision };
@@ -48,6 +67,8 @@ class PreviewBoundary extends Component<{ children: ReactNode; data: PreviewData
 }
 
 function Article({ data, parsed }: { data: PreviewData; parsed: ParsedMarkdown }) {
+  const [editing, setEditing] = useState<{ target: ImageCropTarget; data: PreviewData }>();
+  const archived = data.document.replaceAll('\\', '/').includes('/.blog-store/drafts/');
   return <>
     <div className="preview-status" role="status">实时预览<button type="button" onClick={() => vscode.postMessage({ type: 'toggleLayout' })}>{layoutMode === 'desktop' ? '桌面宽度 · 切换响应式' : '响应式 · 切换桌面宽度'}</button><span>{data.dirty ? '含未保存修改' : '已保存'}</span></div>
     {data.warnings.length ? <aside className="preview-notice" role="status">{data.warnings.map((warning, index) => <p key={index}>{warning}</p>)}</aside> : null}
@@ -55,7 +76,7 @@ function Article({ data, parsed }: { data: PreviewData; parsed: ParsedMarkdown }
       <div {...sourceAttributes({ start: { line: 1, column: 1 }, end: { line: Math.max(1, data.source.origin.lineOffset), column: 1 } }, 'metadata')}><ArticleIntro post={data.post} /></div>
       <div className="article-intro-rule" aria-hidden="true" />
       <PreviewBoundary key={data.document} data={data}>
-        <ArticleProse parsed={parsed} assets={data.post.assets} flowKey={data.document} layoutMode={layoutMode} />
+        <ArticleProse parsed={parsed} assets={data.post.assets} flowKey={data.document} layoutMode={layoutMode} imageEditor={archived ? undefined : (target) => { follower.suspend(); setEditing({ target, data }); }} />
       </PreviewBoundary>
       <AuthorSignatureView name={data.profile.name} bio={data.profile.bio} avatar={
         <span className="avatar-slot avatar-slot--signature" aria-hidden="true">
@@ -65,6 +86,7 @@ function Article({ data, parsed }: { data: PreviewData; parsed: ParsedMarkdown }
       } />
       <div className="preview-end" aria-hidden="true" />
     </main>
+    {editing?.data.document === data.document ? <ImageCropDialog key={`${editing.data.document}:${editing.data.revision}:${editing.target.reference}`} target={editing.target} apply={(window) => applyImageWindow(editing.data, editing.target, window)} close={() => setEditing(undefined)} /> : null}
   </>;
 }
 
@@ -87,7 +109,7 @@ async function update(message: RenderMessage) {
   if (message.type !== 'update') return;
   let data = message;
   const warnings = [...message.warnings];
-  const parsed = parseMarkdown(data.post.body, data.post.flow, data.post.assets, data.source.origin, { tolerant: true, type: data.post.type });
+  const parsed = parseMarkdown(data.post.body, data.post.flow, data.post.assets, data.source.origin, { tolerant: true, type: data.post.type, imageWindows: data.post.imageWindows });
   for (const warning of parsed.warnings) if (!warnings.includes(warning)) warnings.push(warning);
   await Promise.all(parsed.flows.map(async (region) => {
     if (region.spec.contour) return;
@@ -128,6 +150,7 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
   if (message?.type === 'revealLine' && !sourceClick.waiting) follower.reveal(message);
   else if (message?.type === 'sync') { follower.setEnabled(message.enabled); sourceClick.setEnabled(message.clickEnabled); }
   else if (message?.type === 'sourceResult' && sourceClick.acknowledge(message.receipt)) follower.suspend(message.receipt.navigationSequence);
+  else if (message?.type === 'imageWindowResult') pendingWindows.get(message.receipt.sequence)?.(message.receipt);
   else if (message?.type === 'testPreviewClick' && document.body.dataset.previewTest === 'true') {
     const found = testClick(container, message.action);
     vscode.postMessage({ type: 'previewClickTested', receipt: { sequence: message.sequence, found, scrollTop: window.scrollY, selectionCollapsed: document.getSelection()?.isCollapsed ?? true } });
@@ -137,8 +160,14 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
       revision: current.revision, sequence: message.sequence, theme: document.body.dataset.vscodeThemeKind ?? '', scrollTop: window.scrollY,
       article: inspectArticleStyles(),
       layoutMode, bodyWidth: container.querySelector('.preview-main')?.getBoundingClientRect().width ?? 0,
+      cropEditorOpen: !!container.querySelector<HTMLDialogElement>('.image-crop-dialog')?.open,
+      images: [...container.querySelectorAll<HTMLImageElement>('.article-prose figure img')].map((image) => {
+        const window = image.closest('.markdown-image-window');
+        const rect = (window ?? image).getBoundingClientRect();
+        return { src: image.src, width: rect.width, height: rect.height, naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight, centerX: rect.left + rect.width / 2, cropped: !!window };
+      }),
       flows: [...container.querySelectorAll<HTMLElement>('.flow-block')].map((block) => {
-        const image = block.querySelector(block.dataset.layout === 'wrap' ? '.flow-obstacle' : '.flow-inline-image')!;
+        const image = block.querySelector(block.dataset.layout === 'wrap' ? '.flow-obstacle' : '.flow-inline-image-window, .flow-inline-image')!;
         const rect = image.getBoundingClientRect();
         return { layout: block.dataset.layout ?? '', engine: block.dataset.engine ?? '', width: rect.width, height: rect.height, status: block.querySelector('.flow-status')?.textContent ?? '' };
       }),

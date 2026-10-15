@@ -5,9 +5,10 @@ export function testClick(root: HTMLElement, action: PreviewTestClick) {
   if (action.image) {
     const image = root.querySelector<HTMLElement>(action.selector ?? '.article-prose img');
     if (!image) return false;
+    const viewport = image.closest('.markdown-image-window') ?? image;
     window.dispatchEvent(new WheelEvent('wheel'));
-    image.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
-    const rect = image.getBoundingClientRect();
+    viewport.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+    const rect = viewport.getBoundingClientRect();
     if (!rect.width || !rect.height) return false;
     document.getSelection()?.removeAllRanges();
     const options = { bubbles: true, button: 0, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, pointerId: 1 };

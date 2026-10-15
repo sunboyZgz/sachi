@@ -123,6 +123,8 @@ a:hover .arrow { transform: translateX(4px); }
 .article-main[data-article-type="poem"] .article-intro-rule { margin-inline: auto; }
 .article-prose--poem .poem-stanza { text-align: center; margin-bottom: var(--space-8); }
 .article-prose--poem .article-heading { text-align: center; }
+.article-prose--poem .markdown-media-paragraph { text-align: center; }
+.article-prose--poem figure :is(img, video), .article-prose--poem .markdown-image-window { margin-inline: auto; }
 
 .article-prose .markdown-text-larger { font-size: 1.2em; }
 .article-prose .markdown-text-smaller { font-size: .85em; }
@@ -163,6 +165,8 @@ a:hover .arrow { transform: translateX(4px); }
 .article-prose th { font-weight: 500; background: #f0f0e8; }
 .article-prose figure { margin: 28px 0; }
 .article-prose figure img { height: auto; }
+.markdown-image-window { display: block; position: relative; overflow: hidden; max-width: 100%; }
+.markdown-image-window img { display: block; }
 .article-prose figcaption { font: 12px/1.6 var(--font-ui); color: var(--muted); margin-top: 10px; }
 .toc { position: sticky; top: 48px; margin-top: 42px; padding-left: 22px; border-left: 1px solid var(--rule); }
 .toc h2 { font: 15px/1.5 var(--font-body); margin: 0 0 20px; }
@@ -185,13 +189,14 @@ a:hover .arrow { transform: translateX(4px); }
 .flow-block { margin: 0 0 16px; }
 .flow-canvas { position: relative; font: 18px/36px var(--font-body); letter-spacing: 0; min-height: 300px; }
 .flow-fragment { position: absolute; display: block; white-space: pre; line-height: 36px; overflow-wrap: normal; }
-.flow-obstacle { position: absolute; z-index: 2; border: 0; padding: 0; background: none; touch-action: auto; outline-offset: 4px; }
+.flow-obstacle { position: absolute; z-index: 2; border: 0; padding: 0; background: none; touch-action: auto; outline-offset: 4px; overflow: hidden; }
 .flow-obstacle img { width: 100%; height: 100%; pointer-events: none; user-select: none; }
 .flow-obstacle:disabled { cursor: default; }
 .flow-obstacle[data-interactive="true"] { cursor: grab; touch-action: none; }
 .flow-obstacle[data-interactive="true"]:active { cursor: grabbing; }
 .flow-fallback p { font: inherit; margin-bottom: 20px; }
 .flow-inline-image { width: min(var(--flow-image-width, 205px), 100%); height: auto; margin: 4px auto 24px; }
+.flow-inline-image-window { margin: 4px auto 24px; }
 .flow-controls { display: flex; gap: 14px; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin: 15px 0 0; font: 11px/1.5 var(--font-ui); color: var(--muted); }
 .flow-controls button { border: 0; border-bottom: 1px solid var(--rule); background: none; padding: 7px 0; min-height: 34px; font-size: 12px; }
 .flow-controls button[aria-pressed="true"] { color: var(--moss-dark); border-bottom-color: var(--moss); }

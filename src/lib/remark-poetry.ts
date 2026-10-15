@@ -34,18 +34,56 @@ export function remarkPoetry({ enabled = false }: { enabled?: boolean } = {}) {
     function lines(children: PhrasingContent[]): PhrasingContent[] {
       return children.flatMap<PhrasingContent>((node) => {
         if (node.type === 'text') return split(node);
-        if (node.type === 'emphasis' || node.type === 'strong' || node.type === 'delete' || node.type === 'link' || node.type === 'linkReference') node.children = lines(node.children);
+        if (node.type === 'emphasis' || node.type === 'strong' || node.type === 'delete' || node.type === 'textSize' || node.type === 'link' || node.type === 'linkReference') node.children = lines(node.children);
         return [node];
       });
     }
-    function hasImage(children: PhrasingContent[]): boolean {
-      return children.some((node) => node.type === 'image' || node.type === 'imageReference' || 'children' in node && hasImage(node.children));
+    type Part = { media: boolean; children: PhrasingContent[] };
+    function parts(children: PhrasingContent[]): Part[] {
+      const result: Part[] = [];
+      const append = (part: Part) => {
+        if (!part.media && result.at(-1)?.media === false) result.at(-1)!.children.push(...part.children);
+        else result.push(part);
+      };
+      for (const node of children) {
+        if (node.type === 'image' || node.type === 'imageReference') append({ media: true, children: [node] });
+        else if ('children' in node) {
+          for (const part of parts(node.children)) {
+            // Links may wrap a block image; text emphasis must not wrap a figure.
+            const wrapped = !part.media || node.type === 'link' || node.type === 'linkReference';
+            append({ media: part.media, children: wrapped ? [{ ...node, children: part.children, position: {
+              start: part.children[0]?.position?.start ?? node.position!.start,
+              end: part.children.at(-1)?.position?.end ?? node.position!.end,
+            } } as PhrasingContent] : part.children });
+          }
+        } else append({ media: false, children: [node] });
+      }
+      return result;
     }
-    for (const node of tree.children) {
-      if (node.type !== 'paragraph' || hasImage(node.children)) continue;
-      const stanza: Paragraph = node;
-      stanza.children = lines(stanza.children);
-      stanza.data = { ...stanza.data, hProperties: { ...stanza.data?.hProperties, 'data-poem-stanza': true } };
+    function trimEdges(children: PhrasingContent[]): PhrasingContent[] {
+      const result = [...children];
+      for (const edge of ['start', 'end'] as const) {
+        while (result.length) {
+          const index = edge === 'start' ? 0 : result.length - 1;
+          const node = result[index];
+          if ('children' in node) {
+            const inner = trimEdges(node.children);
+            if (inner.length) { result[index] = { ...node, children: inner } as PhrasingContent; break; }
+          } else if (node.type !== 'break' && (node.type !== 'text' || node.value.trim())) break;
+          result.splice(index, 1);
+        }
+      }
+      return result;
     }
+    tree.children = tree.children.flatMap<Root['children'][number]>((node) => {
+      if (node.type !== 'paragraph') return [node];
+      const sections = parts(lines(node.children));
+      return sections.flatMap((part): Paragraph[] => {
+        const children = part.media ? part.children : sections.some((section) => section.media) ? trimEdges(part.children) : part.children;
+        if (!children.length) return [];
+        return [{ ...node, children, position: { start: children[0].position!.start, end: children.at(-1)!.position!.end },
+          data: { ...node.data, hProperties: { ...node.data?.hProperties, [part.media ? 'data-poem-media' : 'data-poem-stanza']: true } } }];
+      });
+    });
   };
 }

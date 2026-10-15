@@ -99,6 +99,19 @@ describe('VS Code article preview adapter', () => {
     expect(result.message.post.body).toContain('另一段');
   });
 
+  it('keeps complete verses and valid windows while another crop is incomplete or duplicated', async () => {
+    const fixtureData = await fixture();
+    await writeFile(path.join(path.dirname(fixtureData.file), 'assets/photo.png'), 'bytes');
+    const body = '诗句甲\n![图](./assets/photo.png)\n诗句乙\n诗句丙';
+    const fields = 'type: poem\nimageWindows:\n  ./assets/photo.png: { x: 0.1, y: 0.2, width: 0.5, height: 0.5 }\n  /assets/photo.png: { x: 0, y: 0, width: 1, height: 1 }\n  ./assets/unfinished.png: { x: 0 }\n';
+    const result = await buildPreview({ ...fixtureData, raw: raw(body, fields), revision: 1, dirty: true });
+    expect(result.message.post.imageWindows).toEqual({ './assets/photo.png': { x: 0.1, y: 0.2, width: 0.5, height: 0.5 } });
+    expect(result.message.post.body).toBe(body);
+    expect(result.message.warnings.join(' ')).toContain('同一图片不能重复配置窗口');
+    expect(result.message.warnings.join(' ')).toContain('unfinished.png');
+    expect(await readFile(fixtureData.file, 'utf8')).toBe(raw('磁盘上的旧正文。'));
+  });
+
   it('blocks traversal, unsupported protocols and symbolic links while rendering the rest', async () => {
     const fixtureData = await fixture();
     const outside = path.join(fixtureData.root, 'secret.txt');

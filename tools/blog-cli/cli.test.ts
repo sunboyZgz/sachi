@@ -218,7 +218,7 @@ describe('immutable release plans and isolated builds', () => {
     const image = await sharp({ create: { width: 100, height: 500, channels: 4, background: 'green' } }).png().toBuffer();
     await writeFile(path.join(a.directory, 'assets/second.png'), image);
     await writeFile(path.join(a.directory, 'assets/mask.json'), '{"height":2,"rows":[[0,1],[0,1]]}');
-    const fields = 'flow:\n  - image: ./assets/cover.png\n    width: 180\n    contour: ./assets/mask.json\n  - image: ./assets/second.png\n    width: 240\n';
+    const fields = 'imageWindows:\n  ./assets/second.png: { x: 0.1, y: 0.2, width: 0.8, height: 0.5 }\nflow:\n  - image: ./assets/cover.png\n    width: 180\n    contour: ./assets/mask.json\n  - image: ./assets/second.png\n    width: 240\n';
     const raw = a.raw.replace('---\n\n', `${fields}---\n\n`).replace('Flow@v1\n\n![封面](./assets/cover.png)', '开头。\n\n![封面](./assets/cover.png)\n\n#### 中段\n\n![第二张][second]\n\n末段。\n\n[second]: ./assets/second.png');
     await writeFile(path.join(root, a.sourcePath), raw);
     const source = await readSourcePost(root, a.sourcePath, config);
@@ -232,7 +232,8 @@ describe('immutable release plans and isolated builds', () => {
     }
     const snapshot = await readSnapshot(root, source.revisionHash);
     expect(snapshot.post.flow).toEqual(source.post.flow);
-    await writeFile(path.join(root, a.sourcePath), raw.replace('width: 180', 'width: 360').replace('末段。', '未选修订。'));
+    expect(snapshot.post.imageWindows).toEqual({ './assets/second.png': { x: .1, y: .2, width: .8, height: .5 } });
+    await writeFile(path.join(root, a.sourcePath), raw.replace('width: 180', 'width: 360').replace('height: 0.5', 'height: 0.7').replace('末段。', '未选修订。'));
     await writeFile(path.join(a.directory, 'assets/second.png'), await sharp({ create: { width: 50, height: 50, channels: 4, background: 'red' } }).png().toBuffer());
     const changed = await readSourcePost(root, a.sourcePath, config);
     expect(changed.revisionHash).not.toBe(source.revisionHash);
@@ -241,6 +242,7 @@ describe('immutable release plans and isolated builds', () => {
     expect(second.manifest.entries.find((entry) => entry.id === a.post.id)!.revisionHash).toBe(source.revisionHash);
     expect(second.manifest.assets[a.post.id]).toEqual(mapping);
     expect((await readSnapshot(root, source.revisionHash)).post.flow).toEqual(snapshot.post.flow);
+    expect((await readSnapshot(root, source.revisionHash)).post.imageWindows).toEqual(snapshot.post.imageWindows);
     expect(await readFile(path.join(second.directory, 'site/article/flow/index.html'), 'utf8')).not.toContain('未选修订');
   });
 
@@ -396,6 +398,19 @@ describe('real command entry and media processing', () => {
     const republished = createPlan(withdrawn, [a], [a], baseline).manifest;
     expect(republished.entries[0].publishedAt).toBe(first.entries[0].publishedAt);
     expect(() => createPlan(withdrawn, [{ ...a, post: { ...a.post, slug: 'changed' } }], [a], baseline)).toThrow('slug');
+  });
+  it('retains original crop dimensions when publication resizes a photo', async () => {
+    const { root, config } = await fixture(); const a = await article(root, config, 'Photo');
+    const file = path.join(a.directory, 'assets/photo.jpg');
+    const bytes = await sharp({ create: { width: 3200, height: 1600, channels: 3, background: 'green' } }).jpeg().toBuffer();
+    await writeFile(file, bytes);
+    await writeFile(path.join(root, a.sourcePath), a.raw.replace('---\n\n', 'imageWindows:\n  ./assets/photo.jpg: { x: 0.2, y: 0.2, width: 0.1, height: 0.1 }\n---\n\n') + '\n\n![照片](./assets/photo.jpg)\n');
+    const source = await readSourcePost(root, a.sourcePath, config); const snapshot = await saveSnapshot(root, config, source);
+    const output = path.join(root, 'output-media'); const mapping = await prepareMedia(root, config, snapshot, output);
+    expect(mapping['./assets/photo.jpg']).toMatchObject({ width: 1920, height: 960, originalWidth: 3200, originalHeight: 1600 });
+    expect(mapping['./assets/cover.png']).not.toHaveProperty('originalWidth');
+    expect(await readFile(file)).toEqual(bytes);
+    expect((await sharp(path.join(output, mapping['./assets/photo.jpg'].url.slice(1))).metadata()).width).toBe(1920);
   });
   it.skipIf(!hasVideoTools)('transcodes a real short video with audio and generates a poster without changing the source', async () => {
     const { root, config } = await fixture(); const a = await article(root, config, 'A');

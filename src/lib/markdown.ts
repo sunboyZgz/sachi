@@ -8,13 +8,14 @@ import { analyzeArticleStructure, type ArticleHeading } from './article-structur
 import { flowSpecs, type ArticleType, type Asset, type FlowSpec, type FlowConfig } from './blog/schema';
 import { remarkPoetry } from './remark-poetry';
 import { remarkTextSize } from './remark-text-size';
+import { windowForImage, type ImageWindow, type ImageWindows } from './image-window';
 import { visit } from 'unist-util-visit';
 import { firstLineIndent, remarkFirstLineIndent } from './remark-first-line-indent';
 import { normalizeFlowText, sourceRange, type FlowSourceMap, type SourceLine, type SourceOrigin } from './source-lines';
 import { createSourceMapper, joinSourceMaps, trimSourceMap, type SourceTextMap } from './source-text-map';
 
 export type { ArticleHeading } from './article-structure';
-export type FlowPresentation = FlowSpec & { alt: string; imageWidth?: number; imageHeight?: number };
+export type FlowPresentation = FlowSpec & { alt: string; imageReference?: string; imageWindow?: ImageWindow; imageWidth?: number; imageHeight?: number };
 
 export type FlowRegion = {
   id: string; start: number; end: number; imageIndex: number;
@@ -23,6 +24,7 @@ export type FlowRegion = {
 export type ParsedMarkdown = {
   markdown: string;
   type?: ArticleType;
+  imageWindows?: ImageWindows;
   headings: ArticleHeading[];
   description: string;
   sourceOrigin?: SourceOrigin;
@@ -94,12 +96,12 @@ export function imageResolver(tree: Root) {
   return (node: Image | ImageReference) => node.type === 'image' ? node.url : definitions.get(node.identifier.toUpperCase());
 }
 
-export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<string, Asset> = {}, origin?: SourceOrigin, options: { tolerant?: boolean; type?: ArticleType } = {}): ParsedMarkdown {
+export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<string, Asset> = {}, origin?: SourceOrigin, options: { tolerant?: boolean; type?: ArticleType; imageWindows?: ImageWindows } = {}): ParsedMarkdown {
   const poem = options.type === 'poem';
   const processor = unified().use(remarkParse).use(remarkGfm).use(remarkMath).use(remarkTextSize).use(remarkPoetry, { enabled: poem }).use(remarkFirstLineIndent);
   const tree = processor.runSync(processor.parse(body), body) as Root;
   const headings = analyzeArticleStructure(tree);
-  const description = tree.children.filter((node): node is Paragraph => node.type === 'paragraph').map((node) => poem ? node.children.map((child) => child.type === 'break' ? ' ' : paragraphDescription({ ...node, children: [child] })).join('') : paragraphDescription(node)).find(Boolean)?.slice(0, 140) ?? '';
+  const description = tree.children.filter((node): node is Paragraph => node.type === 'paragraph' && !node.data?.hProperties?.['data-poem-media']).map((node) => poem ? node.children.map((child) => child.type === 'break' ? ' ' : paragraphDescription({ ...node, children: [child] })).join('') : paragraphDescription(node)).find(Boolean)?.slice(0, 140) ?? '';
   const flows: FlowRegion[] = [];
   const warnings: string[] = [];
   const errors: string[] = [];
@@ -159,7 +161,7 @@ export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<
           paragraphs: hardLines.map((lines) => lines.join('\n')),
           ...(hardLines.some((lines) => lines.length > 1) ? { hardLines } : {}),
           ...(origin ? { source: { paragraphs: textNodes.map((node, index) => flowSource(node, hardLines[index], bodyLines, origin, mapper!)), image: sourceRange(imageNode.position, origin)! } } : {}),
-          spec: { ...spec, image: imageAsset?.url ?? spec.image, contour: spec.contour ? assets[spec.contour]?.url ?? spec.contour : imageAsset?.contour,
+          spec: { ...spec, image: imageAsset?.url ?? spec.image, ...(windowForImage(options.imageWindows, resolveImage(imageNode)!) ? { imageWindow: windowForImage(options.imageWindows, resolveImage(imageNode)!) } : {}), imageReference: resolveImage(imageNode), contour: spec.contour ? assets[spec.contour]?.url ?? spec.contour : imageAsset?.contour,
             alt: spec.alt ?? imageNode.alt ?? '', imageWidth: imageAsset?.width, imageHeight: imageAsset?.height },
         });
       }
@@ -167,7 +169,7 @@ export function parseMarkdown(body: string, config?: FlowConfig, assets: Record<
     start = end;
   }
   if (errors.length && !options.tolerant) throw new Error(errors.join('\n'));
-  return { markdown: body, headings, description, flows, flow: flows[0] ?? null, flowWidths, warnings, ...(options.type ? { type: options.type } : {}), ...(origin ? { sourceOrigin: origin } : {}) };
+  return { markdown: body, headings, description, flows, flow: flows[0] ?? null, flowWidths, warnings, ...(options.imageWindows ? { imageWindows: options.imageWindows } : {}), ...(options.type ? { type: options.type } : {}), ...(origin ? { sourceOrigin: origin } : {}) };
 }
 
 /** Replace only recognized blocks after full-tree heading and source analysis. */

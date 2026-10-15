@@ -113,7 +113,7 @@ export async function listDrafts(root: string, selector?: string) {
 }
 
 function metadataReferences(data: Record<string, unknown>) {
-  const values: unknown[] = [data.cover];
+  const values: unknown[] = [data.cover, ...Object.keys(data.imageWindows && typeof data.imageWindows === 'object' && !Array.isArray(data.imageWindows) ? data.imageWindows : {})];
   for (const flow of Array.isArray(data.flow) ? data.flow : [data.flow]) if (flow && typeof flow === 'object') values.push((flow as Record<string, unknown>).image, (flow as Record<string, unknown>).contour);
   return values.filter((value): value is string => typeof value === 'string');
 }

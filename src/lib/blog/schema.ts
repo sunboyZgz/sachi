@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { imageWindowsSchema } from '../image-window';
 
 export const categoryNames = { play: '闲暇娱乐', life: '生活旁白', learn: '蘸豆！！' } as const;
 export const categorySchema = z.enum(['play', 'life', 'learn']);
@@ -24,6 +25,7 @@ export const assetSchema = z.object({
   srcSet: z.string().optional(), poster: z.string().optional(),
   contour: z.string().optional(),
   width: z.number().finite().positive().optional(), height: z.number().finite().positive().optional(),
+  originalWidth: z.number().finite().positive().optional(), originalHeight: z.number().finite().positive().optional(),
 });
 export type Asset = z.infer<typeof assetSchema>;
 const idSchema = z.string().regex(/^(?:legacy-[a-f0-9]{24}|[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})$/i);
@@ -43,6 +45,7 @@ export const postSchema = z.object({
   tags: z.array(z.string().min(1)).default([]), status: z.string().optional(),
   minutes: z.number().int().positive(), summary: z.string().optional(),
   cover: z.string().optional(), flow: flowSchema.optional(),
+  imageWindows: imageWindowsSchema.optional(),
   type: articleTypeSchema.optional(),
   assets: z.record(z.string(), assetSchema).default({}),
   series: seriesRefSchema.optional(),

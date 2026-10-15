@@ -12,12 +12,15 @@ import { markdownReferences, splitDocument } from '../../src/lib/blog/content';
 import { parseMarkdown } from '../../src/lib/markdown';
 import { ExampleReading } from '../../docs-site/.vitepress/ExampleReading';
 import type { BlogExample, BlogExampleInput } from '../../docs-site/.vitepress/example-types';
+import { imageWindowsSchema } from '../../src/lib/image-window';
 import { run } from '../blog-cli/process';
 
 const project = fileURLToPath(new URL('../../', import.meta.url));
 const katexDirectory = path.join(project, 'node_modules/katex/dist');
 export const examplesDirectory = path.join(project, 'docs-site/.vitepress/examples');
 export const exampleDefinitions = [
+  { id: 'image-window', title: '保留原图的图片可视窗口', page: 'writing/images.md', height: 390 },
+  { id: 'poem-image', title: '图片与连续诗行居中', page: 'writing/poetry.md', height: 650 },
   { id: 'text-size', title: '行内放大、缩小与自定义倍数', page: 'writing/text-size.md', height: 470 },
   { id: 'poem', title: '诗歌逐行换行与居中', page: 'writing/poetry.md', height: 450 },
   { id: 'flow', title: '透明图片自动环绕', page: 'writing/flow.md', height: 780 },
@@ -59,8 +62,10 @@ export async function loadExamples(base = '/', sources = examplesDirectory) {
     const rawFlow = data.flow ? flowSchema.parse(data.flow) : undefined;
     if (flowSpecs(rawFlow).some((spec) => !mapping[spec.image] || spec.contour && !mapping[spec.contour])) throw new Error(`环绕教学资源未声明：${definition.id}`);
     const type = data.type === undefined ? undefined : articleTypeSchema.parse(data.type);
-    const parsed = parseMarkdown(bodyRaw.trim(), rawFlow, mapping, undefined, { type });
-    const input: BlogExampleInput = { markdown: parsed.markdown, assets: mapping, flow: parsed.flow, flows: parsed.flows, flowWidths: parsed.flowWidths };
+    const imageWindows = data.imageWindows === undefined ? undefined : imageWindowsSchema.parse(data.imageWindows);
+    if (imageWindows && Object.keys(imageWindows).some((reference) => !mapping[reference])) throw new Error(`图片窗口教学资源未声明：${definition.id}`);
+    const parsed = parseMarkdown(bodyRaw.trim(), rawFlow, mapping, undefined, { type, imageWindows });
+    const input: BlogExampleInput = { markdown: parsed.markdown, assets: mapping, flow: parsed.flow, flows: parsed.flows, flowWidths: parsed.flowWidths, ...(imageWindows ? { imageWindows } : {}) };
     if (type === 'poem') { input.type = type; input.title = String(data.title); }
     if (definition.id === 'cover') {
       if (typeof data.title !== 'string' || typeof data.cover !== 'string' || data.featured !== true || mapping[data.cover]?.type !== 'image') throw new Error('封面教学元数据无效。');

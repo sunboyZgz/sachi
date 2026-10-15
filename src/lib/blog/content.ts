@@ -26,7 +26,7 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
   const directory = path.dirname(file);
   const post = postFromDocument(relative, data, body, config.timezone);
   const beforeBody = raw.slice(0, raw.length - bodyRaw.length + (bodyRaw.match(/^\s*/u)?.[0].length ?? 0));
-  const parsed = parseMarkdown(body, post.flow, {}, { lineOffset: (beforeBody.match(/\n/g) ?? []).length, columnOffset: beforeBody.length - beforeBody.lastIndexOf('\n') - 1 }, { type: post.type });
+  const parsed = parseMarkdown(body, post.flow, {}, { lineOffset: (beforeBody.match(/\n/g) ?? []).length, columnOffset: beforeBody.length - beforeBody.lastIndexOf('\n') - 1 }, { type: post.type, imageWindows: post.imageWindows });
   const specs = flowSpecs(post.flow);
   for (const spec of specs) if (!/\.(?:png|jpe?g|webp|avif|svg|gif)$/i.test(spec.image)) throw new BlogError(`flow.image 必须是本篇的静态图片：${spec.image}`);
   if (!legacy && await exists(path.join(directory, 'layout.yaml'))) throw new BlogError('使用 frontmatter.flow 配置环绕，不支持第二份 layout.yaml。');
@@ -36,10 +36,10 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
     : mediaSchema.parse({});
   const urls = markdownReferences(body);
   const links = urls.filter((url) => url.startsWith('/article/') || url.startsWith('blog:') || url.startsWith('/series/') || url.startsWith('series:'));
-  const resourceUrls = [...urls, post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour])].filter((url): url is string => !!url);
+  const resourceUrls = [...urls, post.cover, ...Object.keys(post.imageWindows ?? {}), ...specs.flatMap((spec) => [spec.image, spec.contour])].filter((url): url is string => !!url);
   const media = { assets: Object.fromEntries(Object.entries(parsedMedia.assets).filter(([url]) => resourceUrls.includes(url))) };
   const resources = [...resourceUrls, ...Object.values(media.assets).map((p) => p.poster)].filter((url): url is string => !!url);
-  for (const url of [...imageReferences(body), post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour]), ...Object.values(media.assets).map((p) => p.poster)].filter((url): url is string => !!url)) {
+  for (const url of [...imageReferences(body), post.cover, ...Object.keys(post.imageWindows ?? {}), ...specs.flatMap((spec) => [spec.image, spec.contour]), ...Object.values(media.assets).map((p) => p.poster)].filter((url): url is string => !!url)) {
     if (/^(?:https?:|\/\/)/i.test(url)) throw new BlogError(`图片、视频和封面必须使用本篇本地资源，才能冻结旧版：${url}`);
   }
   const dependencies: SourcePost['dependencies'] = [];

@@ -7,6 +7,7 @@ import { storePath } from './config';
 import { immutableWrite } from './snapshot';
 import { run } from './process';
 import { createImageContour, imageDimensions } from '../../src/lib/blog/flow-assets';
+import { windowForImage } from '../../src/lib/image-window';
 
 async function mediaOperation<T>(description: string, action: () => Promise<T>): Promise<T> {
   try { return await action(); }
@@ -74,6 +75,10 @@ async function transformMedia(root: string, config: BlogConfig, snapshot: Snapsh
         }
         const largest = outputs.at(-1)!;
         assets[dependency.url] = { type: 'image', url: largest.url, width: largest.width, height: largest.height, srcSet: outputs.map((o) => `${o.url} ${o.width}w`).join(', ') };
+      }
+      if (windowForImage(snapshot.post.imageWindows, dependency.url)) {
+        const dimensions = await imageDimensions(bytes);
+        Object.assign(assets[dependency.url], { originalWidth: dimensions.width, originalHeight: dimensions.height });
       }
       if (isFlow) {
         Object.assign(assets[dependency.url], await imageDimensions(bytes, true));

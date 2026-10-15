@@ -11,7 +11,8 @@ export function flowPositionStorageKey(article: string, region: string) {
 
 /** Effective image/configuration identity; body edits do not reset reading preferences. */
 export function flowPositionSettings(spec: FlowPresentation) {
-  return JSON.stringify([spec.image, spec.contour ?? '', spec.width ?? 205, spec.defaultX, spec.defaultY]);
+  const settings = [spec.image, spec.contour ?? '', spec.width ?? 205, spec.defaultX, spec.defaultY];
+  return JSON.stringify(spec.imageWindow ? [...settings, spec.imageWindow] : settings);
 }
 
 export function browserFlowStorage(view: Pick<Window, 'localStorage'> | null | undefined): FlowPositionStorage | undefined {

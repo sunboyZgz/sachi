@@ -7,7 +7,7 @@ export function ExampleReading({ input }: { input: BlogExampleInput }) {
   if (input.type === 'poem') return createElement('div', { className: 'article-main', 'data-article-type': 'poem' },
     createElement('h1', { className: 'article-title' }, input.title),
     createElement('div', { className: 'article-intro-rule', 'aria-hidden': true }),
-    createElement('div', { className: 'article-prose article-prose--poem' }, createElement(MarkdownContent, { markdown: input.markdown, type: input.type, assets: input.assets, basePath: '' })),
+    createElement('div', { className: 'article-prose article-prose--poem' }, createElement(MarkdownContent, { markdown: input.markdown, type: input.type, imageWindows: input.imageWindows, assets: input.assets, basePath: '' })),
   );
   if (input.cover) return createElement('section', { className: 'directory-column', 'aria-label': '栏目重点条目示意' },
     createElement('p', { className: 'entry-kind' }, '生活旁白 · 栏目重点条目示意'),
@@ -17,5 +17,5 @@ export function ExampleReading({ input }: { input: BlogExampleInput }) {
     ),
     createElement('p', { className: 'entry-kind' }, '条目采用文章封面，正文没有因此自动增加图片。'),
   );
-  return createElement(MarkdownContent, { markdown: input.markdown, assets: input.assets, basePath: '', flows: input.flows, flowWidths: input.flowWidths });
+  return createElement(MarkdownContent, { markdown: input.markdown, imageWindows: input.imageWindows, assets: input.assets, basePath: '', flows: input.flows, flowWidths: input.flowWidths });
 }

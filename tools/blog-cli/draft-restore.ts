@@ -12,7 +12,7 @@ const description = (entry: BinaryChange) => ({ file: entry.file, action: !entry
 function legacyReferences(raw: string) {
   const { data, body } = splitDocument(raw);
   const flow = Array.isArray(data.flow) ? data.flow : [data.flow];
-  return [...markdownReferences(body, { onIssue: () => {} }), data.cover, ...flow.flatMap((item) => item && typeof item === 'object' ? [item.image, item.contour] : [])]
+  return [...markdownReferences(body, { onIssue: () => {} }), data.cover, ...Object.keys(data.imageWindows && typeof data.imageWindows === 'object' && !Array.isArray(data.imageWindows) ? data.imageWindows : {}), ...flow.flatMap((item) => item && typeof item === 'object' ? [item.image, item.contour] : [])]
     .filter((url): url is string => typeof url === 'string').flatMap((url) => {
       try {
         const decoded = decodeURIComponent(url);

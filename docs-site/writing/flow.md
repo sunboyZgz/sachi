@@ -53,6 +53,8 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 
    识别会从图片向两侧收集连续纯文本段落。任意层级标题、分隔线、列表、引用、表格、代码、富文本段落或另一张普通图片都是边界；边界内容照常显示。引用式图片也支持，例如 `![植物][plant]` 配合 `[plant]: ./assets/illustration.png`。
 
+   如需去掉画布的部分区域，可在插件使用[图片可视窗口](/writing/images)。原图、原轮廓保留，渲染时将轮廓投影到窗口范围；`flow.width` 决定窗口显示宽度。更改窗口后即时重排，并重新使用默认位置。移动端、打印和普通排版显示相同窗口。
+
    下面是可直接使用的完整教学源码；[教学透明图](/examples/illustration.png)保存到本篇 assets 后即可查看同样的效果。
 
    <<< @/.vitepress/examples/flow.md

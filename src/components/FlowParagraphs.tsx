@@ -5,7 +5,9 @@ import type {
   LayoutCursor,
   PreparedTextWithSegments,
 } from '@chenglou/pretext';
-import { availableIntervals, clampPosition, flowImageSize, isContour, type Contour, type Position } from '../lib/flow-geometry';
+import { availableIntervals, clampPosition, flowImageSize, isContour, windowContour, type Contour, type Position } from '../lib/flow-geometry';
+import { imageWindowStyle, type ImageEditor } from '../lib/image-window';
+import { ImageWindowImage } from './ImageWindowImage';
 import type { FlowPresentation } from '../lib/markdown';
 import { cursorOffsetLookup, sourceAttributes, sourceRangeForOffsets, type FlowSourceMap, type SourceLine } from '../lib/source-lines';
 import { joinSourceMaps, normalizeSourceMap, sliceSourceMap, sourceMapAttributes } from '../lib/source-text-map';
@@ -26,7 +28,7 @@ function mappedText(text: string, lines?: SourceLine[]) {
   </Fragment>);
 }
 
-export function FlowParagraphs({ paragraphs, hardLines, source, spec, imageIndex = 0, layoutMode = 'responsive', storageKey }: { paragraphs: string[]; hardLines?: string[][]; source?: FlowSourceMap; spec: FlowPresentation; imageIndex?: number; layoutMode?: 'responsive' | 'desktop'; storageKey?: string }) {
+export function FlowParagraphs({ paragraphs, hardLines, source, spec, imageIndex = 0, layoutMode = 'responsive', storageKey, imageEditor }: { paragraphs: string[]; hardLines?: string[][]; source?: FlowSourceMap; spec: FlowPresentation; imageIndex?: number; layoutMode?: 'responsive' | 'desktop'; storageKey?: string; imageEditor?: ImageEditor }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<HTMLDivElement>(null);
   const obstacleRef = useRef<HTMLElement>(null);
@@ -236,14 +238,14 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec, imageIndex
       if (!response.ok) throw new Error('环绕轮廓文件未能加载。');
       const value: unknown = await response.json();
       if (!isContour(value)) throw new Error('环绕轮廓格式无效。');
-      contour = value;
+      contour = windowContour(value, spec.imageWindow);
       if (destroyed) return;
       setFailed(false);
       const image = imageRef.current;
       if (!image) throw new Error('环绕图片未能加载。');
       await image.decode();
       if (destroyed) return;
-      imageSizeRef.current = flowImageSize(spec.width, image.naturalWidth, image.naturalHeight);
+      imageSizeRef.current = flowImageSize(spec.width, image.naturalWidth * (spec.imageWindow?.width ?? 1), image.naturalHeight * (spec.imageWindow?.height ?? 1));
       await document.fonts.ready;
       if (destroyed) return;
       if (stageRef.current) observer?.observe(stageRef.current);
@@ -264,7 +266,7 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec, imageIndex
       document.fonts.removeEventListener('loadingdone', onFonts);
       scheduleRef.current = () => undefined;
     };
-  }, [paragraphs, hardLines, source, spec.contour, spec.image, spec.width, spec.defaultX, spec.defaultY, layoutMode, storageKey, positionSettings]);
+  }, [paragraphs, hardLines, source, spec.contour, spec.image, spec.imageWindow, spec.width, spec.defaultX, spec.defaultY, layoutMode, storageKey, positionSettings]);
 
   const moveTo = (position: Position) => {
     if (layout !== 'wrap' || failedRef.current) return false;
@@ -302,8 +304,7 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec, imageIndex
         <div className={`flow-original ${layout === 'wrap' ? 'sr-only' : 'flow-fallback'}`}>
           {Array.from({ length: paragraphs.length + 1 }, (_, slot) => {
             if (slot === imageIndex) return <Fragment key="image">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img {...sourceAttributes(source?.image, 'image')} ref={imageRef} className="flow-inline-image" src={spec.image} alt={spec.alt} width={spec.imageWidth} height={spec.imageHeight} />
+              <ImageWindowImage {...sourceAttributes(source?.image, 'image')} imageRef={imageRef} window={spec.imageWindow} displayWidth={spec.width ?? 205} className="flow-inline-image" src={spec.image} alt={spec.alt} width={spec.imageWidth} height={spec.imageHeight} />
             </Fragment>;
             const index = slot < imageIndex ? slot : slot - 1;
             const paragraph = paragraphs[index];
@@ -368,11 +369,12 @@ export function FlowParagraphs({ paragraphs, hardLines, source, spec, imageIndex
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={spec.image} alt="" width={spec.imageWidth} height={spec.imageHeight} draggable={false} />
+            <img src={spec.image} style={spec.imageWindow ? imageWindowStyle(spec.imageWindow) : undefined} alt="" width={spec.imageWidth} height={spec.imageHeight} draggable={false} />
           </Obstacle>
         </div>
       </div>
       <div className="flow-controls">
+        {imageEditor && spec.imageReference && source ? <button type="button" data-preview-control="true" onClick={() => imageEditor({ reference: spec.imageReference!, url: spec.image, label: spec.alt || spec.imageReference!, window: spec.imageWindow, width: spec.imageWidth, height: spec.imageHeight, source: source.image })}>裁剪可视窗口</button> : null}
         {source ? <span className="flow-status">{layout === 'wrap' ? '环绕 · Pretext 0.0.9' : `${failed ? '降级' : '普通图文'} · ${reason}`}</span> : null}
         <button
           type="button"

@@ -8,6 +8,7 @@ import { profileSchema } from '../../../src/config/profile-schema';
 import { profile } from '../../../src/config/profile';
 import { parseMarkdown } from '../../../src/lib/markdown';
 import { createSourceMapper } from '../../../src/lib/source-text-map';
+import { imageWindowsSchema, type ImageWindows } from '../../../src/lib/image-window';
 import type { PreviewData, RevealLine } from './protocol';
 
 export type ArticleLocation = {
@@ -62,7 +63,7 @@ export function articleLocation(projectRoot: string | undefined, file: string, r
   const legacy = data.createdAt === undefined && data.date !== undefined;
   if (legacy ? typeof data.date !== 'string' : typeof data.id !== 'string' || typeof data.createdAt !== 'string') return null;
   const relative = legacy ? path.basename(file) : `${categoryNames[category.data]}/preview/index.md`;
-  try { postFromDocument(relative, { ...data, flow: undefined }, body, defaultConfig().timezone); } catch { return null; }
+  try { postFromDocument(relative, { ...data, flow: undefined, imageWindows: undefined }, body, defaultConfig().timezone); } catch { return null; }
   return locationAt(projectRoot, file, path.dirname(file), relative, legacy, true, pathCategory);
 }
 
@@ -116,11 +117,21 @@ export async function buildPreview(options: BuildOptions) {
   });
   if (data.type === 'poem' && data.flow !== undefined) warnings.push('诗歌模式暂不支持 flow 环绕；请删除 flow 或切换为 article。当前保留普通图片与完整诗歌。');
   const postFlow = data.type === 'poem' ? undefined : Array.isArray(data.flow) ? valid.length ? valid : undefined : valid[0];
+  let windows: ImageWindows | undefined;
+  if (data.imageWindows !== undefined) {
+    windows = {};
+    if (!data.imageWindows || typeof data.imageWindows !== 'object' || Array.isArray(data.imageWindows)) warnings.push('imageWindows 必须是按原图片地址配置的对象；当前显示原图。');
+    else for (const [reference, window] of Object.entries(data.imageWindows)) {
+      const parsed = imageWindowsSchema.safeParse({ ...windows, [reference]: window });
+      if (parsed.success) windows = parsed.data;
+      else warnings.push(`${reference}：图片窗口未完成，当前显示原图。${parsed.error.message}`);
+    }
+  }
   const legacy = location.detached ? data.createdAt === undefined && data.date !== undefined : location.legacy;
   const relative = location.detached ? legacy ? path.basename(location.file) : `${categoryNames[categorySchema.parse(data.category ?? location.pathCategory)]}/preview/index.md` : location.relative;
-  let post = postFromDocument(relative, { ...data, flow: postFlow }, body, config.timezone);
+  let post = postFromDocument(relative, { ...data, flow: postFlow, imageWindows: windows }, body, config.timezone);
   const specs = flowSpecs(post.flow);
-  warnings.push(...parseMarkdown(body, post.flow, {}, origin, { tolerant: true, type: post.type }).warnings);
+  warnings.push(...parseMarkdown(body, post.flow, {}, origin, { tolerant: true, type: post.type, imageWindows: post.imageWindows }).warnings);
   const references = markdownReferences(body, { onIssue: (message) => { if (!warnings.includes(message)) warnings.push(message); } });
   const images = new Set([...imageReferences(body), post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour])]);
   const mediaRaw = legacy ? undefined : await optionalText(path.join(path.dirname(location.file), 'media.yaml'), readText);
@@ -135,7 +146,7 @@ export async function buildPreview(options: BuildOptions) {
   const assets: Record<string, Asset> = {};
   const links = new Map<string, string>();
   const allowedExternal = new Set<string>();
-  const referenced = [...references, post.cover, ...specs.flatMap((spec) => [spec.image, spec.contour])].filter((url): url is string => !!url);
+  const referenced = [...references, post.cover, ...Object.keys(post.imageWindows ?? {}), ...specs.flatMap((spec) => [spec.image, spec.contour])].filter((url): url is string => !!url);
   const posters = referenced.flatMap((url) => media.assets[url]?.poster ? [media.assets[url].poster!] : []);
   for (const url of [...new Set([...referenced, ...posters])]) {
     if (url.startsWith('#')) continue;

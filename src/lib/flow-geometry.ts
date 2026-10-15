@@ -1,3 +1,5 @@
+import type { ImageWindow } from './image-window';
+
 export type Interval = { x: number; width: number };
 export type Position = { x: number; y: number };
 export type Obstacle = Position & { width: number; height: number };
@@ -16,6 +18,18 @@ export function flowImageSize(width = 205, sourceWidth?: number, sourceHeight?: 
   if (!sourceWidth || !sourceHeight || !Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) throw new Error('环绕图片缺少有效的原始尺寸。');
   const scale = Math.min(width, containerWidth) / sourceWidth;
   return { width: sourceWidth * scale, height: sourceHeight * scale };
+}
+
+/** Project the original alpha outline into the selected viewport, without new media files. */
+export function windowContour(contour: Contour, window?: ImageWindow): Contour {
+  if (!window) return contour;
+  const height = Math.max(1, Math.round(contour.height * window.height));
+  return { height, rows: Array.from({ length: height }, (_, index) => {
+    const row = contour.rows[Math.min(contour.height - 1, Math.floor((window.y + index / height * window.height) * contour.height))];
+    if (!row) return null;
+    const left = Math.max(row[0], window.x), right = Math.min(row[1], window.x + window.width);
+    return left > right ? null : [Math.max(0, (left - window.x) / window.width), Math.min(1, (right - window.x) / window.width)];
+  }) };
 }
 
 export function availableIntervals(

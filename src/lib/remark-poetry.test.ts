@@ -52,4 +52,28 @@ describe('poetry Markdown and exact source positions', () => {
     const parsed = parseMarkdown(body, flow, {}, undefined, { type: 'poem', tolerant: true });
     expect(parsed.flows).toEqual([]); expect(parsed.markdown).toBe(body); expect(parsed.warnings).toHaveLength(1);
   });
+  it('keeps verses centered and line-separated around direct, reference and linked images without blank lines', () => {
+    for (const image of ['![插画](./assets/a.png)', '![插画][picture]', '[![插画][picture]](https://example.org)']) {
+      const body = `前行\n前行第二句\n${image}\n后行\n后行第二句\n\n[picture]: ./assets/a.png`;
+      const html = render(body, 'poem', { lineOffset: 8 });
+      expect(html.match(/class="poem-stanza"/g)).toHaveLength(2);
+      expect(html.match(/<br\/>/g)).toHaveLength(2);
+      expect(html).toContain('markdown-media-paragraph');
+      expect(html).toContain('data-source-line="12"'); expect(html).toContain('data-source-line="13"');
+      expect(html).not.toMatch(/<p[^>]*>[^<]*<figure/);
+      expect(html.indexOf('前行')).toBeLessThan(html.indexOf('<figure'));
+      expect(html.indexOf('<figure')).toBeLessThan(html.indexOf('后行'));
+      expect(parseMarkdown(body, undefined, {}, undefined, { type: 'poem' }).markdown).toBe(body);
+    }
+  });
+  it('separates several images from multiline emphasis, keeps definitions and exact CRLF positions', () => {
+    const body = '**前行 &amp;\r\n![图](./assets/a.png)\r\n后行😀**\r\n![第二图](./assets/b.png)\r\n最后一行\r\n尾行';
+    const html = render(body, 'poem', { lineOffset: 10 });
+    expect(html.match(/class="poem-stanza"/g)).toHaveLength(3);
+    expect(html.match(/<figure/g)).toHaveLength(2);
+    expect(html).toContain('<strong>');
+    for (const line of [11, 13, 15, 16]) expect(html).toContain(`data-source-line="${line}"`);
+    expect(html).toContain('data-source-start="12"'); expect(html).toContain('data-source-start="14"');
+    expect(parseMarkdown('![图](./assets/a.png)\n诗行', undefined, {}, undefined, { type: 'poem' }).description).toBe('诗行');
+  });
 });

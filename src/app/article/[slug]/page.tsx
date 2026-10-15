@@ -34,7 +34,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!post) notFound();
   const category = getCategory(post.category);
   if (!category) notFound();
-  const parsed = parseMarkdown(post.body, post.flow, post.assets, undefined, { type: post.type });
+  const parsed = parseMarkdown(post.body, post.flow, post.assets, undefined, { type: post.type, imageWindows: post.imageWindows });
   const series = await getPostSeries(post);
 
   return (

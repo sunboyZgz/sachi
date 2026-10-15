@@ -2,7 +2,7 @@ import type { SourcePoint } from '../../../src/lib/source-lines';
 import type { PreviewData, RevealSource, SourceNavigationReceipt } from './protocol';
 
 type CaretDocument = Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null; caretRangeFromPoint?: (x: number, y: number) => Range | null };
-const controls = 'a, button, input, textarea, select, video, audio, [role="button"], [contenteditable="true"]';
+const controls = 'a, button, input, textarea, select, video, audio, [role="button"], [contenteditable="true"], [data-preview-control="true"]';
 
 /** A caret API can return the nearest text even in a margin: require a real glyph hit. */
 export function textHit(document: Document, x: number, y: number) {
