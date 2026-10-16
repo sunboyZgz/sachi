@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, calendarStats, dateParts, indexCalendarPosts, latestDate, monthGrid, publicationDays, weekday, yearGrid } from './writing-calendar';
+import { addDays, adjacentCalendarMonth, calendarStats, dateParts, indexCalendarPosts, latestDate, monthGrid, publicationDays, weekday, yearGrid } from './writing-calendar';
 
 const entry = (id: string, publishedAt: string) => ({ id, slug: id, title: id, category: 'learn' as const, publishedAt });
 
@@ -44,5 +44,14 @@ describe('writing calendar dates and public publication counts', () => {
     expect(february.slice(0, 6)).toEqual(Array(6).fill(null));
     expect(february.filter(Boolean)).toHaveLength(28);
     expect(monthGrid(2024, 2).filter(Boolean)).toHaveLength(29);
+  });
+
+  it('bounds picker navigation by available years and the current month', () => {
+    const years = [2026, 2024];
+    expect(adjacentCalendarMonth(2026, 1, -1, years, '2026-10-16')).toEqual({ year: 2024, month: 12 });
+    expect(adjacentCalendarMonth(2024, 12, 1, years, '2026-10-16')).toEqual({ year: 2026, month: 1 });
+    expect(adjacentCalendarMonth(2024, 1, -1, years, '2026-10-16')).toBeNull();
+    expect(adjacentCalendarMonth(2026, 10, 1, years, '2026-10-16')).toBeNull();
+    expect(adjacentCalendarMonth(2026, 9, 1, years, '2026-10-16')).toEqual({ year: 2026, month: 10 });
   });
 });

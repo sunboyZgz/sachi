@@ -44,6 +44,18 @@ export function monthGrid(year: number, month: number) {
   return Array.from({ length: Math.ceil((leading + length) / 7) * 7 }, (_, index) => index < leading || index >= leading + length ? null : dateKey(year, month, index - leading + 1));
 }
 
+export function adjacentCalendarMonth(year: number, month: number, direction: -1 | 1, years: number[], today: string) {
+  const orderedYears = [...years].toSorted((a, b) => a - b);
+  let nextMonth = month + direction;
+  let nextYear = year;
+  if (nextMonth < 1 || nextMonth > 12) {
+    nextYear = orderedYears[orderedYears.indexOf(year) + direction];
+    nextMonth = direction === -1 ? 12 : 1;
+  }
+  if (!orderedYears.includes(nextYear) || dateKey(nextYear, nextMonth, 1) > today) return null;
+  return { year: nextYear, month: nextMonth };
+}
+
 /** Only the explicit public manifest (or a labelled fixture preview) supplies these entries. */
 export function publicationDays(entries: Publication[], timeZone: string, asOf: string, allowFixtures = false): CalendarPost[] {
   const seen = new Set<string>();

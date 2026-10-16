@@ -16,7 +16,6 @@
 .about-page .text-link { border: 0; padding: 0; width: auto; }
 .about-page .fallback-calendar { display: none; }
 .about-page .calendar-fixture-note { color: var(--muted); font: 12px/1.8 var(--sans); margin-top: 8px; }
-.about-page .date-jump summary { min-height: 44px; }
 .about-page{position:relative;min-height:100vh;isolation:isolate;overflow:clip}
 .about-page .page{position:relative;z-index:2;width:min(var(--content),calc(100% - 104px));margin-inline:auto}
 .about-page .decoration{position:absolute;z-index:0;pointer-events:none;user-select:none;height:auto}
@@ -81,15 +80,41 @@
 .about-page .month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .about-page .month-grid .day-cell{height:auto;width:100%;aspect-ratio:1;border-radius:2px;font:13px/1.2 var(--sans);display:flex;align-items:center;justify-content:center}
 .about-page .calendar-bottom{margin-top:12px;display:flex;justify-content:space-between;align-items:start;gap:20px}
-.about-page .date-jump{font:12px/1.65 var(--sans);color:var(--muted)}
-.about-page .date-jump summary{cursor:pointer;min-height:36px;display:flex;align-items:center;gap:7px;width:fit-content}
-.about-page .date-jump summary::after{content:'＋';font-size:14px}
-.about-page .date-jump[open] summary::after{content:'−'}
-.about-page .date-jump form{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:5px 0 16px}
-.about-page .date-jump label{font-size:12px}
-.about-page .date-jump input{min-height:44px;background:transparent;border:1px solid var(--rule);padding:5px 10px;font:13px var(--sans);max-width:180px}
-.about-page .date-jump button{min-height:44px;padding:0 15px;background:transparent;border:1px solid var(--moss);color:var(--moss);font:13px var(--sans)}
-.about-page .date-error{width:100%;color:#7c4b3c;max-width:400px}
+.about-page .date-picker{width:min(328px,100%);font:13px/1.7 var(--sans);color:var(--muted)}
+.about-page .date-picker-trigger{display:flex;align-items:center;gap:10px;width:fit-content;min-height:44px;padding:0;border:0;background:transparent;cursor:pointer;color:var(--moss);font:14px/1.7 var(--serif)}
+.about-page .date-picker-trigger svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.4;transition:transform var(--ease)}
+.about-page .date-picker-trigger[aria-expanded="true"]{color:var(--ink)}
+.about-page .date-picker-trigger[aria-expanded="true"] svg{transform:rotate(180deg)}
+.about-page .date-picker-trigger:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+.date-picker-panel{--serif:var(--font-body);--sans:var(--font-ui);--ease:160ms ease;position:fixed;z-index:70;visibility:hidden;width:328px;padding:12px 16px 8px;border:1px solid var(--rule);border-radius:2px;background:var(--paper);box-shadow:0 8px 28px #343a341a;overflow-y:auto;overscroll-behavior:contain;color:var(--ink);font:13px/1.7 var(--sans)}
+.date-picker-panel button{padding:0;border:0;background:transparent;color:inherit;border-radius:0;cursor:pointer;touch-action:manipulation;transition:background var(--ease),color var(--ease)}
+.date-picker-panel button:disabled{cursor:default}
+.date-picker-panel button:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+.date-picker-panel .date-picker-heading{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;margin-bottom:12px}
+.date-picker-panel .date-picker-heading-controls{display:flex;justify-content:center;align-items:center;gap:16px}
+.date-picker-panel .date-picker-nav,.date-picker-panel .date-picker-nav-space{width:44px;height:44px}
+.date-picker-panel .date-picker-nav{color:var(--moss);font:20px/1 var(--serif);border-radius:2px}
+.date-picker-panel .date-picker-nav:not(:disabled):hover{background:var(--tint)}
+.date-picker-panel .date-picker-nav:disabled{color:var(--faint);opacity:.35}
+.date-picker-panel .date-picker-period{display:flex;align-items:baseline;gap:4px;min-height:44px;font:20px/44px var(--serif);font-variant-numeric:tabular-nums}
+.date-picker-panel .date-picker-period span{color:var(--muted);font-size:13px}
+.date-picker-panel .date-picker-period:hover,.date-picker-panel .date-picker-period[aria-pressed="true"]{color:var(--moss)}
+.date-picker-panel .date-picker-period[aria-pressed="true"]{text-decoration:underline;text-underline-offset:7px;text-decoration-thickness:1px}
+.date-picker-panel .date-picker-weekdays,.date-picker-panel .date-picker-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.date-picker-panel .date-picker-weekdays{margin-bottom:8px;color:var(--muted);text-align:center;font:11px/24px var(--sans)}
+.date-picker-panel .date-picker-day{position:relative;min-width:0;min-height:40px;aspect-ratio:1;border-radius:2px;color:var(--ink);font:14px/1 var(--sans);font-variant-numeric:tabular-nums}
+.date-picker-panel .date-picker-day:not(:disabled):not([aria-pressed="true"]):hover{background:var(--tint);color:var(--moss-dark)}
+.date-picker-panel .date-picker-day[aria-pressed="true"]{background:var(--moss);color:var(--paper)}
+.date-picker-panel .date-picker-day[aria-current="date"]::after{content:"";position:absolute;bottom:5px;left:calc(50% - 1.5px);width:3px;height:3px;border-radius:50%;background:currentColor}
+.date-picker-panel .date-picker-day:disabled{color:var(--faint);opacity:.35}
+.date-picker-panel .date-picker-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-height:264px;overflow-y:auto;padding:4px}
+.date-picker-panel .date-picker-options button{min-height:44px;border:1px solid transparent;border-radius:2px;font:14px/1.6 var(--sans)}
+.date-picker-panel .date-picker-options button:not(:disabled):hover{background:var(--tint)}
+.date-picker-panel .date-picker-options button[aria-pressed="true"]{border-color:var(--rule);background:var(--tint);color:var(--moss-dark)}
+.date-picker-panel .date-picker-options button:disabled{color:var(--faint);opacity:.35}
+.date-picker-panel .date-picker-footer{display:flex;justify-content:space-between;gap:16px;margin-top:12px;padding-top:8px;border-top:1px solid var(--rule)}
+.date-picker-panel .date-picker-footer button{min-height:44px;color:var(--moss);font:13px/1.6 var(--serif)}
+.date-picker-panel .date-picker-footer button:hover{color:var(--moss-dark);text-decoration:underline;text-underline-offset:4px}
 .about-page .selected-entries{margin-top:6px;min-height:130px}
 .about-page .selected-date{font-size:16px;font-weight:400;line-height:1.8;margin-bottom:7px}
 .about-page .selected-date time{font-weight:500;letter-spacing:.3px}
@@ -198,7 +223,6 @@
 .about-page .year-control select{font-size:14px}
 .about-page .annual-summary{font-size:14px}
 .about-page .calendar-bottom{margin-top:12px}
-.about-page .date-jump summary{min-height:40px}
 .about-page .selected-date{font-size:15px;margin-bottom:11px;line-height:1.9}
 .about-page .selected-entries{min-height:143px}
 .about-page .entry-link{flex-wrap:wrap;gap:0;padding:11px 0;line-height:1.9;font-size:17px;align-items:flex-start}
@@ -223,9 +247,10 @@
 .about-page .text-link{font-size:13px}
 }
 @media(prefers-reduced-motion:reduce){
-.about-page *, .about-page *::before, .about-page *::after{transition:none!important;animation:none!important}
+.about-page *, .about-page *::before, .about-page *::after, .date-picker-panel *{transition:none!important;animation:none!important}
 }
 @media print{
+.date-picker-panel{display:none!important}
 .about-page{font-size:12pt;background:white;color:#111}
 .about-page::before, .about-page .decoration, .about-page .aside-poem, .about-page .skip-link, .about-page .js-calendar, .about-page .calendar-meta, .about-page .public-links, .about-page .site-header, .about-page .site-footer a{display:none!important}
 .about-page{overflow:visible}

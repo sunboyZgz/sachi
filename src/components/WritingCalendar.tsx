@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { SiteLink } from './SiteLink';
+import { WritingDatePicker } from './WritingDatePicker';
 import type { CategoryId } from '@/config/site';
 import { addDays, calendarStats, dateKey, dateParts, indexCalendarPosts, latestDate, monthGrid, weekday, yearGrid, zonedDay, type CalendarPost } from '@/lib/writing-calendar';
 
@@ -29,8 +30,6 @@ export function WritingCalendar({ posts, today: initialToday, timeZone, fixture,
   const [chosenMonth, setChosenMonth] = useState<number | null>(null);
   const [chosenDate, setChosenDate] = useState<string | null>(null);
   const [focusDate, setFocusDate] = useState<string | null>(null);
-  const [jumpDate, setJumpDate] = useState<string | null>(null);
-  const [dateError, setDateError] = useState('');
   const [tooltip, setTooltip] = useState<{ text: string; left: number; top: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const year = chosenYear ?? now.year;
@@ -55,11 +54,11 @@ export function WritingCalendar({ posts, today: initialToday, timeZone, fixture,
     return () => { window.removeEventListener('scroll', hide); window.removeEventListener('resize', hide); };
   }, []);
 
-  function resetSelection() { setChosenDate(null); setFocusDate(null); setTooltip(null); setJumpDate(null); setDateError(''); }
+  function resetSelection() { setChosenDate(null); setFocusDate(null); setTooltip(null); }
   function chooseDate(key: string) {
     const parsed = dateParts(key);
     if (!parsed || key > today || !years.includes(parsed.year)) return false;
-    setChosenYear(parsed.year); setChosenMonth(parsed.month); setChosenDate(key); setFocusDate(key); setJumpDate(key); setDateError('');
+    setChosenYear(parsed.year); setChosenMonth(parsed.month); setChosenDate(key); setFocusDate(key); setTooltip(null);
     return true;
   }
   function dateLabel(key: string) {
@@ -121,15 +120,7 @@ export function WritingCalendar({ posts, today: initialToday, timeZone, fixture,
         </div>}
       </div>
       <div className="calendar-bottom">
-        <details className="date-jump"><summary>按日期查看</summary><form onSubmit={(event) => {
-          event.preventDefault();
-          if (!chooseDate(jumpDate ?? selected ?? today)) setDateError('请选择可选年份中、不晚于今天的日期。');
-        }}>
-          <label htmlFor="calendar-jump-date">选择日期</label>
-          <input id="calendar-jump-date" type="date" required min={dateKey(years.at(-1)!, 1, 1)} max={today} value={jumpDate ?? selected ?? today} onChange={(event) => setJumpDate(event.target.value)} />
-          <button type="submit">查看</button>
-          {dateError ? <p className="date-error" role="status">{dateError}</p> : null}
-        </form></details>
+        <WritingDatePicker value={selected} today={today} years={years} onSelect={chooseDate} />
       </div>
       <div className="selected-entries" aria-label="选中日期的文章">
         <h3 className="selected-date" aria-live="polite" aria-atomic="true">{selected ? <><time dateTime={selected}>{dotted(selected)}</time> · {articles.length ? `发布 ${articles.length} 篇` : '当天没有公开文章'}</> : emptyTitle}</h3>
