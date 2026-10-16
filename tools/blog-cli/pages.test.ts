@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
 import { readSourcePost, scanContent } from '../../src/lib/blog/content';
 import { atomicWrite, BlogError, exists, readJson, walk, writeJson } from '../../src/lib/blog/files';
-import { defaultConfig, type BlogConfig } from '../../src/lib/blog/schema';
+import { type BlogConfig } from '../../src/lib/blog/schema';
+import { legacyConfig as defaultConfig } from '../../tests/helpers/legacy-config';
 import { withBasePath } from '../../src/lib/site-path';
 import { newPost } from './writing';
 import { codeBaseline, saveSnapshot } from './snapshot';
@@ -39,6 +40,7 @@ for(const p of posts){const dir='out/article/'+p.slug;await fs.mkdir(dir,{recurs
   const a = await newPost(root, config, { title: '公开 A', category: '生活旁白', slug: 'public-a' });
   const draft = await newPost(root, config, { title: '私密草稿', category: '蘸豆！！', slug: 'draft' });
   await atomicWrite(path.join(root, draft.file), (await readFile(path.join(root, draft.file), 'utf8')).replace('在这里写正文。', 'PRIVATE_DRAFT_DO_NOT_PUBLISH'));
+  await atomicWrite(path.join(root, 'vendor/yandu-storage-server-0.2.0.tgz'), 'fixture-fixed-sdk');
   const source = await readSourcePost(root, a.file, config);
   await saveSnapshot(root, config, source);
   const plan = createPlan(null, [source], (await scanContent(root, config)).posts, await codeBaseline(root, config, true));
@@ -89,6 +91,7 @@ describe('frozen blog branch without working drafts or root Git mutations', () =
     await atomicWrite(path.join(root, a.file), (await readFile(path.join(root, a.file), 'utf8')).replace('在这里写正文。', 'NEW_WORKING_REVISION_MUST_NOT_LEAK'));
     const directory = path.join(parent, 'bundle'); await mkdir(directory);
     await preparePagesBundle(root, built.directory, built.manifest, target, directory);
+    expect(await readFile(path.join(directory, 'vendor/yandu-storage-server-0.2.0.tgz'), 'utf8')).toBe('fixture-fixed-sdk');
     expect(await exists(path.join(directory, 'content'))).toBe(false); expect(await exists(path.join(directory, '.env'))).toBe(false);
     expect(await readJson(path.join(directory, 'blog.config.json'))).toMatchObject({ git: null, deploy: null, pages: null, siteUrl: target.url });
     const posts = await readFile(path.join(directory, '.blog-input/posts.json'), 'utf8');

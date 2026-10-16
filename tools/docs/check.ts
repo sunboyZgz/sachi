@@ -39,8 +39,8 @@ export async function checkDocs(root = path.resolve(path.dirname(fileURLToPath(i
     }
     for (const match of withoutCode.matchAll(/\]\((\/[^)#\s]+)(?:#[^)]*)?\)|href="(\/[^"#]+)(?:#[^"]*)?"|withBase\('(\/[^'#]+)(?:#[^']*)?'\)/g)) {
       const raw = match[1] ?? match[2] ?? match[3];
-      if (raw.startsWith('/examples/')) {
-        if (raw.includes('..') || !await exists(path.join(root, 'public', raw.slice(1)))) issues.push(`教学素材缺失：${file} -> ${raw}（运行 npm run docs:examples）`);
+      if (raw.startsWith('/examples/') || raw.startsWith('/licenses/')) {
+        if (raw.includes('..') || !await exists(path.join(root, 'public', raw.slice(1)))) issues.push(raw.startsWith('/examples/') ? `教学素材缺失：${file} -> ${raw}（运行 npm run docs:examples）` : `许可证文件缺失：${file} -> ${raw}`);
         continue;
       }
       const target = raw.replace(/\.html$/, '').replace(/\/$/, '/index');

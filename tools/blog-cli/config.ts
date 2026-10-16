@@ -4,14 +4,17 @@ import { BlogError, exists, inside, readJson, safeFile } from '../../src/lib/blo
 import { configSchema, defaultConfig, type BlogConfig } from '../../src/lib/blog/schema';
 import { profileSchema } from '../../src/config/profile-schema';
 import { githubTarget } from './pages';
+import { uploadCredentialPath } from './credentials';
+import { assertStorageReady, contentDirectory } from '../../src/lib/blog/storage';
 
 export async function loadConfig(root: string): Promise<BlogConfig> {
-  for (const folder of ['content', 'public', 'templates', '.blog', '.blog-store']) {
+  await assertStorageReady(root);
+  for (const folder of ['content', 'public', 'templates', '.blog', '.blog-store', '.sachi']) {
     const directory = path.join(root, folder);
     if (await exists(directory) && (await lstat(directory)).isSymbolicLink()) throw new BlogError(`项目数据目录不能是符号链接：${folder}`, 2);
   }
   const file = path.join(root, 'blog.config.json');
-  const config = await exists(file) ? configSchema.parse(await readJson(file)) : defaultConfig();
+  const config = await exists(file) ? configSchema.parse(await readJson(file)) : { ...defaultConfig(), contentDir: await contentDirectory(root) };
   const profileFile = 'src/config/profile.json';
   if (await exists(path.join(root, profileFile))) {
     const result = profileSchema.safeParse(await readJson(await safeFile(root, profileFile)));
@@ -23,7 +26,9 @@ export function validateConfig(root: string, config: BlogConfig): BlogConfig {
   try { new Intl.DateTimeFormat('en', { timeZone: config.timezone }); }
   catch { throw new BlogError(`时区无效：${config.timezone}`, 2); }
   for (const asset of config.siteAssets) inside(path.join(root, 'public'), asset);
+  if (config.yandu) uploadCredentialPath(root, config.yandu.credentialFile);
   if (config.git?.remote.startsWith('-')) throw new BlogError('Git 远端不能以 - 开头。', 2);
+  if (config.yandu && config.pages) throw new BlogError('Yandu 公开资源需要同站资源代理；请停用 GitHub Pages 并使用 SSH 静态部署。', 2);
   if (config.pages?.remote) githubTarget(config.pages.remote);
   if (config.pages && config.git && ['blog', 'main'].includes(config.git.branch)) throw new BlogError('Git 写作备份不能使用开发 main 或公开 Pages 的 blog 分支；请保留独立 content-source 分支或仓库。', 2);
   if (config.deploy) {

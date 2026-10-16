@@ -53,6 +53,7 @@ npm run blog
 - **只想本地写一篇**：按[完整本地流程](/start/local-workflow)完成新建 → 保存 → 检查 → 预览 → BUILD_ONLY，不必先配置 Git / 服务器。
 - **想用免费的 GitHub 地址上线**：按[main / blog 与 Pages](/setup/github-pages)接入；推送完成后还需等 Actions 与站点标记核实。
 - **有自己的 SSH 静态服务器**：按[服务器接入](/setup/server)准备可信连接、专用根和公开路径映射，CLI 不代建服务器。
+- **使用本机 Yandu＋云服务器**：按[Yandu 流程](/setup/yandu)配置，再看[每个参数填什么](/reference/yandu-config)、[两枚凭证如何创建](/setup/yandu-credentials)和[SDK 与许可证](/reference/yandu-sdk)。
 - **担心丢稿，或准备换电脑**：先读[备份与恢复的区别](/reference/publishing)，再做 sync；不要把公开网页当全部写作备份。
 
 当前 Pages 自动回滚与从 Pages 恢复持久快照尚不支持；具体能力见[模式对照](/reference/publishing)。教程会明确标出限制，不把尚未实现的操作写成已经可用。

@@ -31,7 +31,7 @@ npm run blog -- search "朝思暮想"
 匹配 1 项：
 朝思暮想的玩具 · 闲暇娱乐
   ID：51f3e126-f6a0-4ef3-a4fb-6dca72b85afd
-  文件：content/闲暇娱乐/2026-10-12/index.md
+  文件：.blog-store/content/闲暇娱乐/2026-10-12/index.md
 ```
 
 同名文章分别列出，核对栏目和路径再复制。已归组的文章还会显示系列 ID 和章节序号。
@@ -61,7 +61,7 @@ npm run blog -- series search "我学会了"
 匹配 1 项：
 我学会了 · 闲暇娱乐
   ID：a712a8ac-2c18-4520-9428-96a45b566ce1
-  文件：content/series/a712a8ac-2c18-4520-9428-96a45b566ce1.yaml
+  文件：.blog-store/content/series/a712a8ac-2c18-4520-9428-96a45b566ce1.yaml
 ```
 
 文章与系列各有独立身份，同名系列可能属于不同栏目。需要新建时按[系列教程](/writing/series)操作，创建成功会输出新 ID。

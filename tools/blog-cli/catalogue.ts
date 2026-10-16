@@ -1,11 +1,12 @@
 import { readFile, readdir, lstat } from 'node:fs/promises';
 import path from 'node:path';
+import { contentDirectory, logicalSourcePath, writingFile } from '../../src/lib/blog/storage';
 import { splitDocument } from '../../src/lib/blog/document';
-import { BlogError, exists, safeFile, sha256 } from '../../src/lib/blog/files';
+import { BlogError, exists, sha256 } from '../../src/lib/blog/files';
 import { categoryNames, categorySchema, postSchema, seriesRefSchema, type BlogPost } from '../../src/lib/blog/schema';
 
 export function matchingArticles(root: string, articles: ArticleIdentity[], selector: string) {
-  const file = (path.isAbsolute(selector) ? path.relative(root, selector) : selector).replace(/^\.\//, '').split(path.sep).join('/').replace(/\/$/, '');
+  const file = logicalSourcePath((path.isAbsolute(selector) ? path.relative(root, selector) : selector).replace(/^\.\//, '').split(path.sep).join('/').replace(/\/$/, ''));
   return articles.filter((source) => {
     const { data } = splitDocument(source.raw);
     const slug = source.file.endsWith('/index.md') ? data.slug ?? source.id : path.basename(source.file, '.md');
@@ -21,7 +22,7 @@ export type CatalogueIssue = { file: string; message: string };
 
 /** Writing identities are independent of incomplete body syntax, flow and media. */
 export async function articleCatalogue(root: string) {
-  const base = path.join(root, 'content');
+  const base = path.join(root, await contentDirectory(root));
   const articles: ArticleIdentity[] = [];
   const issues: CatalogueIssue[] = [];
   const files: string[] = [];
@@ -46,7 +47,7 @@ export async function articleCatalogue(root: string) {
       const normalizedPath = file.normalize('NFC').toLowerCase();
       if (paths.has(normalizedPath)) throw new BlogError('跨平台路径冲突。');
       paths.add(normalizedPath);
-      const raw = await readFile(await safeFile(root, file), 'utf8');
+      const raw = await readFile(await writingFile(root, file), 'utf8');
       const { data } = splitDocument(raw);
       if (data.fixture === true) continue;
       const relative = file.slice('content/'.length);

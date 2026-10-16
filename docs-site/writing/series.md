@@ -35,7 +35,7 @@ npm run blog -- search "朝思暮想"
 匹配 1 项：
 朝思暮想的玩具 · 闲暇娱乐
   ID：51f3e126-f6a0-4ef3-a4fb-6dca72b85afd
-  文件：content/闲暇娱乐/2026-10-12/index.md
+  文件：.blog-store/content/闲暇娱乐/2026-10-12/index.md
 ```
 
 核对栏目和文件，再复制 ID。同名、多个关键词及轻微错字的用法见[查找文章与系列 ID](/writing/find)。
@@ -55,7 +55,7 @@ npm run blog -- series search "我学会了"
 匹配 1 项：
 我学会了 · 闲暇娱乐
   ID：a712a8ac-2c18-4520-9428-96a45b566ce1
-  文件：content/series/a712a8ac-2c18-4520-9428-96a45b566ce1.yaml
+  文件：.blog-store/content/series/a712a8ac-2c18-4520-9428-96a45b566ce1.yaml
 ```
 
 没有合适系列时，在原文章的栏目创建：
@@ -71,7 +71,7 @@ series：已创建
 系列：我学会了
 栏目：闲暇娱乐
 ID：a712a8ac-2c18-4520-9428-96a45b566ce1
-文件：content/series/a712a8ac-2c18-4520-9428-96a45b566ce1.yaml
+文件：.blog-store/content/series/a712a8ac-2c18-4520-9428-96a45b566ce1.yaml
 ```
 
 每次实际创建生成新的 UUID。创建命令加 `--dry-run` 只显示计划，不生成可用于下一步的 ID。

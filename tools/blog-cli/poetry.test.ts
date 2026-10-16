@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+
 import { defaultConfig } from '../../src/lib/blog/schema';
 import { readSourcePost, splitDocument } from '../../src/lib/blog/content';
 import { exists, sha256, stableJson, walk } from '../../src/lib/blog/files';
@@ -49,18 +50,18 @@ describe('article types at every writing entry point', () => {
     const root = await fixture(); vi.spyOn(console, 'log').mockImplementation(() => {}); vi.spyOn(console, 'error').mockImplementation(() => {});
     const guided = prompts(['new', 'life', 'poem']);
     await main(['--root', root], { prompts: guided });
-    const file = (await walk(path.join(root, 'content'))).find((file) => file.endsWith('/index.md'))!;
-    expect((await readSourcePost(root, `content/${file}`, config)).post.type).toBe('poem');
-    const metadata = prompts(['meta', `content/${file}`, 'edit', 'article']);
+    const file = (await walk(path.join(root, '.blog-store/content'))).find((file) => file.endsWith('/index.md'))!;
+    expect((await readSourcePost(root, `.blog-store/content/${file}`, config)).post.type).toBe('poem');
+    const metadata = prompts(['meta', `.blog-store/content/${file}`, 'edit', 'article']);
     await main(['--root', root], { prompts: metadata });
-    expect((await readSourcePost(root, `content/${file}`, config)).post.type).toBe('article');
+    expect((await readSourcePost(root, `.blog-store/content/${file}`, config)).post.type).toBe('article');
     expect(metadata.select.mock.calls.find(([message]) => message === '文章类型')![1][0].value).toBe('poem');
     const series = prompts(['life']);
     expect(await collectNewPostOptions({}, series, { articleTypes: false })).not.toHaveProperty('type');
     expect(series.select).toHaveBeenCalledTimes(1);
   });
   it('can initialize handwritten poem metadata and change or remove a type without changing body bytes', async () => {
-    const root = await fixture(), file = 'content/生活旁白/2026-10-14/index.md'; await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    const root = await fixture(), file = '.blog-store/content/生活旁白/2026-10-14/index.md'; await mkdir(path.dirname(path.join(root, file)), { recursive: true });
     const body = '\r\n第一行诗  \r\n第二行诗\r\n\r\n下一节\r\n';
     await writeFile(path.join(root, file), `\uFEFF---\r\ntitle: 教学诗 # 保留注释\r\ntype: poem\r\n---\r\n${body}`);
     await editMeta(root, file, {}, true, config);
@@ -75,7 +76,7 @@ describe('article types at every writing entry point', () => {
     const root = await fixture(); await mkdir(path.join(root, 'templates'));
     await writeFile(path.join(root, 'templates/poem.md'), '---\nflow: { image: ./assets/a.png }\n---\n\n第一行\n第二行');
     await expect(newPost(root, config, { category: 'life', title: '冲突诗', type: 'poem' })).rejects.toThrow('诗歌模式暂不支持 flow');
-    expect(await exists(path.join(root, 'content'))).toBe(false);
+    expect(await exists(path.join(root, '.blog-store/content'))).toBe(false);
     const ordinary = await newPost(root, config, { category: 'life', title: '普通正文' });
     const before = await readFile(path.join(root, ordinary.file), 'utf8');
     await expect(editMeta(root, ordinary.file, { type: 'poetry' }, false, config)).rejects.toThrow();
@@ -85,7 +86,7 @@ describe('article types at every writing entry point', () => {
     expect((await readSourcePost(root, ordinary.file, config)).post.type).toBe('poem');
   });
   it('offers a type when initializing an untyped handwritten article, and preserves an existing type', async () => {
-    const root = await fixture(), file = 'content/生活旁白/2026-10-14/index.md'; await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    const root = await fixture(), file = '.blog-store/content/生活旁白/2026-10-14/index.md'; await mkdir(path.dirname(path.join(root, file)), { recursive: true });
     const raw = '---\ntitle: 手写教学诗\n---\n\n风经过窗口\n留下第二行\n';
     await writeFile(path.join(root, file), raw); vi.spyOn(console, 'log').mockImplementation(() => {}); vi.spyOn(console, 'error').mockImplementation(() => {});
     const guided = prompts(['poem']);

@@ -9,6 +9,7 @@ import { commandCatalog, parseCli } from '../blog-cli/arguments';
 import { checkDocs } from './check';
 import { referencePages } from './reference';
 import { tokenizeChinese } from '../../docs-site/.vitepress/search';
+import { docsBase } from '../../docs-site/.vitepress/settings';
 
 const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs-site');
 const temporary: string[] = [];
@@ -21,6 +22,18 @@ async function fixture() {
 afterEach(async () => { for (const root of temporary.splice(0)) await rm(root, { recursive: true, force: true }); });
 
 describe('task-oriented CLI handbook', () => {
+  it('loads the documentation base from JSON and falls back only when the file is absent', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'sachi-docs-config-')); temporary.push(root);
+    const file = path.join(root, 'docs.config.json');
+    expect(docsBase(file, { DOCS_BASE: '/legacy/' })).toBe('/legacy/');
+    expect(docsBase(file, {})).toBe('/');
+    await atomicWrite(file, JSON.stringify({ schemaVersion: 1, base: '/handbook/' }));
+    expect(docsBase(file, { DOCS_BASE: '/legacy/' })).toBe('/handbook/');
+    for (const raw of ['', '{}', '{"schemaVersion":1}', '{"schemaVersion":1,"base":"handbook"}', '{"schemaVersion":1,"base":"/","typo":true}']) {
+      await atomicWrite(file, raw);
+      expect(() => docsBase(file, { DOCS_BASE: '/legacy/' })).toThrow();
+    }
+  });
   it('keeps operational commands and live Markdown examples next to the steps they explain', async () => {
     const { readdir } = await import('node:fs/promises');
     for (const directory of ['start', 'writing', 'preview', 'release', 'backup', 'setup', 'troubleshooting']) {
@@ -50,7 +63,7 @@ describe('task-oriented CLI handbook', () => {
     expect(browserTokenize('blog publish --dry-run')).toEqual(tokenizeChinese('blog publish --dry-run'));
   });
   it('covers every command and keeps generated flags aligned with actual help', async () => {
-    expect(await checkDocs()).toEqual({ pages: 73, commands: 23 });
+    expect(await checkDocs()).toEqual({ pages: 80, commands: 24 });
     for (const command of commandCatalog()) {
       const page = referencePages()[`reference/commands/${command.name}.md`];
       const help = parseCli([command.name, '--help']).help;
@@ -71,7 +84,7 @@ describe('task-oriented CLI handbook', () => {
     const root = await fixture();
     await mkdir(path.join(root, 'node_modules'));
     await symlink(source, path.join(root, 'node_modules', 'dependency'));
-    expect(await checkDocs(root)).toEqual({ pages: 73, commands: 23 });
+    expect(await checkDocs(root)).toEqual({ pages: 80, commands: 24 });
   });
   it('rejects task pages without result verification', async () => {
     const root = await fixture(); const file = path.join(root, 'writing/new.md');

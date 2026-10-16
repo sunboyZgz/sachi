@@ -21,6 +21,7 @@ import { remarkFlowRegions, type FlowRegion } from '../lib/markdown';
 import { flowPositionStorageKey } from '../lib/flow-position-memory';
 import { remarkImageWindows } from '../lib/remark-image-windows';
 import { imageWindowSchema, type ImageWindow, type ImageWindows, type ImageEditor } from '../lib/image-window';
+import { ResourceVideo } from './ResourceVideo';
 import { ImageWindowImage } from './ImageWindowImage';
 
 function containsImage(node: ExtraProps['node']): boolean {
@@ -62,7 +63,7 @@ function MarkdownImage({ src, alt, asset, source, range, flowWidth, window, refe
   return (
     <figure {...source} className={flowWidth ? "flow-ordinary-image" : undefined} style={flowWidth ? { width: `min(${flowWidth}px, 100%)` } : undefined}>
       {asset?.type === 'video' ? (
-        <video src={safeSrc} poster={asset.poster} controls preload="metadata" aria-label={alt || '文章短视频'} />
+        <ResourceVideo src={safeSrc} poster={asset.poster} controls preload="metadata" aria-label={alt || '文章短视频'} />
       ) : (
         link ? <a href={link}>{image}</a> : image
       )}

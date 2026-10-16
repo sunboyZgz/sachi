@@ -1,9 +1,10 @@
+import { physicalSourcePath, writingDirectory, writingFile } from '../../src/lib/blog/storage';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseDocument, stringify } from 'yaml';
 import { scanContent } from '../../src/lib/blog/content';
-import { BlogError, atomicWrite, exists, readJson, safeDirectory, safeFile, sha256, stableJson } from '../../src/lib/blog/files';
+import { BlogError, atomicWrite, exists, readJson, safeFile, sha256, stableJson } from '../../src/lib/blog/files';
 import { readSourceSeries, scanSeries, selectSeries, validateSeriesMembers, type SourceSeries } from '../../src/lib/blog/series';
 import { categoryNames, seriesRefSchema, seriesSchema, seriesSnapshotSchema, type BlogConfig, type BlogPost, type SeriesSnapshot } from '../../src/lib/blog/schema';
 import { immutableWrite, readSnapshot } from './snapshot';
@@ -46,9 +47,9 @@ export async function newSeries(root: string, values: { title: string; category:
   const previous = (await cachedManifest(root)).manifest?.series ?? [];
   if (catalogue.issues.length) throw new BlogError(JSON.stringify(catalogue.issues));
   if ([...catalogue.series.map((item) => item.series), ...previous].some((item) => item.slug.toLowerCase() === series.slug.toLowerCase())) throw new BlogError(`系列 slug 已被使用：${series.slug}`);
-  const folder = await safeDirectory(root, 'content/series');
+  const folder = await writingDirectory(root, 'content/series');
   await writeFile(path.join(folder, `${id}.yaml`), stringify(series), { flag: 'wx' });
-  return { ...series, file: `content/series/${id}.yaml`, url: `/series/${series.slug}/` };
+  return { ...series, file: await physicalSourcePath(root, `content/series/${id}.yaml`), url: `/series/${series.slug}/` };
 }
 
 export async function editSeries(root: string, config: BlogConfig, selector: string, changes: Record<string, unknown>) {
@@ -68,7 +69,7 @@ export async function editSeries(root: string, config: BlogConfig, selector: str
   const local = (await scanContent(root, config)).posts.map((item) => item.post);
   const published = await publishedChapters(root);
   validateSeriesMembers([...local, ...published.filter((post) => !local.some((item) => item.id === post.id))], catalogue.series.map((item) => item.series.id === next.id ? next : item.series));
-  const file = await safeFile(root, source.sourcePath);
+  const file = await writingFile(root, source.sourcePath);
   if (await readFile(file, 'utf8') !== source.raw) throw new BlogError('系列资料在编辑期间发生变化，未覆盖。', 4);
   await atomicWrite(file, document.toString());
   return next;

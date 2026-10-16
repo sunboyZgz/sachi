@@ -1,0 +1,29 @@
+[Unit]
+Description=Sachi published resource proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sachi-resource
+Group=sachi-resource
+# JSON is authoritative. Optional environment values are used only if it is absent.
+EnvironmentFile=-/etc/sachi/resource-proxy.env
+ExecStart=/usr/bin/node /opt/sachi-resource-proxy/server.mjs --config /etc/sachi/resource-proxy.json
+WorkingDirectory=/opt/sachi-resource-proxy
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/srv/sachi-blog
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

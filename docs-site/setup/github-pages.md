@@ -8,6 +8,8 @@ online: Actions 成功部署后改变
 
 # main / blog 分支与 GitHub Pages
 
+当前项目的完整私有备份使用[私有资料仓库](/backup/store)：原稿与历史统一在 `.blog-store/`，通过 `npm run backup` 提交推送。原 `blog sync/restore` 仍兼容内容分支格式，两者不是同一份仓库布局。
+
 ## 什么时候用
 
 希望同一 GitHub 仓库用 `main` 管理开发代码，用 `blog` 存放冻结的博客发布源码、公开正文与媒体，并通过 GitHub Actions 建立免费的博客网站。

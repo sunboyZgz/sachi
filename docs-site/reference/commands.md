@@ -13,6 +13,7 @@ scope: reference
 | --- | --- |
 | [wizard](/reference/commands/wizard) | 分步选择操作，不需要记参数 |
 | [init](/reference/commands/init) | 配置向导；不建立根项目 Git 仓库或连接服务器 |
+| [storage](/reference/commands/storage) | Yandu 初始化、私有同步、资源上传与恢复 |
 | [doctor](/reference/commands/doctor) | 只读环境检查 |
 | [search](/reference/commands/search) | 根据中文标题或关键词查找本地文章 ID |
 | [new](/reference/commands/new) | 选择栏目、文章类型，再输入标题 |

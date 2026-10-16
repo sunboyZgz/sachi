@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { BlogError, exists, readJson } from '../../src/lib/blog/files';
 import { manifestSchema, type BlogConfig, type Manifest } from '../../src/lib/blog/schema';
 import { cachePath, storePath } from './config';
-import { downloadRelease } from './deploy';
+import { downloadRelease, hydrateReleaseFiles } from './deploy';
 import { verifyPackage } from './site';
 
 export async function cachedManifest(root: string) {
@@ -27,9 +27,13 @@ export async function hydrateCurrent(root: string, config: BlogConfig, current: 
   if (!missing.length) return;
   if (!config.deploy) throw new BlogError('缺少旧发布快照；请从服务器或内容仓库恢复，不能用工作副本替代。', 3);
   const directory = await downloadRelease(root, config, current.releaseId, cachePath(root, 'recovery', `hydrate-${randomUUID()}`));
-  await importRelease(root, directory, current);
+  await importRelease(root, directory, current, config);
 }
-export async function importRelease(root: string, directory: string, manifest: Manifest) {
+export async function importRelease(root: string, directory: string, manifest: Manifest, config?: BlogConfig) {
+  if (await exists(path.join(directory, 'yandu-recovery.json'))) {
+    if (!config) throw new BlogError('导入此发布需要原 Yandu 项目配置，不能用当前工作副本补齐缺失快照。', 2, 'INPUT_REQUIRED');
+    await hydrateReleaseFiles(root, config, directory);
+  }
   await verifyPackage(directory);
   await mkdir(storePath(root, 'snapshots'), { recursive: true });
   for (const entry of manifest.entries) if (!await exists(storePath(root, 'snapshots', entry.revisionHash))) await cp(path.join(directory, 'snapshots', entry.revisionHash), storePath(root, 'snapshots', entry.revisionHash), { recursive: true });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { imageWindowsSchema } from '../image-window';
+import { resourceRefSchema, yanduConfigSchema } from './yandu';
 
 export const categoryNames = { play: '闲暇娱乐', life: '生活旁白', learn: '蘸豆！！' } as const;
 export const categorySchema = z.enum(['play', 'life', 'learn']);
@@ -26,6 +27,7 @@ export const assetSchema = z.object({
   contour: z.string().optional(),
   width: z.number().finite().positive().optional(), height: z.number().finite().positive().optional(),
   originalWidth: z.number().finite().positive().optional(), originalHeight: z.number().finite().positive().optional(),
+  resources: z.array(resourceRefSchema).optional(),
 });
 export type Asset = z.infer<typeof assetSchema>;
 const idSchema = z.string().regex(/^(?:legacy-[a-f0-9]{24}|[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})$/i);
@@ -92,12 +94,14 @@ export const manifestSchema = z.object({
   entries: z.array(entrySchema), withdrawn: z.array(idSchema), retired: z.array(entrySchema).default([]),
   assets: z.record(z.string(), z.record(z.string(), assetSchema)).default({}),
   series: z.array(seriesEntrySchema).optional(),
+  resources: z.array(resourceRefSchema).optional(),
+  retainedResources: z.array(z.object({ ownerId: z.string().min(1), resource: resourceRefSchema })).optional(),
 });
 export type Manifest = z.infer<typeof manifestSchema>;
 
 export const configSchema = z.object({
   schemaVersion: z.literal(1), timezone: z.string(),
-  contentDir: z.literal('content').default('content'),
+  contentDir: z.enum(['content', '.blog-store/content']).default('.blog-store/content'),
   siteUrl: z.string().url().refine((value) => {
     const url = new URL(value);
     return ['http:', 'https:'].includes(url.protocol) && /^\/(?:[a-zA-Z0-9_~.-]+\/?)*$/.test(url.pathname) && !url.search && !url.hash && !url.username && !url.password;
@@ -111,6 +115,7 @@ export const configSchema = z.object({
     'assets/project-detail.webp', 'assets/life-detail.webp', 'assets/notes-detail.webp',
   ]),
   media: z.object({ maxVideoSeconds: z.number().positive().default(180), maxGitFileMiB: z.number().min(1).max(100).default(100) }).default({ maxVideoSeconds: 180, maxGitFileMiB: 100 }),
+  yandu: yanduConfigSchema.nullable().default(null),
   git: z.object({ remote: z.string().min(1), branch: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/).default('content-source'), visibility: z.enum(['unconfirmed', 'private', 'public']).default('unconfirmed') }).nullable().default(null),
   pages: z.object({
     remote: z.string().min(1).nullable().default(null),

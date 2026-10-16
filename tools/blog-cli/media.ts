@@ -8,6 +8,7 @@ import { immutableWrite } from './snapshot';
 import { run } from './process';
 import { createImageContour, imageDimensions } from '../../src/lib/blog/flow-assets';
 import { windowForImage } from '../../src/lib/image-window';
+import { resourceUrl, type ResourceRef } from '../../src/lib/blog/yandu';
 
 async function mediaOperation<T>(description: string, action: () => Promise<T>): Promise<T> {
   try { return await action(); }
@@ -53,7 +54,16 @@ async function transformMedia(root: string, config: BlogConfig, snapshot: Snapsh
     const bytes = await readFile(input); const preset = snapshot.media.assets[dependency.url];
     const spec = flowSpecs(snapshot.post.flow).find((spec) => spec.image === dependency.url);
     const isFlow = !!spec;
-    const write = async (output: Buffer, ext: string) => {
+    const resources: ResourceRef[] = [];
+    const write = async (output: Buffer, ext: string, metadata?: { width?: number; height?: number; duration?: number }) => {
+      if (config.yandu) {
+        // Each final display file is its own immutable object; Yandu derivatives
+        // tied to a replaceable original cannot provide publication rollback.
+        const { uploadImmutable } = await import('./yandu');
+        const resource = await uploadImmutable(root, config, `articles/${snapshot.post.id}`, `${sha256(output)}${ext}`, output, metadata);
+        resources.push(resource);
+        return resourceUrl(resource);
+      }
       const url = `/media/${snapshot.post.id}/${sha256(output)}${ext}`;
       await immutableWrite(path.join(publicRoot, url.slice(1)), output);
       return url;
@@ -62,16 +72,17 @@ async function transformMedia(root: string, config: BlogConfig, snapshot: Snapsh
       const metadata = await sharp(bytes, { animated: true, limitInputPixels: 80_000_000 }).metadata();
       if (isFlow && metadata.orientation && metadata.orientation !== 1) throw new BlogError(`环绕图包含 EXIF 旋转，不能静默改变轮廓：${dependency.url}`);
       if (extension === '.gif' || (metadata.pages ?? 1) > 1) {
-        assets[dependency.url] = { url: await write(bytes, extension), type: 'image', width: metadata.width, height: metadata.pageHeight ?? metadata.height };
+        const dimensions = { width: metadata.width, height: metadata.pageHeight ?? metadata.height };
+        assets[dependency.url] = { url: await write(bytes, extension, dimensions), type: 'image', ...dimensions };
       } else if (isFlow || metadata.hasAlpha || preset?.preset === 'flow' || preset?.preset === 'original' || preset?.preset === 'screenshot') {
         const output = isFlow ? await sharp(bytes).png().toBuffer() : await sharp(bytes).rotate().png().toBuffer();
         const dimensions = await sharp(output).metadata();
-        assets[dependency.url] = { url: await write(output, '.png'), type: 'image', width: dimensions.width, height: dimensions.height };
+        assets[dependency.url] = { url: await write(output, '.png', { width: dimensions.width, height: dimensions.height }), type: 'image', width: dimensions.width, height: dimensions.height };
       } else {
         const outputs: Array<{ width: number; url: string; height: number }> = [];
         for (const width of [...new Set(preset?.widths ?? [640, 1280, 1920])].sort((a, b) => a - b)) {
           const { data, info } = await sharp(bytes).rotate().resize({ width, withoutEnlargement: true }).webp({ quality: preset?.quality ?? 85 }).toBuffer({ resolveWithObject: true });
-          if (!outputs.some((o) => o.width === info.width)) outputs.push({ width: info.width, height: info.height, url: await write(data, '.webp') });
+          if (!outputs.some((o) => o.width === info.width)) outputs.push({ width: info.width, height: info.height, url: await write(data, '.webp', { width: info.width, height: info.height }) });
         }
         const largest = outputs.at(-1)!;
         assets[dependency.url] = { type: 'image', url: largest.url, width: largest.width, height: largest.height, srcSet: outputs.map((o) => `${o.url} ${o.width}w`).join(', ') };
@@ -94,9 +105,17 @@ async function transformMedia(root: string, config: BlogConfig, snapshot: Snapsh
       const output = path.join(cache, 'video.mp4'); const poster = path.join(cache, 'poster.jpg');
       await run(['ffmpeg', '-v', 'error', '-nostdin', '-y', '-i', input, '-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-crf', '23', '-c:a', 'aac', '-movflags', '+faststart', '-map_metadata', '-1', output], { cwd: root, code: 3 });
       await run(['ffmpeg', '-v', 'error', '-nostdin', '-y', '-i', output, '-frames:v', '1', '-q:v', '2', poster], { cwd: root, code: 3 });
-      assets[dependency.url] = { type: 'video', url: await write(await readFile(output), '.mp4'), poster: await write(await readFile(poster), '.jpg'), width: video.width, height: video.height };
+      const posterBytes = await readFile(poster); const dimensions = await sharp(posterBytes).metadata();
+      const finalProbe = JSON.parse((await run(['ffprobe', '-v', 'error', '-print_format', 'json', '-show_format', output], { cwd: root, code: 3 })).stdout) as { format?: { duration?: string } };
+      const finalDuration = Number(finalProbe.format?.duration);
+      if (!Number.isFinite(finalDuration) || finalDuration <= 0 || finalDuration > config.media.maxVideoSeconds) throw new BlogError(`展示视频缺少有效时长：${dependency.url}`);
+      assets[dependency.url] = { type: 'video', url: await write(await readFile(output), '.mp4', { width: dimensions.width, height: dimensions.height, duration: finalDuration }), poster: preset?.poster ? undefined : await write(posterBytes, '.jpg', { width: dimensions.width, height: dimensions.height }), width: dimensions.width, height: dimensions.height };
     } else assets[dependency.url] = { type: 'file', url: await write(bytes, extension) };
+    if (resources.length) assets[dependency.url].resources = resources;
   }
-  for (const [url, preset] of Object.entries(snapshot.media.assets)) if (preset.poster && assets[url]?.type === 'video') assets[url].poster = assets[preset.poster]?.url;
+  for (const [url, preset] of Object.entries(snapshot.media.assets)) if (preset.poster && assets[url]?.type === 'video') {
+    assets[url].poster = assets[preset.poster]?.url;
+    if (assets[preset.poster]?.resources) assets[url].resources = [...assets[url].resources ?? [], ...assets[preset.poster].resources!];
+  }
   return assets;
 }

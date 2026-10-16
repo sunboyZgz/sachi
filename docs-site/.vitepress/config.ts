@@ -2,9 +2,9 @@ import { defineConfig } from 'vitepress';
 import { navigation } from './navigation';
 import { tokenizeChinese } from './search';
 import { fileURLToPath } from 'node:url';
+import { docsBase } from './settings';
 
-const base = process.env.DOCS_BASE ?? '/';
-if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base)) throw new Error('DOCS_BASE 必须是 / 或 /handbook/ 这样的路径。');
+const base = docsBase();
 
 export default defineConfig({
   lang: 'zh-CN', title: 'Sachi · CLI 使用手册',

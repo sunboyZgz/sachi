@@ -33,13 +33,13 @@ const contains = (root: string, file: string) => { const relative = path.relativ
 function locationAt(projectRoot: string | undefined, file: string, contentRoot: string, relative: string, legacy: boolean, detached = false, pathCategory?: ArticleLocation['pathCategory']): ArticleLocation {
   const collectionRoot = detached ? path.dirname(file) : path.basename(contentRoot) === 'content' ? path.dirname(contentRoot) : contentRoot;
   return { root: projectRoot && contains(projectRoot, file) ? projectRoot : collectionRoot, projectRoot, contentRoot, relative, file, legacy, detached, pathCategory,
-    assetRoot: legacy && !detached ? path.join(collectionRoot, 'public/assets') : path.join(path.dirname(file), 'assets') };
+    assetRoot: legacy && !detached ? path.join(projectRoot && contentRoot === path.join(projectRoot, '.blog-store/content') ? projectRoot : collectionRoot, 'public/assets') : path.join(path.dirname(file), 'assets') };
 }
 
 /** Paths select resource ownership; valid metadata also admits detached article files. */
 export function articleLocation(projectRoot: string | undefined, file: string, raw?: string): ArticleLocation | null {
   if (path.extname(file).toLowerCase() !== '.md') return null;
-  for (const directory of projectRoot ? ['content', 'tests/fixtures/content'] : []) {
+  for (const directory of projectRoot ? ['.blog-store/content', 'content', 'tests/fixtures/content'] : []) {
     const contentRoot = path.join(projectRoot!, directory);
     const relative = path.relative(contentRoot, file).split(path.sep).join('/');
     if (/^[^/]+\.md$/.test(relative)) return locationAt(projectRoot, file, contentRoot, relative, true);
@@ -198,7 +198,7 @@ export async function buildPreview(options: BuildOptions) {
   let avatar = '';
   try {
     if (!location.projectRoot) throw new Error('no project');
-    const file = await safeFile(location.projectRoot, 'src/assets/avatar/avatar-half.png');
+    const file = await safeFile(location.projectRoot, author.avatars?.half ? `public/media/profile/${author.avatars.half.sha256}.png` : 'src/assets/avatar/avatar-half.png');
     avatar = `${resourceUri(file)}?v=${sha256(await readFile(file))}`;
   } catch { if (location.projectRoot) warnings.push('项目半身头像不可用，使用插件构建时的头像。'); }
   const message: PreviewData = { type: 'update', layoutMode: options.layoutMode, revision: options.revision, document: location.file, dirty: options.dirty, post, profile: author, warnings, styles, avatar,

@@ -8,6 +8,8 @@ online: 不改变
 
 # 留存与回看稿件
 
+当前项目的完整私有备份使用[私有资料仓库](/backup/store)：原稿与历史统一在 `.blog-store/`，通过 `npm run backup` 提交推送。原 `blog sync/restore` 仍兼容内容分支格式，两者不是同一份仓库布局。
+
 ## 什么时候用
 
 初稿、重新梳理结构、删掉一段话或重写结尾后，想把那个阶段的想法留下来，或把正文和图片一起恢复到某一稿时使用。稿件可以写备注，让以后回看时知道自己为什么修改。
@@ -32,7 +34,7 @@ online: 不改变
    留存计划（未写入）
    文章：秋天的一杯茶 · <文章ID>
    留存第 1 稿 · 初稿
-   原文：content/生活旁白/<创建日期>/index.md
+   原文：.blog-store/content/生活旁白/<创建日期>/index.md
    完整复制 …… 项文件，共 …… 字节；每稿独立保存原文与素材。
    执行后才生成稿件 ID。
    ```
@@ -90,9 +92,9 @@ online: 不改变
    ```text
    正文与资源已回档
    目标稿件：<第一稿UUID>
-   恢复旧版 · content/生活旁白/<创建日期>/index.md
-   恢复旧版 · content/生活旁白/<创建日期>/assets/tea.png
-   移除 · content/生活旁白/<创建日期>/assets/later.png
+   恢复旧版 · .blog-store/content/生活旁白/<创建日期>/index.md
+   恢复旧版 · .blog-store/content/生活旁白/<创建日期>/assets/tea.png
+   移除 · .blog-store/content/生活旁白/<创建日期>/assets/later.png
    回档记录 ID：<回档事务UUID>
    撤销命令：npm run blog -- draft undo <回档事务UUID>
    当前文件备份：.blog-store/writing-transactions/<回档事务UUID>
@@ -148,7 +150,7 @@ online: 不改变
    当前文章保持原样。
    ```
 
-   素材和预设按当时的原路径导出，附带 `draft.json` 留存信息。输出目录必须尚不存在，不能是当前 `content/`、公开目录、源码或持久存储。打开输出的原文即可回看；需要采用某段旧文字时，手动复制到当前稿，避免把带相同文章 ID 的旧稿直接放回 `content/`。
+   素材和预设按当时的原路径导出，附带 `draft.json` 留存信息。输出目录必须尚不存在，不能是当前 `.blog-store/content/`、公开目录、源码或持久存储。打开输出的原文即可回看；需要采用某段旧文字时，手动复制到当前稿，避免把带相同文章 ID 的旧稿直接放回 `.blog-store/content/`。
 
    安装新版 [VS Code 预览插件](/preview/dev)后，可以直接打开完整稿件目录或导出目录里的原文，运行 **Sachi Blog: 打开文章预览**。它读取这份旧稿自己的图片和视频，支持源行跟随与单击定位；无需先回档或复制到当前内容目录。查看期间不要手动修改归档文件，以免破坏其校验。
 

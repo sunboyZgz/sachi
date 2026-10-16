@@ -62,9 +62,9 @@ scope: reference
 | --- | --- | --- |
 | 根仓库 main | 开发代码 | 使用者正常 Git 流程；CLI 不自动提交 / 推送 |
 | 公开仓库 blog | 冻结公开内容、Next 源码、处理媒体、Actions | push / Pages 交付在隔离目录生成提交 |
-| 独立内容 Git 的 content-source | 草稿、原素材、内容快照和发布记录 | git 配置下的 sync / 发布备份 |
+| 内容备份分支 content-source | 草稿、原素材、内容快照和发布记录 | git 配置下的 sync / 发布备份；远端可与代码仓库相同 |
 
-main / blog 可以是同一公开 GitHub 仓库；含草稿的 content-source 建议用另一个私有仓库。根没有 Git 不影响本地写作，Pages 可明确指定远端；工具不会自动在根目录初始化仓库。
+main / blog / content-source 可以在同一个远端仓库；分支不提供不同的可见性。如果含有不准备公开的草稿，整个备份目标应为私有，可复用现有私有代码仓库，或另选私有仓库。完整 `npm run backup` 则使用 `codex/writing-backup` 与独立本地 `.blog-store/.git`，也可显式指向同一私有远端；不能与 content-source 混用布局。根没有 Git 不影响本地写作，Pages 可明确指定远端；工具不会自动在根目录初始化仓库。
 
 ## 缓存与持久数据
 

@@ -5,7 +5,8 @@ import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { scanContent, readSourcePost } from '../../src/lib/blog/content';
 import { atomicWrite, BlogError, exists, readJson, writeJson } from '../../src/lib/blog/files';
-import { defaultConfig, type BlogConfig } from '../../src/lib/blog/schema';
+import { type BlogConfig } from '../../src/lib/blog/schema';
+import { legacyConfig as defaultConfig } from '../../tests/helpers/legacy-config';
 import { parseCli } from './arguments';
 import { collectInitConfig, completeInvocation, mainChoices } from './wizard';
 import { main } from './index';
@@ -53,7 +54,7 @@ afterEach(async () => { vi.restoreAllMocks(); for (const directory of temporary.
 describe('guided writing without parameter memorization', () => {
   it('puts the everyday writing workflow first and exposes every practical operation', () => {
     expect(mainChoices.slice(0, 4).map((choice) => choice.value)).toEqual(['new', 'dev', 'check', 'publish']);
-    expect(mainChoices.map((choice) => choice.value)).toEqual(['new', 'dev', 'check', 'publish', 'push', 'meta', 'format', 'draft', 'search', 'series', 'toy', 'status', 'build', 'sync', 'unpublish', 'resume', 'history', 'rollback', 'restore', 'recover', 'init', 'doctor', 'quit']);
+    expect(mainChoices.map((choice) => choice.value)).toEqual(['new', 'dev', 'check', 'publish', 'push', 'meta', 'format', 'draft', 'search', 'series', 'toy', 'status', 'build', 'sync', 'unpublish', 'resume', 'history', 'rollback', 'restore', 'recover', 'storage', 'init', 'doctor', 'quit']);
     expect(new Set(mainChoices.map((choice) => choice.value)).size).toBe(mainChoices.length);
   });
   it('enters the main menu, chooses the category and article type before asking for a title', async () => {
@@ -188,28 +189,37 @@ describe('guided publication stays explicit and read-only until confirmed', () =
 });
 
 describe('guided initialization and recovery safety', () => {
+  it('configures a private credential file in the existing wizard without requesting an environment variable', async () => {
+    const { root, config } = await fixture();
+    const prompts = driver(['keep', 'keep', 'keep', 'configure'], [], ['Asia/Shanghai', 'http://127.0.0.1:18770', 'blog', '.sachi/yandu-upload.json']);
+    const draft = await collectInitConfig(root, config, prompts);
+    expect(draft.yandu).toEqual({ gateway: 'http://127.0.0.1:18770', projectId: 'blog', credentialFile: '.sachi/yandu-upload.json', credentialEnv: 'YANDU_UPLOAD_KEY' });
+    expect(prompts.input.mock.calls.some(([message]) => message.includes('环境变量名称'))).toBe(false);
+    expect(await exists(path.join(root, '.sachi'))).toBe(false);
+  });
+
   it('configures optional Git and SSH in memory without creating a repository or making connections', async () => {
     const { root, config } = await fixture();
-    const prompts = driver(['configure', 'private', 'ssh', 'keep'], [], ['Asia/Shanghai', 'git@example.com:content.git', 'content-source', '/srv/sachi-blog', 'blog-prod', 'https://blog.example.com']);
+    const prompts = driver(['configure', 'private', 'ssh', 'keep', 'keep'], [], ['Asia/Shanghai', 'git@example.com:content.git', 'content-source', '/srv/sachi-blog', 'blog-prod', 'https://blog.example.com']);
     const draft = await collectInitConfig(root, config, prompts);
     expect(draft.git?.visibility).toBe('private'); expect(draft.deploy).toEqual({ type: 'ssh', root: '/srv/sachi-blog', host: 'blog-prod' });
     expect(await exists(path.join(root, '.git'))).toBe(false); expect(await readJson(path.join(root, 'blog.config.json'))).toEqual(config);
   });
   it('does not save configuration or templates after declining initialization', async () => {
     const { root, config } = await fixture(); capture();
-    await expect(main(['init', '--root', root], { prompts: driver(['keep', 'keep', 'keep']) })).rejects.toMatchObject({ code: 130 });
+    await expect(main(['init', '--root', root], { prompts: driver(['keep', 'keep', 'keep', 'keep']) })).rejects.toMatchObject({ code: 130 });
     expect(await readJson(path.join(root, 'blog.config.json'))).toEqual(config); expect(await exists(path.join(root, 'templates'))).toBe(false);
   });
   it('saves initialization only after confirmation without enabling Git or deployment implicitly', async () => {
     const { root } = await fixture(); capture();
-    await main(['init', '--root', root], { prompts: driver(['keep', 'keep', 'keep'], [], ['UTC'], [true]) });
+    await main(['init', '--root', root], { prompts: driver(['keep', 'keep', 'keep', 'keep'], [], ['UTC'], [true]) });
     expect(await readJson(path.join(root, 'blog.config.json'))).toMatchObject({ timezone: 'UTC', git: null, deploy: null });
     expect(await exists(path.join(root, 'templates/post.md'))).toBe(true);
     expect(await exists(path.join(root, '.git'))).toBe(false);
   });
   it('can disable existing integrations explicitly while keeping configuration changes planned only', async () => {
     const { root, config } = await fixture(true);
-    const draft = await collectInitConfig(root, { ...config, git: { remote: 'example', branch: 'content-source', visibility: 'private' } }, driver(['disable', 'disable', 'disable']));
+    const draft = await collectInitConfig(root, { ...config, git: { remote: 'example', branch: 'content-source', visibility: 'private' } }, driver(['disable', 'disable', 'disable', 'disable']));
     expect(draft.git).toBeNull(); expect(draft.deploy).toBeNull(); expect(await readJson(path.join(root, 'blog.config.json'))).toEqual(config);
   });
   it('asks for a fresh restore directory and checks unsafe or existing input before continuing', async () => {

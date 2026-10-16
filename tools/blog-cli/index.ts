@@ -37,14 +37,22 @@ export async function main(argv = process.argv.slice(2), runtime: { prompts?: Pr
     ? { ...storedConfig, pages: { remote: options['pages-remote'] ?? storedConfig.pages?.remote ?? null, branch: 'blog' as const } }
     : storedConfig;
   validateConfig(root, config);
+  function displayPaths(value: unknown, human = false): unknown {
+    if (Array.isArray(value)) return value.map((item) => displayPaths(item, human));
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key,
+      (key === 'file' || human && key === 'sourcePath') && typeof item === 'string' && item.startsWith('content/')
+        ? item.replace(/^content\//, `${config.contentDir}/`) : displayPaths(item, human)]));
+  }
   const context: CommandContext = {
     root, config, invocation, prompts,
     print: (status, data) => {
-      if (options.json) console.log(JSON.stringify({ command, status, data }));
-      else console.log(humanResult(command!, status, data));
+      if (options.json) console.log(JSON.stringify({ command, status, data: displayPaths(data) }));
+      else console.log(humanResult(command!, status, displayPaths(data, true)));
     },
     confirm: confirmation(invocation, prompts, (description) => { if (!options.json) console.error(description); }),
   };
+  if (command === 'storage') { const { executeStorage } = await import('./commands/storage'); await executeStorage(context); return; }
   for (const execute of [executeDrafts, executeToys, executeWriting, executeBackup, executeReleases]) if (await execute(context)) return;
   throw new BlogError(`未知命令：${command}。使用 --help。`, 2);
 }

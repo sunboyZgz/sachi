@@ -3,11 +3,14 @@ import path from 'node:path';
 import { parseDocument } from 'yaml';
 import { BlogError, exists, safeFile, sha256, stableJson } from './files';
 import { seriesSchema, type BlogPost, type Series } from './schema';
+import { contentDirectory, logicalSourcePath } from './storage';
 
 export type SourceSeries = { series: Series; sourcePath: string; raw: string; revisionHash: string };
 export type SeriesWithPosts = Series & { chapters: BlogPost[]; updatedAt?: string };
 
-export async function readSourceSeries(root: string, sourcePath: string, contentDir = 'content'): Promise<SourceSeries> {
+export async function readSourceSeries(root: string, sourcePath: string, contentDir?: string): Promise<SourceSeries> {
+  sourcePath = logicalSourcePath(sourcePath);
+  contentDir ??= await contentDirectory(root);
   if (!/^content\/series\/[a-f0-9-]{36}\.yaml$/i.test(sourcePath)) throw new BlogError(`系列资料路径无效：${sourcePath}`);
   const file = await safeFile(path.join(root, contentDir), sourcePath.slice('content/'.length));
   const raw = await readFile(file, 'utf8');
@@ -18,7 +21,8 @@ export async function readSourceSeries(root: string, sourcePath: string, content
   return { series, sourcePath, raw, revisionHash: sha256(stableJson(series)) };
 }
 
-export async function scanSeries(root: string, contentDir = 'content') {
+export async function scanSeries(root: string, contentDir?: string) {
+  contentDir ??= await contentDirectory(root);
   const folder = path.join(root, contentDir, 'series');
   const series: SourceSeries[] = [];
   const issues: Array<{ file: string; message: string }> = [];
@@ -66,7 +70,7 @@ export function seriesIndex(posts: BlogPost[], definitions: Series[]): SeriesWit
 
 export function selectSeries(sources: SourceSeries[], selectors: string[]) {
   return selectors.map((selector) => {
-    const found = sources.find((source) => [source.series.id, source.series.slug, source.sourcePath].includes(selector));
+    const found = sources.find((source) => [source.series.id, source.series.slug, source.sourcePath].includes(logicalSourcePath(selector)));
     if (!found) throw new BlogError(`找不到系列：${selector}`);
     return found;
   });

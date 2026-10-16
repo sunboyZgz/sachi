@@ -105,7 +105,7 @@ class Preview implements vscode.Disposable {
     if (this.navigationTimer) clearTimeout(this.navigationTimer);
     this.panel!.title = `文章预览 · ${path.basename(path.dirname(document.uri.fsPath))}`;
     const roots = [vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
-      ...(location.projectRoot ? [vscode.Uri.file(path.join(location.projectRoot, 'src/styles')), vscode.Uri.file(path.join(location.projectRoot, 'src/assets/avatar'))] : []), vscode.Uri.file(location.assetRoot)];
+      ...(location.projectRoot ? [vscode.Uri.file(path.join(location.projectRoot, 'src/styles')), vscode.Uri.file(path.join(location.projectRoot, 'src/assets/avatar')), vscode.Uri.file(path.join(location.projectRoot, 'public/media/profile'))] : []), vscode.Uri.file(location.assetRoot)];
     this.panel!.webview.options = { enableScripts: true, localResourceRoots: roots };
     for (const watcher of this.watchers) watcher.dispose();
     this.watchers = [];
@@ -113,7 +113,7 @@ class Preview implements vscode.Disposable {
       new vscode.RelativePattern(path.dirname(location.file), '*.{md,yaml}'),
       new vscode.RelativePattern(location.assetRoot, '**/*'),
       new vscode.RelativePattern(location.contentRoot, 'series/*.yaml'),
-      ...(location.projectRoot ? [new vscode.RelativePattern(location.projectRoot, '{blog.config.json,src/config/profile.json,src/styles/*.css,src/assets/avatar/avatar-half.png}')] : []),
+      ...(location.projectRoot ? [new vscode.RelativePattern(location.projectRoot, '{blog.config.json,src/config/profile.json,src/styles/*.css,src/assets/avatar/avatar-half.png,public/media/profile/*.png}')] : []),
     ];
     for (const pattern of patterns) {
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);

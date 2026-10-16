@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { BlogError, exists, safeFile, sha256, stableJson, walk } from '../../src/lib/blog/files';
+import { writingPath, writingFile } from '../../src/lib/blog/storage';
+import { BlogError, exists, sha256, stableJson, walk } from '../../src/lib/blog/files';
 import { markdownReferences, splitDocument } from '../../src/lib/blog/document';
 import { articleCatalogue } from './catalogue';
 import { draftObject, verifyDraft } from './drafts';
@@ -42,9 +43,9 @@ export async function prepareDraftRestore(root: string, id: string): Promise<Dra
   const occupant = catalogue.articles.find((article) => article.file === record.sourcePath && article.id.toLowerCase() !== record.articleId);
   if (occupant) throw new BlogError(`原路径已属于其他文章：${record.sourcePath}`, 4, 'DRAFT_RESTORE_CONFLICT');
   // A broken frontmatter is recoverable: the raw current bytes are backed up first.
-  if (!current && record.sourcePath.endsWith('/index.md') && await exists(path.join(root, record.sourcePath))) {
+  if (!current && record.sourcePath.endsWith('/index.md') && await exists(await writingPath(root, record.sourcePath))) {
     let identity: unknown;
-    try { identity = splitDocument((await readFile(await safeFile(root, record.sourcePath))).toString('utf8')).data.id; } catch { /* unfinished YAML */ }
+    try { identity = splitDocument((await readFile(await writingFile(root, record.sourcePath))).toString('utf8')).data.id; } catch { /* unfinished YAML */ }
     if (typeof identity === 'string' && identity.toLowerCase() !== record.articleId) throw new BlogError('原路径已写入其他文章身份，拒绝覆盖。', 4, 'DRAFT_RESTORE_CONFLICT');
   }
   const { manifest } = await cachedManifest(root);
@@ -52,18 +53,18 @@ export async function prepareDraftRestore(root: string, id: string): Promise<Dra
   if (published && published.slug !== record.slug) throw new BlogError('旧稿固定 URL 与已发布身份不同，不能通过回档更改公开文章的 URL。', 4, 'DRAFT_RESTORE_CONFLICT');
   const modern = record.sourcePath.endsWith('/index.md');
   const directories = modern ? [...new Set([path.posix.dirname(record.sourcePath), ...(current ? [path.posix.dirname(current.file)] : [])])] : [];
-  if (current && current.file !== record.sourcePath && await exists(path.join(root, path.posix.dirname(record.sourcePath)))) {
-    if ((await walk(path.join(root, path.posix.dirname(record.sourcePath)))).length) throw new BlogError('原日期目录已包含其他文件，拒绝覆盖。', 4, 'DRAFT_RESTORE_CONFLICT');
+  if (current && current.file !== record.sourcePath && await exists(await writingPath(root, path.posix.dirname(record.sourcePath)))) {
+    if ((await walk(await writingPath(root, path.posix.dirname(record.sourcePath)))).length) throw new BlogError('原日期目录已包含其他文件，拒绝覆盖。', 4, 'DRAFT_RESTORE_CONFLICT');
   }
   const before = new Map<string, Buffer>();
-  for (const directory of directories) for (const file of await walk(path.join(root, directory))) {
+  for (const directory of directories) for (const file of await walk(await writingPath(root, directory))) {
     const relative = `${directory}/${file}`;
-    before.set(relative, await readFile(await safeFile(root, relative)));
+    before.set(relative, await readFile(await writingFile(root, relative)));
   }
   if (!modern) {
     const paths = new Set(record.files.map((entry) => entry.path));
     if (current) for (const file of legacyReferences(current.raw)) paths.add(file);
-    for (const file of paths) if (await exists(path.join(root, file))) before.set(file, await readFile(await safeFile(root, file)));
+    for (const file of paths) if (await exists(await writingPath(root, file))) before.set(file, await readFile(await writingFile(root, file)));
   }
   const after = new Map<string, Buffer>();
   for (const entry of record.files) after.set(entry.path, await draftObject(root, record, entry));
@@ -93,7 +94,7 @@ export async function commitDraftRestore(root: string, plan: DraftRestorePlan, w
   const transaction = await applyBinaryWritingTransaction(root, fresh.articleId, fresh.changes, write, async () => {
     const expected = fresh.changes.filter((entry) => entry.after).map((entry) => entry.file).sort();
     if (fresh.directories.length) {
-      const actual = (await Promise.all(fresh.directories.map(async (directory) => (await walk(path.join(root, directory))).map((file) => `${directory}/${file}`)))).flat().sort();
+      const actual = (await Promise.all(fresh.directories.map(async (directory) => (await walk(await writingPath(root, directory))).map((file) => `${directory}/${file}`)))).flat().sort();
       if (stableJson(actual) !== stableJson(expected)) throw new BlogError('回档期间目录出现额外修改，未提交。', 4, 'SOURCE_CHANGED');
     }
   });
@@ -110,7 +111,7 @@ export async function commitDraftUndo(root: string, id: string) {
   }
   const transaction = await applyBinaryWritingTransaction(root, plan.articleId, plan.changes, undefined, async () => {
     if (plan.directories.length) {
-      const actual = (await Promise.all(plan.directories.map(async (directory) => (await walk(path.join(root, directory))).map((file) => `${directory}/${file}`)))).flat().sort();
+      const actual = (await Promise.all(plan.directories.map(async (directory) => (await walk(await writingPath(root, directory))).map((file) => `${directory}/${file}`)))).flat().sort();
       const expected = plan.changes.filter((entry) => entry.after).map((entry) => entry.file).sort();
       if (stableJson(actual) !== stableJson(expected)) throw new BlogError('撤销期间出现额外文件，未提交。', 4, 'SOURCE_CHANGED');
     }

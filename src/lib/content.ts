@@ -6,6 +6,7 @@ import { scanSeries, seriesIndex } from './blog/series';
 import { sha256, stableJson } from './blog/files';
 import { scanContent } from './blog/content';
 import { previewPosts } from './blog/preview';
+import { contentDirectory } from './blog/storage';
 
 export type { FlowSpec, FlowConfig };
 export type Post = BlogPost;
@@ -28,11 +29,11 @@ export const getAllPosts = cache(async (): Promise<Post[]> => {
     }).toSorted((a, b) => b.date.localeCompare(a.date));
   }
   if (process.env.NODE_ENV === 'production' && !fixturesAreVisible()) throw new Error('正式构建必须使用 release 模式，不能读取工作区草稿。请通过 Blog CLI 生成发布包。');
-  let config = defaultConfig();
+  const fixtureMode = fixturesAreVisible();
+  let config = { ...defaultConfig(), contentDir: fixtureMode ? defaultConfig().contentDir : await contentDirectory(root) };
   try { config = configSchema.parse(JSON.parse(await readFile(path.join(root, 'blog.config.json'), 'utf8'))); }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
   if (process.env.BLOG_TIMEZONE) config.timezone = process.env.BLOG_TIMEZONE;
-  const fixtureMode = fixturesAreVisible();
   const { posts, issues } = await scanContent(root, config, fixtureMode ? 'tests/fixtures/content' : config.contentDir);
   if (issues.length) throw new Error(issues.map((issue) => `${issue.file}: ${issue.message}`).join('\n'));
   const catalogue = await scanSeries(root, fixtureMode ? 'tests/fixtures/content' : config.contentDir);
@@ -50,7 +51,7 @@ export const getAllSeries = cache(async () => {
     if (definitions.length !== entries.length || new Set(definitions.map((item) => item.id)).size !== definitions.length || definitions.some((definition) => !entries.some((entry) => entry.id === definition.id && entry.revisionHash === sha256(stableJson(definition))))) throw new Error('系列内容与候选清单不一致。');
     return seriesIndex(posts, definitions).map((series) => ({ ...series, updatedAt: [series.updatedAt ?? '', entries.find((entry) => entry.id === series.id)!.updatedAt].toSorted().at(-1) }));
   }
-  const catalogue = await scanSeries(process.cwd(), fixturesAreVisible() ? 'tests/fixtures/content' : 'content');
+  const catalogue = await scanSeries(process.cwd(), fixturesAreVisible() ? 'tests/fixtures/content' : await contentDirectory(process.cwd()));
   if (catalogue.issues.length) throw new Error(JSON.stringify(catalogue.issues));
   return seriesIndex(posts, catalogue.series.map((source) => source.series));
 });

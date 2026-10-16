@@ -1,3 +1,4 @@
+import { logicalSourcePath } from '../../../src/lib/blog/storage';
 import path from 'node:path';
 import { mkdir, readFile } from 'node:fs/promises';
 import { execa } from 'execa';
@@ -112,6 +113,7 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
     for (const [name, args] of [['git', ['--version']], ['python3', ['--version']], ['ffmpeg', ['-version']], ['ffprobe', ['-version']]] as const) {
       try { checks[name] = (await run([name, ...args], { cwd: root })).stdout.split('\n')[0]; } catch { checks[name] = 'unavailable (optional until corresponding feature is used)'; }
     }
+    if (config.yandu) { checks.yandu = { projectId: config.yandu.projectId, configured: true }; if (options.remote) { const { YanduStorage } = await import('../yandu'); checks.yandu = await new YanduStorage(root, config).check(); } }
     if (config.pages) checks.pages = await resolvePagesTarget(root, config).catch((error) => ({ reason: error.message }));
     if (options.remote && config.deploy) checks.server = await deployAction(root, config, 'current');
     if (options.remote && config.pages) checks.pages = await pagesStatus(root, config);
@@ -140,8 +142,8 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
   if (command === 'meta') {
     if (selectors.length !== 1) throw new BlogError('meta 需要一篇文章的路径、ID 或 slug。', 2);
     const scan = await scanContent(root, config);
-    const found = scan.posts.find((source) => source.post.id === selectors[0] || source.post.slug === selectors[0] || source.sourcePath === selectors[0] || source.sourcePath.replace(/\/index.md$/, '') === selectors[0]);
-    const selector = found?.sourcePath ?? selectors[0];
+    const found = scan.posts.find((source) => source.post.id === selectors[0] || source.post.slug === selectors[0] || source.sourcePath === logicalSourcePath(selectors[0]) || source.sourcePath.replace(/\/index.md$/, '') === logicalSourcePath(selectors[0]));
+    const selector = found?.sourcePath ?? logicalSourcePath(selectors[0]);
     const changes = parseAssignments(options.set ?? []);
     if (options.title) changes.title = options.title;
     if (options.slug) changes.slug = options.slug;
@@ -150,7 +152,7 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
     if (options.init) {
       const relative = selector.replace(/\/$/, '').replace(/^\.\//, '').replace(/^content\//, '');
       const file = relative.endsWith('.md') ? relative : `${relative}/index.md`;
-      const { data } = splitDocument(await readFile(await safeFile(path.join(root, 'content'), file), 'utf8'));
+      const { data } = splitDocument(await readFile(await safeFile(path.join(root, config.contentDir), file), 'utf8'));
       currentType = data.type; currentFlow = data.flow;
       if (prompts.enabled && data.type === undefined && !Object.hasOwn(changes, 'type')) changes.type = await prompts.select('文章类型', articleTypeChoices);
     }
@@ -184,7 +186,7 @@ export async function executeWriting(context: CommandContext): Promise<boolean> 
   }
   if (command === 'dev') {
     if (scanned.issues.length) throw new BlogError(scanned.issues.map((issue) => `${issue.file}: ${issue.message}`).join('\n'));
-    const selector = options.post ?? selectors[0];
+    const selector = logicalSourcePath(options.post ?? selectors[0] ?? "");
     const post = selector ? scanned.posts.find((source) => source.post.id === selector || source.post.slug === selector || source.sourcePath === selector || source.sourcePath.replace(/\/index.md$/, '') === selector) : null;
     if (selector && !post) throw new BlogError(`找不到预览文章：${selector}`);
     print('PREVIEW', { url: post ? `http://127.0.0.1:4173/article/${post.post.slug}/` : 'http://127.0.0.1:4173/', command: config.devCommand });

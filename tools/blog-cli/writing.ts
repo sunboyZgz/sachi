@@ -3,10 +3,11 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Document, parse as parseYaml } from 'yaml';
 import { dayInTimezone, splitDocument } from '../../src/lib/blog/content';
-import { BlogError, atomicWrite, exists, inside, safeDirectory, safeFile, sha256 } from '../../src/lib/blog/files';
+import { BlogError, atomicWrite, exists, inside, safeFile, sha256 } from '../../src/lib/blog/files';
 import { articleTypeSchema, categoryNames, postSchema, defaultConfig, type ArticleType, type BlogConfig, type BlogPost } from '../../src/lib/blog/schema';
 import { scanSeries, validateSeriesMembers } from '../../src/lib/blog/series';
 import { scanContent } from '../../src/lib/blog/content';
+import { contentDirectory, logicalSourcePath, writingDirectory } from '../../src/lib/blog/storage';
 import { assertNoPendingWrites } from './writing-transactions';
 
 export const defaultPoemBody = '在这里写第一行诗。\n在这里写第二行诗。\n\n在这里写下一节诗。\n';
@@ -32,7 +33,7 @@ export async function newPost(root: string, config: BlogConfig, values: { catego
   const templateData = document.toJSON();
   const post = postSchema.parse({ ...templateData, category: category[0], date: day, body, assets: {}, minutes: templateData.minutes ?? Math.max(1, Math.ceil(body.length / 400)) });
   const source = `---\n${document.toString()}---\n\n${body}`;
-  const parent = await safeDirectory(root, `content/${category[1]}`);
+  const parent = await writingDirectory(root, `content/${category[1]}`, config);
   let directory = '';
   for (let index = 1; index < 10000; index++) {
     const candidate = path.join(parent, `${day}${index === 1 ? '' : `-${String(index).padStart(2, '0')}`}`);
@@ -45,10 +46,11 @@ export async function newPost(root: string, config: BlogConfig, values: { catego
   return { id, type: post.type ?? 'article', slug: values.slug ?? id, file: path.relative(root, path.join(directory, 'index.md')), url: `/article/${values.slug ?? id}/` };
 }
 
-export async function editMeta(root: string, selector: string, changes: Record<string, unknown>, initialize = false, config: BlogConfig = defaultConfig()) {
+export async function editMeta(root: string, selector: string, changes: Record<string, unknown>, initialize = false, config?: BlogConfig) {
   await assertNoPendingWrites(root);
-  const relative = selector.replace(/\/$/, '').replace(/^\.\//, '');
-  const contentRoot = path.join(root, 'content');
+  config ??= { ...defaultConfig(), contentDir: await contentDirectory(root) };
+  const relative = logicalSourcePath(selector).replace(/\/$/, '');
+  const contentRoot = path.join(root, config.contentDir);
   const relativeFile = relative.replace(/^content\//, '') + (relative.endsWith('.md') ? '' : '/index.md');
   const file = inside(contentRoot, relativeFile);
   if (!await exists(file)) throw new BlogError(`找不到主文档：${selector}`);

@@ -1,4 +1,4 @@
-import path from 'node:path';
+import { writingPath } from '../../../src/lib/blog/storage';
 import { exists, withLock, BlogError } from '../../../src/lib/blog/files';
 import { cachePath } from '../config';
 import type { CommandContext } from '../context';
@@ -31,7 +31,7 @@ export async function executeToys({ root, invocation, prompts, print, confirm }:
     return true;
   }
   const { input, origin } = await collectToyInput(root, options, prompts);
-  if (input.id && await exists(path.join(root, 'content/toys', input.id))) throw new BlogError(`作品 ID 已存在，拒绝覆盖：${input.id}`, 4, 'TOY_EXISTS');
+  if (input.id && await exists(await writingPath(root, `content/toys/${input.id}`))) throw new BlogError(`作品 ID 已存在，拒绝覆盖：${input.id}`, 4, 'TOY_EXISTS');
   const plan = await prepareToy(root, input, origin);
   if (options['dry-run']) { print('PLANNED', { ...toyReceipt(plan), sources: { cover: input.cover, video: input.video }, note: '本地检查通过；未登记作品、未生成新 ID。Yandu 尚未接入，压缩后大小及保留时长未知。' }); return true; }
   await confirm(`登记本地作品：${input.title}\n简介：${input.description}\n封面：${input.cover}\n视频：${input.video}（原文件 ${plan.video.bytes} 字节，${plan.video.durationSeconds} 秒）\n项目：${plan.project.url}（匿名 HTTP ${plan.project.statusCode}）\n未来超限策略：${input.videoOverflow === 'reject' ? '拒绝，不裁剪' : '已授权保留开头、删除尾部'}；输出上限 10,000,000 字节。\n只保存资料与源文件摘要；待媒体处理，不上传、不进入舞台或公开集合。`);

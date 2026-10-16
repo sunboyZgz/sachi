@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { resourceRefSchema } from '../lib/blog/yandu';
 
 const publicUrl = z.string().url().refine((value) => {
   const url = new URL(value);
@@ -13,6 +14,7 @@ const aboutSchema = z.strictObject({
 });
 
 export const profileSchema = z.strictObject({
+  avatars: z.strictObject({ head: resourceRefSchema.optional(), half: resourceRefSchema.optional() }).optional(),
   name: z.string().trim().min(1).max(100),
   signature: z.string().trim().min(1).max(200),
   bio: z.string().trim().min(1).max(500),

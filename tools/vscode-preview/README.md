@@ -17,7 +17,7 @@ npm run preview:package
 生成 `tools/vscode-preview/dist/sachi-blog-preview.vsix`。在 VS Code 扩展页面的 `…` 菜单选择 **从 VSIX 安装**，选中该文件。需要 VS Code 1.96 或以上，以及受信任的本地文件或 Remote SSH 工作区。单独打开本地文件也可使用，无需打开整个项目。构建沿用博客的 Node.js 20.9 要求；打包工具 VSCE 4 需要 Node.js 22，首次打包会下载固定版本工具，安装现成 VSIX 时无需 Node.js。
 
 1. 在 VS Code 中打开博客项目文件夹，或直接打开一份文章文件。
-2. 打开 `content/<栏目>/<日期[-序号]>/index.md`、完整稿件中的原文、导出的旧稿，或任意位置符合博客元数据格式的 `.md`。
+2. 打开 `.blog-store/content/<栏目>/<日期[-序号]>/index.md`、完整稿件中的原文、导出的旧稿，或任意位置符合博客元数据格式的 `.md`。
 3. 点击编辑器右上角的预览图标，或命令面板运行 **Sachi Blog: 打开文章预览**。快捷键：macOS `⌘⌥V`，Windows/Linux `Ctrl+Alt+V`。
 4. 继续输入即可实时预览。命令 **Sachi Blog: 刷新文章预览** 可手动刷新。
 
@@ -71,7 +71,7 @@ createdAt: "2026-10-10T09:00:00+08:00"
 
 位于 Sachi 项目中、只打开项目中的子文件夹，或只有一个 Sachi 工作区时，继续读取对应项目的实时样式、公开个人资料与头像。没有关联项目时使用 VSIX 自带的博客样式和署名，多项目工作区中不会随意选用其他项目的配置。预览额外位置的文章不表示 CLI 自动将它加入正式内容目录或发布集合。
 
-查看归档无需复制回正式 `content/`。预览不会修改文件；如果手动改写存档的原文或素材，稿件完整性校验会失败。继续写作应编辑当前文章，回档使用 CLI 的 `draft restore`。
+查看归档无需复制回正式 `.blog-store/content/`。预览不会修改文件；如果手动改写存档的原文或素材，稿件完整性校验会失败。继续写作应编辑当前文章，回档使用 CLI 的 `draft restore`。
 
 默认跟随当前文章编辑器。设置 `sachiPreview.followActiveEditor` 为 `false` 可固定当前文章；再次执行打开预览命令可切换。`sachiPreview.debounceMs` 可调整刷新等待时间。刷新通过消息更新 React 内容，保留同一篇文章的阅读位置，不重新加载整个 Webview。
 
@@ -135,7 +135,7 @@ width 控制完整画布宽度（默认 205，96–360px），只在容器不足
 | 附件 | 本篇 assets 中的附件链接，点击通过 VS Code 打开 |
 | 文章/系列链接 | `blog:<UUID>`、`/article/<slug>/`、`series:<UUID>`、`/series/<slug>/`；点击打开当前内容仓库的源文件 |
 | 图文环绕 | 仍使用 frontmatter.flow；透明图片自动生成轮廓，也支持手工 contour，使用真实 Pretext 互动组件 |
-| 末尾署名 | 读取项目 profile.json 和 src/assets/avatar/avatar-half.png |
+| 末尾署名 | 读取项目 profile.json 的头像引用及 public/media/profile 预览缓存；未迁移时回退原 avatar-half.png |
 
 插件复用博客的 Markdown 扩展规则。手册站的 `::: tip` 不属于博客语法。`cover` 是列表封面，文章内容区不额外插入封面；系列目录/前后篇导航属于站点阅读导航，此预览聚焦当前正文。视频仍受 VS Code 内置浏览器的编码支持限制。
 

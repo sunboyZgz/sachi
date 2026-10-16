@@ -1,3 +1,4 @@
+import { contentDirectory } from '../../src/lib/blog/storage';
 import { cp, mkdir, readFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { BlogError, atomicWrite, exists, inside, readJson, safeDirectory, safeFile, sha256, stableJson, walk, writeJson } from '../../src/lib/blog/files';
@@ -117,7 +118,7 @@ export async function recordToGit(root: string, config: BlogConfig, releaseId: s
   return { status: 'SYNCED' };
 }
 export async function backupPlan(root: string, config: BlogConfig) {
-  const files = (await walk(path.join(root, 'content'))).filter((file) => file !== '.gitkeep');
+  const files = (await walk(path.join(root, await contentDirectory(root, config)))).filter((file) => file !== '.gitkeep');
   const normalized = new Map<string, string>();
   const hashes: Record<string, string> = {};
   const warnings: string[] = [];
@@ -126,7 +127,7 @@ export async function backupPlan(root: string, config: BlogConfig) {
     if (normalized.has(key) && normalized.get(key) !== file) throw new BlogError(`备份存在跨平台路径冲突：${file} / ${normalized.get(key)}`);
     normalized.set(key, file);
     if (file.split('/').some((part) => part.startsWith('.') || ['node_modules', '.blog', '.git'].includes(part)) || /\.(?:pem|key|p12)$/i.test(file)) throw new BlogError(`备份范围包含禁止文件：${file}`);
-    const bytes = await readFile(await safeFile(path.join(root, 'content'), file));
+    const bytes = await readFile(await safeFile(path.join(root, await contentDirectory(root, config)), file));
     if (bytes.length > config.media.maxGitFileMiB * 1024 ** 2) throw new BlogError(`源文件超过 Git 体积限制：${file}`);
     if (bytes.length > 50 * 1024 ** 2) warnings.push(`超过 50 MiB：${file}`);
     hashes[file] = sha256(bytes);
@@ -141,7 +142,7 @@ export async function syncContent(root: string, config: BlogConfig, plan: Awaite
   await rename(path.join(directory, 'content'), preserved);
   await mkdir(path.join(directory, 'content'));
   for (const [file, hash] of Object.entries(plan.hashes)) {
-    const input = await safeFile(path.join(root, 'content'), file); const bytes = await readFile(input);
+    const input = await safeFile(path.join(root, await contentDirectory(root, config)), file); const bytes = await readFile(input);
     if (sha256(bytes) !== hash) throw new BlogError(`确认后源文件发生变化：${file}`, 4);
     const output = path.join(directory, 'content', file); await atomicWrite(output, bytes);
   }

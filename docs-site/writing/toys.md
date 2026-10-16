@@ -1,7 +1,7 @@
 ---
 title: 准备玩具作品资料
 scope: local
-files: 保存 content/toys/<UUID>/toy.yaml 与原文件引用和摘要
+files: 保存 .blog-store/content/toys/<UUID>/toy.yaml 与原文件引用和摘要
 network: 匿名检查项目公网地址；不连接 Yandu
 online: 不上传，不进入舞台或公开集合
 ---
@@ -46,7 +46,7 @@ online: 不上传，不进入舞台或公开集合
    toy：本地资料已登记
    作品：竹影时钟
    ID：dab121ae-6c14-4bea-9e88-a2c8a0a8f525
-   文件：content/toys/dab121ae-6c14-4bea-9e88-a2c8a0a8f525/toy.yaml
+   文件：.blog-store/content/toys/dab121ae-6c14-4bea-9e88-a2c8a0a8f525/toy.yaml
    状态：待媒体处理
    视频原文件：实际读取的字节数；实际读取的秒数
    未来超限策略：拒绝，不裁剪
@@ -131,7 +131,7 @@ online: 不上传，不进入舞台或公开集合
 
 ## 确认结果
 
-资料保存在 `content/toys/<UUID>/toy.yaml`，包含规范化名称、原文件引用、SHA256、原文件大小、原视频时长、公网检查时间及超限策略。Yandu 尚未接入，不生成压缩或裁剪产物。
+资料保存在 `.blog-store/content/toys/<UUID>/toy.yaml`，包含规范化名称、原文件引用、SHA256、原文件大小、原视频时长、公网检查时间及超限策略。Yandu 尚未接入，不生成压缩或裁剪产物。
 
 ## 影响与取消
 

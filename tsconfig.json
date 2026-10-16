@@ -45,6 +45,7 @@
     ".blog",
     ".blog-store",
     "mutouren-ui-kit",
-    "docs-site"
+    "docs-site",
+    ".blog-archive"
   ]
 }

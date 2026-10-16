@@ -48,7 +48,7 @@ online: 不改变
 
    ```text
    CREATED
-   file：content/蘸豆！！/2026-10-12/index.md
+   file：.blog-store/content/蘸豆！！/2026-10-12/index.md
    id：<实际新UUID>
    slug：write-a-question
    type：article
@@ -95,7 +95,7 @@ online: 不改变
 
 ## 确认结果
 
-生成 content/&lt;栏目&gt;/&lt;日期[-序号]&gt;/index.md。同日第二篇加 -02；URL 默认使用 UUID 对应的 slug，以实际返回路径为准。
+生成 .blog-store/content/&lt;栏目&gt;/&lt;日期[-序号]&gt;/index.md。同日第二篇加 -02；URL 默认使用 UUID 对应的 slug，以实际返回路径为准。
 
 ## 影响与取消
 

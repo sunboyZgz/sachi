@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { logicalSourcePath, writingPath, writingFile, writingDirectory } from '../../src/lib/blog/storage';
 import { z } from 'zod';
 import { createTwoFilesPatch } from 'diff';
 import { parseDocument } from 'yaml';
@@ -47,7 +48,7 @@ function validateRecord(value: unknown) {
 export async function draftCatalogue(root: string) {
   const drafts: DraftRecord[] = [];
   const issues: Array<{ file: string; message: string }> = [];
-  const directory = path.join(root, base);
+  const directory = await writingPath(root, base);
   let ancestor = root;
   for (const part of base.split('/')) {
     ancestor = path.join(ancestor, part);
@@ -65,7 +66,7 @@ export async function draftCatalogue(root: string) {
       try {
         const id = recordFile.exec(item.name)?.[1];
         if (!id || !z.uuid().safeParse(id).success) throw new BlogError('无效的稿件记录文件名。');
-        const record = validateRecord(JSON.parse(await readFile(await safeFile(root, relative), 'utf8')));
+        const record = validateRecord(JSON.parse(await readFile(await writingFile(root, relative), 'utf8')));
         if (record.id !== id || record.schemaVersion !== 1) throw new BlogError('旧稿件 ID 或格式与记录文件不符。');
         drafts.push(record);
       } catch (error) { issues.push({ file: relative, message: error instanceof Error ? error.message : String(error) }); }
@@ -81,7 +82,7 @@ export async function draftCatalogue(root: string) {
         const relative = `${base}/versions/${article.name}/${version.name}/draft.json`;
         try {
           if (!version.isDirectory() || !z.uuid().safeParse(version.name).success) throw new BlogError('无效完整稿件目录。');
-          const record = validateRecord(JSON.parse(await readFile(await safeFile(root, relative), 'utf8')));
+          const record = validateRecord(JSON.parse(await readFile(await writingFile(root, relative), 'utf8')));
           if (record.schemaVersion !== 2 || record.articleId !== article.name || record.id !== version.name) throw new BlogError('完整稿件目录与身份不符。');
           const old = drafts.findIndex((entry) => entry.id === record.id);
           if (old >= 0) {
@@ -105,7 +106,7 @@ export async function listDrafts(root: string, selector?: string) {
   const local = await articleCatalogue(root);
   const matches = matchingArticles(root, local.articles, selector);
   if (matches.length > 1) throw new BlogError('文章选择不唯一，请使用完整 ID 或具体路径。', 2, 'INPUT_REQUIRED');
-  const normalized = (path.isAbsolute(selector) ? path.relative(root, selector) : selector).replace(/^\.\//, '').split(path.sep).join('/').replace(/\/$/, '');
+  const normalized = logicalSourcePath((path.isAbsolute(selector) ? path.relative(root, selector) : selector).replace(/^\.\//, '').split(path.sep).join('/').replace(/\/$/, ''));
   const ids = new Set(matches.length ? [matches[0].id.toLowerCase()] : catalogue.drafts.filter((record) => record.articleId === selector.toLowerCase() || record.slug === selector || record.sourcePath === normalized || record.sourcePath.replace(/\/index.md$/, '') === normalized).map((record) => record.articleId));
   if (ids.size > 1) throw new BlogError('历史文章选择不唯一，请使用完整文章 ID。', 2, 'INPUT_REQUIRED');
   if (!ids.size) throw new BlogError(`找不到文章或稿件历史：${selector}`, 2, 'INPUT_REQUIRED', local.issues);
@@ -136,7 +137,7 @@ export async function prepareDraft(root: string, selector: string, note = '', op
   const files = new Set([article.file]);
   const warnings: string[] = [];
   if (modern) {
-    for (const file of await walk(path.join(root, directory))) files.add(`${directory}/${file}`);
+    for (const file of await walk(await writingPath(root, directory))) files.add(`${directory}/${file}`);
   }
   const references = [...markdownReferences(body, { onIssue: (message) => warnings.push(message) }), ...metadataReferences(data)];
   for (const url of references) {
@@ -148,10 +149,10 @@ export async function prepareDraft(root: string, selector: string, note = '', op
       const decoded = decodeURIComponent(url.split('#')[0]);
       if (modern ? !decoded.startsWith('./assets/') : !/^\.?\/assets\//.test(decoded)) { warnings.push(`未收集本篇以外的引用：${url}`); continue; }
       target = modern ? `${directory}/${decoded.slice(2)}` : `public/${decoded.replace(/^\.?\//, '')}`;
-      inside(root, target);
+      await writingPath(root, target);
     } catch { warnings.push(`未收集无法识别的资源地址：${url}`); continue; }
-    if (!await exists(path.join(root, target))) { warnings.push(`素材尚未就绪，记录保留原引用：${url}`); continue; }
-    await safeFile(root, target);
+    if (!await exists(await writingPath(root, target))) { warnings.push(`素材尚未就绪，记录保留原引用：${url}`); continue; }
+    await writingFile(root, target);
     if (!modern) files.add(target);
   }
   const captured: DraftRecord['files'] = [];
@@ -160,13 +161,13 @@ export async function prepareDraft(root: string, selector: string, note = '', op
     const key = file.normalize('NFC').toLowerCase();
     if (keys.has(key)) throw new BlogError(`稿件素材含跨平台路径冲突：${file}`, 4);
     keys.add(key);
-    const bytes = await readFile(await safeFile(root, file));
+    const bytes = await readFile(await writingFile(root, file));
     if (file === article.file && bytes.toString('utf8') !== article.raw) throw new BlogError('读取期间文章发生变化，请重新保存稿件。', 4, 'SOURCE_CHANGED');
     captured.push({ path: file, hash: sha256(bytes), bytes: bytes.length });
   }
   const result = { articleId: article.id.toLowerCase(), title: article.title, slug: modern ? typeof data.slug === 'string' ? data.slug : article.id : path.basename(article.file, '.md'), sourcePath: article.file,
     note, files: captured, warnings: [...new Set(warnings)], sequence: (previous?.sequence ?? 0) + 1, parentId: previous?.id ?? null };
-  if (!options.forComparison) await validateDraftResources(article.file, article.raw, captured, async (file) => readFile(await safeFile(root, file)));
+  if (!options.forComparison) await validateDraftResources(article.file, article.raw, captured, async (file) => readFile(await writingFile(root, file)));
   const fingerprint = sha256(stableJson({ ...result, history: sameArticle.map((record) => [record.id, record.digest]) }));
   return { ...result, fingerprint };
 }
@@ -210,7 +211,7 @@ export async function validateDraftResources(file: string, markdown: string, fil
 }
 
 async function writeFullArchive(root: string, record: DraftRecord, read: (entry: DraftRecord['files'][number]) => Promise<Buffer>, beforeCommit: () => Promise<void> = async () => {}) {
-  const parent = await safeDirectory(root, `${base}/versions/${record.articleId}`);
+  const parent = await writingDirectory(root, `${base}/versions/${record.articleId}`);
   const temporary = path.join(parent, `.pending-${randomUUID()}`);
   await mkdir(temporary);
   try {
@@ -226,7 +227,7 @@ async function writeFullArchive(root: string, record: DraftRecord, read: (entry:
       if (sha256(bytes) !== entry.hash || bytes.length !== entry.bytes) throw new BlogError('完整稿件复制校验失败。', 4, 'DRAFT_INVALID');
     }
     await beforeCommit();
-    const destination = inside(root, draftArchivePath(record));
+    const destination = await writingPath(root, draftArchivePath(record));
     if (await exists(destination)) throw new BlogError('完整稿件 ID 已存在，拒绝覆盖。', 4, 'DRAFT_INVALID');
     await rename(temporary, destination);
   } finally { await rm(temporary, { recursive: true, force: true }); }
@@ -239,7 +240,7 @@ export async function saveDraft(root: string, plan: DraftPlan): Promise<DraftRec
   const { fingerprint, ...contents } = plan;
   const value = { ...contents, schemaVersion: 2 as const, id: randomUUID(), createdAt: new Date().toISOString() };
   const record = validateRecord({ ...value, digest: sha256(stableJson(value)) });
-  await writeFullArchive(root, record, async (entry) => readFile(await safeFile(root, entry.path)), async () => {
+  await writeFullArchive(root, record, async (entry) => readFile(await writingFile(root, entry.path)), async () => {
     if ((await prepareDraft(root, plan.articleId, plan.note)).fingerprint !== fingerprint) throw new BlogError('保存期间源文件变化，未登记稿件。', 4, 'SOURCE_CHANGED');
   });
   return record;
@@ -247,8 +248,8 @@ export async function saveDraft(root: string, plan: DraftPlan): Promise<DraftRec
 
 export async function draftObject(root: string, record: DraftRecord, entry: DraftRecord['files'][number]) {
   const relative = record.schemaVersion === 2 ? `${draftArchivePath(record)}/${entry.path}` : objectPath(entry.hash);
-  if (!await exists(inside(root, relative))) throw new BlogError(`稿件文件缺失：${entry.path}`, 4, 'DRAFT_INVALID');
-  const bytes = await readFile(await safeFile(root, relative));
+  if (!await exists(await writingPath(root, relative))) throw new BlogError(`稿件文件缺失：${entry.path}`, 4, 'DRAFT_INVALID');
+  const bytes = await readFile(await writingFile(root, relative));
   if (sha256(bytes) !== entry.hash || bytes.length !== entry.bytes) throw new BlogError(`稿件素材摘要不匹配：${entry.path}`, 4, 'DRAFT_INVALID');
   return bytes;
 }
@@ -268,7 +269,7 @@ export async function readDraft(root: string, value: string) {
 export async function verifyDraft(root: string, id: string) {
   const result = await readDraft(root, id);
   if (result.record.schemaVersion === 2) {
-    const actual = (await walk(inside(root, draftArchivePath(result.record)))).sort();
+    const actual = (await walk(await writingPath(root, draftArchivePath(result.record)))).sort();
     if (stableJson(actual) !== stableJson(['draft.json', ...result.record.files.map((entry) => entry.path)].sort())) throw new BlogError('完整稿件目录与文件清单不符。', 4, 'DRAFT_INVALID');
   }
   for (const entry of result.record.files) await draftObject(root, result.record, entry);
@@ -304,7 +305,7 @@ export async function compareDrafts(root: string, first: string, second?: string
     after = { id: next.record.id, markdown: next.markdown, files: next.record.files };
   } else {
     const current = await prepareDraft(root, before.record.articleId, '', { forComparison: true });
-    after = { id: 'working', markdown: (await readFile(await safeFile(root, current.sourcePath))).toString('utf8'), files: current.files };
+    after = { id: 'working', markdown: (await readFile(await writingFile(root, current.sourcePath))).toString('utf8'), files: current.files };
     if (sha256(after.markdown) !== current.files.find((entry) => entry.path === current.sourcePath)!.hash) throw new BlogError('读取当前稿期间发生变化，请重试。', 4, 'SOURCE_CHANGED');
   }
   const patch = createTwoFilesPatch(before.record.id, after.id, before.markdown, after.markdown, undefined, undefined, { context: 3, timeout: 5000 });

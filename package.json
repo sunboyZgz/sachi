@@ -29,10 +29,12 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "test:cli:next": "tsx tools/blog-cli/smoke-next.ts",
-    "check": "npm run lint && npm run typecheck && npm run test",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run test:proxy",
     "preview:build": "node tools/vscode-preview/build.mjs",
     "preview:package": "npm --prefix tools/vscode-preview run package",
-    "preview:test:host": "tsx tools/vscode-preview/test-host-runner.ts"
+    "preview:test:host": "tsx tools/vscode-preview/test-host-runner.ts",
+    "backup": "tsx tools/writing-backup/index.ts",
+    "test:proxy": "node --test tools/resource-proxy/integration.test.mjs"
   },
   "dependencies": {
     "@chenglou/pretext": "0.0.9",
@@ -40,6 +42,7 @@
     "@inquirer/confirm": "^5.1.21",
     "@inquirer/input": "^4.3.1",
     "@inquirer/select": "^4.4.2",
+    "@yandu/storage-server": "file:vendor/yandu-storage-server-0.2.0.tgz",
     "commander": "^14.0.3",
     "diff": "9.0.0",
     "execa": "^9.6.1",

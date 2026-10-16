@@ -2,19 +2,19 @@ import { Command, CommanderError, Option } from 'commander';
 import { BlogError } from '../../src/lib/blog/files';
 import type { ArticleType, BlogConfig } from '../../src/lib/blog/schema';
 
-export type CommandName = 'init' | 'doctor' | 'new' | 'search' | 'series' | 'toy' | 'draft' | 'list' | 'status' | 'meta' | 'format' | 'dev' | 'check' | 'build' | 'publish' | 'push' | 'unpublish' | 'history' | 'rollback' | 'sync' | 'restore' | 'recover' | 'wizard';
+export type CommandName = 'storage' | 'init' | 'doctor' | 'new' | 'search' | 'series' | 'toy' | 'draft' | 'list' | 'status' | 'meta' | 'format' | 'dev' | 'check' | 'build' | 'publish' | 'push' | 'unpublish' | 'history' | 'rollback' | 'sync' | 'restore' | 'recover' | 'wizard';
 export type CliOptions = {
   root?: string; json?: boolean; yes?: boolean; 'dry-run'?: boolean; remote?: boolean;
   category?: string; title?: string; slug?: string; timezone?: string; post?: string;
   type?: ArticleType;
   set?: string[]; init?: boolean; to?: string; resume?: string; destination?: string;
-  ignore?: string[]; note?: string;
+  ignore?: string[]; note?: string; resolve?: string[];
   'git-remote'?: string; visibility?: string; 'accept-baseline'?: boolean; export?: boolean;
   pages?: boolean; 'pages-remote'?: string; 'setup-pages'?: boolean;
   series?: string[]; order?: number; description?: string;
   file?: string; output?: string; 'video-overflow'?: 'reject' | 'trim-start';
 };
-export type Invocation = { command?: CommandName; selectors: string[]; options: CliOptions; guided?: boolean; configDraft?: BlogConfig; help?: string; seriesAction?: 'new' | 'list' | 'meta' | 'search' | 'add'; toyAction?: 'add' | 'template' | 'list' | 'check'; draftAction?: 'save' | 'list' | 'show' | 'diff' | 'export' | 'restore' | 'undo' | 'migrate' };
+export type Invocation = { command?: CommandName; selectors: string[]; options: CliOptions; guided?: boolean; configDraft?: BlogConfig; help?: string; storageAction?: 'init' | 'status' | 'sync' | 'list' | 'restore' | 'avatar' | 'upload'; seriesAction?: 'new' | 'list' | 'meta' | 'search' | 'add'; toyAction?: 'add' | 'template' | 'list' | 'check'; draftAction?: 'save' | 'list' | 'show' | 'diff' | 'export' | 'restore' | 'undo' | 'migrate' };
 
 export function createCliProgram(onInvoke: (invocation: Invocation) => void = () => {}, onOutput: (text: string) => void = () => {}): Command {
   const program = new Command().name('blog').description('Sachi Blog · 本地 Markdown 写作与显式发布')
@@ -41,6 +41,16 @@ export function createCliProgram(onInvoke: (invocation: Invocation) => void = ()
     .addOption(new Option('--visibility <可见性>', '按仓库实际设置确认').choices(['private', 'public', 'unconfirmed']))
     .option('--pages', '启用 GitHub Pages；目标默认读取根仓库 origin')
     .option('--pages-remote <地址>', '保存 GitHub Pages 目标仓库地址');
+  const storage = program.command('storage').description('Yandu 初始化、私有同步、资源上传与恢复').helpOption('-h, --help', '显示存储帮助');
+  storage.action(() => onInvoke({ command: 'storage', selectors: [], options: storage.optsWithGlobals() }));
+  for (const action of ['init', 'status', 'sync', 'list', 'restore', 'avatar', 'upload'] as const) {
+    const child = storage.command(action).description({ init: '重复初始化并校验项目逻辑目录', status: '查看本地修改与最近持久保存状态', sync: '校验并持久保存全部私有写作资料，不上线', list: '列出可恢复的私有检查点', restore: '从 Yandu 恢复到尚不存在的新目录', avatar: '上传并校验头部或半身头像，再关联个人资料', upload: '按文章或作品 ID 保存资源，默认私有' }[action]).helpOption('-h, --help', '显示帮助');
+    if (action === 'sync') child.option('--resolve <检查点>', '明确将这些冲突头合并为当前工作副本；重复指定全部冲突头', (value: string, previous: string[] = []) => [...previous, value]);
+    if (action === 'restore') child.argument('[检查点]', 'storage list 返回的完整检查点名称').option('--destination <新目录>', '尚不存在的恢复目录');
+    if (action === 'avatar') child.argument('[用途]', 'head 头部 / half 半身').option('--file <图片路径>', '本地头像原件');
+    if (action === 'upload') child.argument('[类别]', 'article / work').argument('[所属ID]', '文章或作品完整 ID').option('--file <文件路径>', '本地原件');
+    child.action(() => onInvoke({ command: 'storage', storageAction: action, selectors: child.processedArgs.flat().filter((value): value is string => typeof value === 'string'), options: Object.fromEntries(Object.entries(child.optsWithGlobals()).map(([key, value]) => [key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`), value])) as CliOptions }));
+  }
   define('doctor', '只读环境检查').option('--remote', '检查已配置的部署环境');
   define('search', '根据中文标题或关键词查找本地文章 ID', '[关键词]');
   define('new', '选择栏目、文章类型，再输入标题')

@@ -1,0 +1,50 @@
+# Adapt the domain, dedicated root and certificate paths before installation.
+# The deployment root itself MUST NOT be exposed as a document root.
+server {
+    listen 80;
+    server_name blog.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name blog.example.com;
+    ssl_certificate /etc/letsencrypt/live/blog.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/blog.example.com/privkey.pem;
+
+    root /srv/sachi-blog/current;
+    autoindex off;
+    location / {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache" always;
+    }
+    location = /release-marker.json {
+        add_header Cache-Control "no-store" always;
+    }
+    location ^~ /resources/ {
+        proxy_pass http://127.0.0.1:19092;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Authorization "";
+        proxy_set_header Cookie "";
+        proxy_set_header Range $http_range;
+        proxy_set_header If-Range $http_if_range;
+        proxy_set_header If-Match $http_if_match;
+        proxy_set_header If-None-Match $http_if_none_match;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 75s;
+        gzip off;
+    }
+    # Existing hash-addressed theme/media and frozen code resources remain valid.
+    location /media/ {
+        alias /srv/sachi-blog/shared/media/;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location /versions/ {
+        alias /srv/sachi-blog/shared/versions/;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location ~ /\. { deny all; }
+}

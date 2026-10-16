@@ -1,3 +1,5 @@
+import { uploadCredentialPath } from './credentials';
+import { logicalSourcePath } from '../../src/lib/blog/storage';
 import path from 'node:path';
 import { readdir } from 'node:fs/promises';
 import { scanContent, type SourcePost } from '../../src/lib/blog/content';
@@ -38,6 +40,7 @@ export const mainChoices: Choice[] = [
   { name: '整站回滚 · rollback', value: 'rollback' },
   { name: '从 Git 恢复到新目录 · restore', value: 'restore' },
   { name: '从服务器恢复公开内容 · recover', value: 'recover' },
+  { name: 'Yandu 存储与私有恢复 · storage', value: 'storage', description: '初始化、保存状态、全部私有同步、头像和资源上传' },
   { name: '配置项目与正式接入 · init', value: 'init' },
   { name: '检查运行环境 · doctor', value: 'doctor' },
   { name: '退出（不执行操作）', value: 'quit' },
@@ -50,7 +53,7 @@ function articleChoice(source: SourcePost): Choice {
 async function selectArticles(prompts: PromptDriver, posts: SourcePost[], multiple: boolean): Promise<string[]> {
   if (!posts.length) throw new BlogError('没有可选文章。请先新建正式文章；排版样例不能发布。', 2);
   const choices = posts.map(articleChoice);
-  const selected = multiple ? await prompts.checkbox('明确选择本次文章（默认不勾选）', choices) : [await prompts.select('选择文章', choices)];
+  const selected = (multiple ? await prompts.checkbox('明确选择本次文章（默认不勾选）', choices) : [await prompts.select('选择文章', choices)]).map(logicalSourcePath);
   if (!selected.length || new Set(selected).size !== selected.length || selected.some((value) => !choices.some((choice) => choice.value === value))) throw new BlogError('必须明确选择有效文章，不能默认采用全部草稿。', 2);
   return selected;
 }
@@ -97,6 +100,17 @@ export async function collectInitConfig(root: string, current: BlogConfig, promp
   if (pagesMode === 'configure') draft.pages = { remote: (await prompts.input('目标 GitHub 仓库地址（不是网站 URL，不填写 token）', (value) => {
     try { githubTarget(value.trim()); return true; } catch (error) { return error instanceof Error ? error.message : '地址无效。'; }
   }, { default: current.pages?.remote ?? undefined })).trim(), branch: 'blog' };
+  const storageMode = await prompts.select('Yandu 项目绑定（仅保存配置，不上传）', [
+    { name: `保留当前设置（${current.yandu?.projectId ?? '未配置'}）`, value: 'keep' },
+    { name: '连接已有专用存储项目', value: 'configure' }, { name: '停用 Yandu 接入', value: 'disable' },
+  ]);
+  if (storageMode === 'disable') draft.yandu = null;
+  if (storageMode === 'configure') {
+    const gateway = await prompts.input('本地可访问的 Yandu 网关根地址', (value) => { try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash ? true : '请输入不含密钥的网关根地址。'; } catch { return '请输入 HTTP(S) 地址。'; } }, { default: current.yandu?.gateway ?? 'http://127.0.0.1:18770' });
+    const projectId = await prompts.input('在 Yandu 创建或选择的专用项目 ID', (value) => /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(value) ? true : '请输入项目 ID。', { default: current.yandu?.projectId });
+    const credentialFile = await prompts.input('本地凭证 JSON 文件路径（优先载入，不在向导输入密钥）', (value) => { try { uploadCredentialPath(root, value); return true; } catch (error) { return (error as Error).message; } }, { default: current.yandu?.credentialFile ?? '.sachi/yandu-upload.json' });
+    draft.yandu = { gateway, projectId, credentialFile, credentialEnv: current.yandu?.credentialEnv ?? 'YANDU_UPLOAD_KEY' };
+  }
   return validateConfig(root, configSchema.parse(draft));
 }
 
@@ -116,7 +130,7 @@ async function collectMetadata(root: string, config: BlogConfig, invocation: Inv
   ];
   const fields = await prompts.checkbox('选择要修改的字段', fieldChoices);
   if (!fields.length || new Set(fields).size !== fields.length || fields.some((field) => !fieldChoices.some((choice) => choice.value === field))) throw new BlogError('必须明确选择有效修改字段。', 2);
-  const selector = invocation.selectors[0];
+  const selector = logicalSourcePath(invocation.selectors[0]);
   const post = sources.find((source) => [source.sourcePath, source.sourcePath.replace(/\/index.md$/, ''), source.post.id, source.post.slug].includes(selector))?.post;
   invocation.options.set = [];
   for (const field of fields) {

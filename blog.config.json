@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "timezone": "Asia/Shanghai",
-  "contentDir": "content",
+  "contentDir": ".blog-store/content",
   "siteUrl": null,
   "codeRef": null,
   "git": null,

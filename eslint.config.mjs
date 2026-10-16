@@ -11,6 +11,7 @@ export default defineConfig([
     'out/**',
     '.blog/**',
     '.blog-store/**',
+    '.blog-archive/**',
     'mutouren-ui-kit/**',
     'docs-site/.vitepress/cache/**',
     'docs-site/.vitepress/.temp/**',

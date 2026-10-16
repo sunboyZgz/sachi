@@ -3,6 +3,7 @@ import { markdownReferences, type SourcePost } from '../../src/lib/blog/content'
 import { BlogError } from '../../src/lib/blog/files';
 import { type Manifest, type ReleaseEntry } from '../../src/lib/blog/schema';
 import { validateSeriesMembers, type SourceSeries } from '../../src/lib/blog/series';
+import { resourceUrl } from '../../src/lib/blog/yandu';
 
 export type Plan = { manifest: Manifest; selected: string[]; unchanged: string[]; excluded: string[]; baselineChanged: boolean; selectedSeries?: string[]; seriesChanges?: Array<{ id: string; title: string; from: string | null; to: string }> };
 export function createPlan(current: Manifest | null, selected: SourcePost[], all: SourcePost[], code: { hash: string; commit: string | null }, withdrawn: string[] = [], now = new Date(), selectedSeries: SourceSeries[] = []): Plan {
@@ -35,8 +36,24 @@ export function createPlan(current: Manifest | null, selected: SourcePost[], all
     schemaVersion: 1, releaseId: `r-${randomUUID()}`, baseReleaseId: current?.releaseId ?? null,
     createdAt: time, codeHash: code.hash, codeCommit: code.commit,
     entries: [...entries.values()].sort((a, b) => a.id.localeCompare(b.id)),
-    withdrawn: [...new Set([...(current?.withdrawn ?? []), ...withdrawn])].filter((id) => !entries.has(id)), retired: [...retired.values()], assets: {},
+    withdrawn: [...new Set([...(current?.withdrawn ?? []), ...withdrawn])].filter((id) => !entries.has(id)), retired: [...retired.values()],
+    assets: Object.fromEntries(Object.entries(current?.assets ?? {}).filter(([id]) => entries.has(id) && !ids.has(id)).map(([id, assets]) => [id, structuredClone(assets)])),
   };
+  // Only previously public references are retained. Prepared but never activated
+  // release directories must never become an authorization source.
+  const retained = new Map<string, NonNullable<Manifest['retainedResources']>[number]>();
+  const keep = (ownerId: string, resource: NonNullable<Manifest['resources']>[number]) => {
+    if (ownerId !== 'profile' && !entries.has(ownerId)) return;
+    retained.set(`${ownerId}:${resource.projectId}:${resourceUrl(resource)}`, { ownerId, resource });
+  };
+  for (const item of current?.retainedResources ?? []) keep(item.ownerId, item.resource);
+  const articleResources = new Set<string>();
+  for (const [id, assets] of Object.entries(current?.assets ?? {})) for (const asset of Object.values(assets)) for (const resource of asset.resources ?? []) {
+    articleResources.add(`${resource.projectId}:${resourceUrl(resource)}`);
+    keep(id, resource);
+  }
+  for (const resource of current?.resources ?? []) if (!articleResources.has(`${resource.projectId}:${resourceUrl(resource)}`)) keep('profile', resource);
+  if (retained.size) manifest.retainedResources = [...retained.values()];
   const catalogue = new Map((current?.series ?? []).map((entry) => [entry.id, { ...entry }]));
   const seriesChanges: NonNullable<Plan['seriesChanges']> = [];
   for (const source of selectedSeries) {

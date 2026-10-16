@@ -19,13 +19,26 @@ export function describePlan(plan: Plan): string {
 }
 
 const stateNames: Record<string, string> = { draft: '草稿', published: '已发布', modified: '有未发布修改', withdrawn: '已撤回', missing: '线上存在、本地缺失', unverified: '未核实线上' };
-const statusNames: Record<string, string> = { PLANNED: '计划（未执行）', VALID: '检查通过', CACHED: '本地缓存（未核实线上）', VERIFIED: '已核实服务器', BUILD_ONLY: '本地构建完成（未上线）', DEPLOYED: '已上线', PUSHED: '冻结版本已推送（Pages 待核实上线）', PARTIAL_OR_FAILED: '部分目标失败，请查看两个钩子的结果', CREATED: '已创建', UPDATED: '已修改', READ: '文章信息', INITIALIZED: '配置已保存', RESTORED: '已恢复到新目录', SKIPPED: '已跳过', CHECKED: '环境检查', PREVIEW: '本地预览' };
+const statusNames: Record<string, string> = { SAVED: '已保存到 Yandu', PLANNED: '计划（未执行）', VALID: '检查通过', CACHED: '本地缓存（未核实线上）', VERIFIED: '已核实服务器', BUILD_ONLY: '本地构建完成（未上线）', DEPLOYED: '已上线', PUSHED: '冻结版本已推送（Pages 待核实上线）', PARTIAL_OR_FAILED: '部分目标失败，请查看两个钩子的结果', CREATED: '已创建', UPDATED: '已修改', READ: '文章信息', INITIALIZED: '配置已保存', RESTORED: '已恢复到新目录', SKIPPED: '已跳过', CHECKED: '环境检查', PREVIEW: '本地预览' };
 
 export function humanResult(command: string, status: string, data: unknown): string {
   const heading = `${command}：${statusNames[status] ?? status}`;
   if (typeof data === 'string') return `${heading}\n${data}`;
   if (!data || typeof data !== 'object') return `${heading}\n${String(data)}`;
   const record = data as Record<string, unknown>;
+  if (command === 'storage') {
+    if (Array.isArray(record.checkpoints)) return ['Yandu 私有写作检查点：',
+      ...(record.checkpoints as Array<{ checkpoint: string; head: boolean; state: string }>).map((entry) => `${entry.checkpoint}${entry.head ? ' · 当前分支' : ''}${entry.state === 'conflict' ? ' · 待合并' : ''}`),
+      record.checkpoints.length ? '恢复只写入新目录；出现冲突时先核对合并，再明确选择全部分支。' : '尚无完整保存的检查点。'].join('\n');
+    if ((record.state === 'local-changes' || record.state === 'saved') && (record.files !== undefined || record.checkpoint !== undefined)) return [`Yandu 存储：${record.state === 'saved' ? '已保存' : '待同步'}`,
+      record.state === 'saved' ? '最近写作资料已保存到 Yandu；这不是网站上线状态。' : '本地有尚未保存到 Yandu 的资料，断网时可以继续编辑。',
+      record.projectId ? `存储项目：${record.projectId}` : '尚未绑定 Yandu 项目，请运行 blog init。',
+      `文件：${record.files ?? 0}${record.bytes !== undefined ? ` · ${record.bytes} 字节` : ''}`,
+      record.checkpoint ? `检查点：${record.checkpoint}` : '', record.savedAt ? `保存时间：${record.savedAt}` : '', record.journal ? `迁移记录：${record.journal}` : ''].filter(Boolean).join('\n');
+    if (record.destination && record.state === 'verified') return `${heading}\n已校验 ${record.files} 个文件，恢复目录：${record.destination}`;
+    if (record.folders) return `${heading}\n目录已创建或复用，项目 ${record.projectId} 的绑定已保存。`;
+    if (record.resource) return `${heading}\n已确认入库并回读核验，保留本地原件。${record.kind ? `\n头像用途：${record.kind === 'head' ? '头部' : '半身'}` : ''}${record.ownerId ? `\n所属 ID：${record.ownerId}` : ''}\n上传不会自动更新公开网站，请先预览再发布。`;
+  }
   if (command === 'draft') {
     if (Array.isArray(record.drafts)) return ['稿件历史（本地）：',
       ...(record.drafts as DraftRecord[]).map((draft) => `${draft.title} · 第 ${draft.sequence} 稿 · ${draft.createdAt}\n  备注：${draft.note || '未填写'}\n  稿件 ID：${draft.id}\n  文章 ID：${draft.articleId}\n  ${draft.schemaVersion === 2 ? `完整目录：${draftArchivePath(draft)}\n  原文：${draftArchivePath(draft)}/${draft.sourcePath}` : '旧对象格式：可用 draft migrate 转换完整稿件'}`),

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { readdir, readFile, lstat, unlink, rmdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { writingPath, writingFile, writingDirectory } from '../../src/lib/blog/storage';
 import { z } from 'zod';
-import { atomicWrite, BlogError, exists, inside, safeDirectory, safeFile, sha256, stableJson, walk, writeJson } from '../../src/lib/blog/files';
+import { atomicWrite, BlogError, exists, inside, sha256, stableJson, walk, writeJson } from '../../src/lib/blog/files';
 import { storePath } from './config';
 
 export type FileChange = { file: string; before: string; after: string };
@@ -39,30 +40,30 @@ function validateBinaryPath(file: string) {
 async function binaryObject(root: string, journal: BinaryJournal, side: 'before' | 'after', index: number) {
   const entry = journal.entries[index][side];
   if (!entry) return null;
-  const bytes = await readFile(await safeFile(root, binaryPath(journal, side, index)));
+  const bytes = await readFile(await writingFile(root, binaryPath(journal, side, index)));
   if (sha256(bytes) !== entry.hash || bytes.length !== entry.bytes) throw new BlogError('回档事务备份摘要不匹配。', 4, 'WRITING_RECOVERY_CONFLICT');
   return bytes;
 }
 async function currentHash(root: string, file: string) {
-  return await exists(inside(root, file)) ? sha256(await readFile(await safeFile(root, file))) : null;
+  return await exists(await writingPath(root, file)) ? sha256(await readFile(await writingFile(root, file))) : null;
 }
 async function replaceBinary(root: string, file: string, bytes: Buffer | null, write = atomicWrite) {
-  if (bytes === null) { if (await exists(inside(root, file))) await unlink(await safeFile(root, file)); }
-  else { await safeDirectory(root, path.posix.dirname(file)); await write(inside(root, file), bytes); }
+  if (bytes === null) { if (await exists(await writingPath(root, file))) await unlink(await writingFile(root, file)); }
+  else { await writingDirectory(root, path.posix.dirname(file)); await write(await writingPath(root, file), bytes); }
 }
 async function pruneEmptyDirectories(root: string, files: string[]) {
   for (const file of files) {
     let directory = path.posix.dirname(file);
     const stop = file.startsWith('public/') ? 'public/assets' : file.endsWith('/index.md') || /^content\/[^/]+\/\d/.test(file) ? directory.split('/').slice(0, 2).join('/') : 'content';
     while (directory !== stop && directory !== 'content' && directory !== 'public/assets') {
-      try { await rmdir(inside(root, directory)); } catch { break; }
+      try { await rmdir(await writingPath(root, directory)); } catch { break; }
       directory = path.posix.dirname(directory);
     }
   }
 }
 async function setBinaryState(root: string, journal: BinaryJournal, state: BinaryJournal['state']) {
   const next = { ...journal, state };
-  await writeJson(await safeFile(root, journalPath(journal)), { ...next, digest: binaryDigest(next) });
+  await writeJson(await writingFile(root, journalPath(journal)), { ...next, digest: binaryDigest(next) });
 }
 
 async function journals(root: string) {
@@ -76,7 +77,7 @@ async function journals(root: string) {
     const relative = `.blog-store/${folder}/${entry.name}/journal.json`;
     // A crash before creating the journal cannot have changed article files.
     if (!await exists(storePath(root, folder, entry.name, 'journal.json'))) continue;
-    const value = JSON.parse(await readFile(await safeFile(root, relative), 'utf8'));
+    const value = JSON.parse(await readFile(await writingFile(root, relative), 'utf8'));
     const journal = value.schemaVersion === 2 ? binaryJournalSchema.parse(value) : journalSchema.parse(value);
     if (journal.id !== entry.name || new Set(journal.entries.map((item) => item.file)).size !== journal.entries.length) throw new BlogError('写作事务恢复记录摘要不匹配。', 4);
     if (isBinary(journal)) {
@@ -96,17 +97,17 @@ export async function assertNoPendingWrites(root: string) {
 async function restore(root: string, journal: Journal) {
   // Check every file before restoring any, so extra editor changes are never overwritten.
   for (const entry of journal.entries) {
-    const current = sha256(await readFile(await safeFile(root, entry.file)));
+    const current = sha256(await readFile(await writingFile(root, entry.file)));
     if (current !== entry.beforeHash && current !== entry.afterHash) throw new BlogError(`恢复期间发现额外修改：${entry.file}。保留事务备份，未覆盖此文件。`, 4, 'WRITING_RECOVERY_CONFLICT', { transaction: journal.id, file: entry.file });
   }
   for (const entry of journal.entries.toReversed()) {
-    const file = await safeFile(root, entry.file);
+    const file = await writingFile(root, entry.file);
     const current = sha256(await readFile(file));
     if (current === entry.beforeHash) continue;
     if (current !== entry.afterHash) throw new BlogError(`恢复期间文章发生变化：${entry.file}`, 4, 'WRITING_RECOVERY_CONFLICT');
     await atomicWrite(file, entry.before);
   }
-  await writeJson(await safeFile(root, journalPath(journal)), { ...journal, state: 'rolled-back' });
+  await writeJson(await writingFile(root, journalPath(journal)), { ...journal, state: 'rolled-back' });
 }
 
 /** Call while holding writing.lock. Recovery restores the old state, then a new plan is calculated. */
@@ -149,10 +150,10 @@ export async function prepareBinaryWritingTransaction(root: string, articleId: s
   const contents = { schemaVersion: 2 as const, kind: 'draft-restore' as const, id: randomUUID(), articleId, createdAt: new Date().toISOString(), state: 'prepared' as const,
     entries: changes.map((entry) => ({ file: entry.file, before: entry.before ? { hash: sha256(entry.before), bytes: entry.before.length } : null, after: entry.after ? { hash: sha256(entry.after), bytes: entry.after.length } : null })) };
   const journal = binaryJournalSchema.parse({ ...contents, digest: binaryDigest(contents) });
-  await safeDirectory(root, `.blog-store/${folder}/${journal.id}`);
+  await writingDirectory(root, `.blog-store/${folder}/${journal.id}`);
   for (const side of ['before', 'after'] as const) {
-    await safeDirectory(root, `.blog-store/${folder}/${journal.id}/${side}`);
-    for (let index = 0; index < changes.length; index++) if (changes[index][side]) await writeFile(inside(root, binaryPath(journal, side, index)), changes[index][side]!, { flag: 'wx', mode: 0o600 });
+    await writingDirectory(root, `.blog-store/${folder}/${journal.id}/${side}`);
+    for (let index = 0; index < changes.length; index++) if (changes[index][side]) await writeFile(await writingPath(root, binaryPath(journal, side, index)), changes[index][side]!, { flag: 'wx', mode: 0o600 });
   }
   await writeJson(storePath(root, folder, journal.id, 'journal.json'), journal);
   return journal;
@@ -184,7 +185,7 @@ export async function prepareDraftUndo(root: string, id: string) {
   if (!journal || !isBinary(journal) || journal.state !== 'committed') throw new BlogError('找不到已完成的回档记录。', 2, 'INPUT_REQUIRED');
   const directories = [...new Set(journal.entries.map((entry) => /^content\/(?:闲暇娱乐|生活旁白|蘸豆！！)\/\d{4}-\d{2}-\d{2}(?:-\d{2,})?\//.exec(entry.file)?.[0].slice(0, -1)).filter((directory): directory is string => !!directory))];
   if (directories.length) {
-    const actual = (await Promise.all(directories.map(async (directory) => (await walk(inside(root, directory))).map((file) => `${directory}/${file}`)))).flat().sort();
+    const actual = (await Promise.all(directories.map(async (directory) => (await walk(await writingPath(root, directory))).map((file) => `${directory}/${file}`)))).flat().sort();
     const expected = journal.entries.filter((entry) => entry.after).map((entry) => entry.file).sort();
     if (stableJson(actual) !== stableJson(expected)) throw new BlogError('回档后目录出现额外文件，撤销不覆盖额外编辑。', 4, 'SOURCE_CHANGED');
   }
@@ -206,8 +207,8 @@ export async function prepareWritingTransaction(root: string, changes: FileChang
   const journal = journalSchema.parse({ id: randomUUID(), createdAt: new Date().toISOString(), state: 'prepared',
     entries: changes.map((change) => ({ ...change, beforeHash: sha256(change.before), afterHash: sha256(change.after) })) });
   if (new Set(changes.map((entry) => entry.file)).size !== changes.length) throw new BlogError('事务包含重复文章。', 4);
-  for (const entry of journal.entries) if (sha256(await readFile(await safeFile(root, entry.file))) !== entry.beforeHash) throw new BlogError(`确认后文章发生变化：${entry.file}`, 4);
-  await safeDirectory(root, `.blog-store/${folder}/${journal.id}`);
+  for (const entry of journal.entries) if (sha256(await readFile(await writingFile(root, entry.file))) !== entry.beforeHash) throw new BlogError(`确认后文章发生变化：${entry.file}`, 4);
+  await writingDirectory(root, `.blog-store/${folder}/${journal.id}`);
   await writeJson(storePath(root, folder, journal.id, 'journal.json'), journal);
   return journal;
 }
@@ -216,13 +217,13 @@ export async function applyWritingTransaction(root: string, changes: FileChange[
   const journal = await prepareWritingTransaction(root, changes);
   try {
     for (const entry of journal.entries) {
-      const file = await safeFile(root, entry.file);
+      const file = await writingFile(root, entry.file);
       if (sha256(await readFile(file)) !== entry.beforeHash) throw new BlogError(`确认后文章发生变化：${entry.file}`, 4);
       await write(file, entry.after);
     }
     // Verify all replacements before committing, including edits during the last write.
-    for (const entry of journal.entries) if (sha256(await readFile(await safeFile(root, entry.file))) !== entry.afterHash) throw new BlogError(`写入期间文章发生变化：${entry.file}`, 4);
-    await writeJson(await safeFile(root, journalPath(journal)), { ...journal, state: 'committed' });
+    for (const entry of journal.entries) if (sha256(await readFile(await writingFile(root, entry.file))) !== entry.afterHash) throw new BlogError(`写入期间文章发生变化：${entry.file}`, 4);
+    await writeJson(await writingFile(root, journalPath(journal)), { ...journal, state: 'committed' });
     return journal.id;
   } catch (error) {
     try { await restore(root, journal); }

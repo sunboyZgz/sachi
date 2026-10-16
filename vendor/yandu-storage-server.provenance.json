@@ -1,0 +1,11 @@
+{
+  "package": "@yandu/storage-server",
+  "version": "0.2.0",
+  "sourceCommit": "c1eced9df56e227801ff2a22b498144eea6f2534",
+  "openapiSha256": "4276cba18873064dbaa96510c15f5f972dc2a810b26dd37f6b2308edb235c7bd",
+  "archiveSha256": "7fdbcc626be5b530515cd029be22f9d44115e23b6cf600670635e470b637f182",
+  "note": "Built SDK distribution vendored from local Yandu; no runtime dependency on sibling checkout.",
+  "license": "MIT",
+  "licenseFile": "YANDU-LICENSE.txt",
+  "licenseNote": "Preserved from LICENSE at sourceCommit; original SDK tarball has no license file or package license field. Archive unchanged."
+}

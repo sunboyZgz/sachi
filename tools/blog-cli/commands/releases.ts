@@ -1,3 +1,4 @@
+import { logicalSourcePath } from '../../../src/lib/blog/storage';
 import path from 'node:path';
 import { readdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -74,7 +75,7 @@ export async function executeReleases(context: CommandContext): Promise<boolean>
     await withLock(cachePath(root, 'publish.lock'), async () => {
       if (!builtAlready) {
         const frozenConfig = configSchema.parse(await readJson(storePath(root, 'code', manifest.codeHash, 'blog.config.json')));
-        const buildConfig = { ...config, timezone: frozenConfig.timezone, media: frozenConfig.media, siteAssets: frozenConfig.siteAssets, siteUrl: frozenConfig.siteUrl, buildCommand: frozenConfig.buildCommand };
+        const buildConfig = { ...config, yandu: frozenConfig.yandu ? { ...frozenConfig.yandu, credentialFile: config.yandu?.credentialFile ?? frozenConfig.yandu.credentialFile } : null, timezone: frozenConfig.timezone, media: frozenConfig.media, siteAssets: frozenConfig.siteAssets, siteUrl: frozenConfig.siteUrl, buildCommand: frozenConfig.buildCommand };
         const frozenPlan = await readJson(storePath(root, 'plans', `${id}.json`)) as { selected: string[]; selectedSeries?: string[] };
         await withLock(cachePath(root, 'git.lock'), () => saveReleaseToGit(root, config, manifest, frozenPlan.selected, frozenPlan.selectedSeries));
         await buildRelease(root, buildConfig, manifest, { echo: !options.json });
@@ -91,7 +92,7 @@ export async function executeReleases(context: CommandContext): Promise<boolean>
   const selected = command === 'unpublish' ? [] : selectPosts(scanned.posts, selectors);
   for (const source of selected) await validateMedia(root, config, source.dependencies, source.post.flow);
   const withdrawn = command === 'unpublish' ? selectors.map((selector) => {
-    const entry = current?.entries.find((entry) => entry.id === selector || entry.slug === selector || entry.sourcePath === selector || entry.sourcePath.replace(/\/index.md$/, '') === selector);
+    const entry = current?.entries.find((entry) => entry.id === selector || entry.slug === selector || entry.sourcePath === logicalSourcePath(selector) || entry.sourcePath.replace(/\/index.md$/, '') === logicalSourcePath(selector));
     if (!entry) throw new BlogError(`当前未发布：${selector}`); return entry.id;
   }) : [];
   const baseline = await codeBaseline(root, config);

@@ -113,7 +113,7 @@ online: 重新构建和明确发布后才改变
 
 配置属于全站代码基线，会改变代码哈希，需要明确接受全站基线变化。冻结计划、旧发布包和回滚保留当时的配置，不混入后续修改。执行前恢复配置可取消本地变化。
 
-头像仍只覆盖 `src/assets/avatar/avatar-head.png` 和 `avatar-half.png`，见[替换头像](/writing/avatar)。不要在本配置或文章中复制头像。
+头像通过 `storage avatar` 选择并保存 Yandu 版本引用，见[替换头像](/writing/avatar)。原固定文件保留，个人资料只记录对象身份，不复制图片或密钥。资料编辑后运行 `storage sync` 留存私有检查点。
 
 ## 常见问题
 

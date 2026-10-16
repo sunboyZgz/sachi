@@ -78,10 +78,11 @@ export async function preparePagesBundle(root: string, packageDirectory: string,
   await verifyPackage(packageDirectory);
   if (stableJson(manifestSchema.parse(await readJson(path.join(packageDirectory, 'release.json')))) !== stableJson(manifest)) throw new BlogError('Pages 候选清单与冻结发布包不一致。', 4);
   const frozen = configSchema.parse(await readJson(path.join(packageDirectory, 'code/blog.config.json')));
+  if (frozen.yandu || manifest.resources?.length) throw new BlogError('Yandu 资源需要同站 HTTPS 代理，GitHub Pages 无此服务；请使用 SSH 部署并停用 Pages。', 2);
   const code = await readJson(path.join(packageDirectory, 'code/code.json')) as CodeSnapshot;
   // Explicit allowlist: never copy root content, .env, docs, Git configuration or stores.
   for (const [file] of code.hashes) {
-    if (!(file.startsWith('src/') || file.startsWith('public/') || file.startsWith('tools/blog-cli/') || ['package.json', 'package-lock.json', 'next.config.ts', 'tsconfig.json', 'next-env.d.ts'].includes(file))) continue;
+    if (!(file.startsWith('src/') || file.startsWith('public/') || file.startsWith('tools/blog-cli/') || file.startsWith('vendor/') || ['package.json', 'package-lock.json', 'next.config.ts', 'tsconfig.json', 'next-env.d.ts'].includes(file))) continue;
     const source = await safeFile(path.join(packageDirectory, 'code'), file);
     const destination = path.join(directory, file); await mkdir(path.dirname(destination), { recursive: true }); await cp(source, destination);
   }

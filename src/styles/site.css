@@ -369,3 +369,6 @@ a:hover .arrow { transform: translateX(4px); }
 /* A teaching iframe can be narrower than the parent desktop viewport. */
 .flow-block[data-layout="wrap"] .flow-canvas { font-size: 18px; line-height: 36px; }
 @media (max-width: 600px) { .flow-block[data-layout="wrap"] .flow-controls button { display: block; } }
+
+.resource-failure { display: block; padding: 0.5em; color: var(--color-text-secondary, #776f62); font-size: 0.85em; }
+.resource-failure button { margin-inline-start: 0.5em; font: inherit; cursor: pointer; }

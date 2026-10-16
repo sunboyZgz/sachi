@@ -7,7 +7,8 @@ import sharp from 'sharp';
 import { stringify } from 'yaml';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { exists, sha256, stableJson, walk, writeJson } from '../../src/lib/blog/files';
-import { defaultConfig } from '../../src/lib/blog/schema';
+
+import { legacyConfig as defaultConfig } from '../../tests/helpers/legacy-config';
 import { parseCli } from './arguments';
 import { confirmation } from './context';
 import { executeToys } from './commands/toys';

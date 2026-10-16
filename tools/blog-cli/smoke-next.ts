@@ -26,6 +26,9 @@ async function smoke() {
     for (const file of ['src', 'tools', 'public/assets', 'package.json', 'package-lock.json', 'tsconfig.json', 'next.config.ts', 'next-env.d.ts']) await cp(path.join(project, file), path.join(root, file), { recursive: true });
     await symlink(path.join(project, 'node_modules'), path.join(root, 'node_modules'), 'dir');
     const config = defaultConfig('Asia/Shanghai');
+    // The real writing repository must never enter frozen code or the public Pages source.
+    await mkdir(path.join(root, '.blog-store/.git'), { recursive: true });
+    await writeFile(path.join(root, '.blog-store/.git/PRIVATE_REPOSITORY_METADATA'), 'must remain private');
     config.siteUrl = 'https://sachi-smoke.example.org';
     const profileFile = path.join(root, 'src/config/profile.json');
     const profile = JSON.parse(await readFile(profileFile, 'utf8'));
@@ -127,6 +130,8 @@ async function smoke() {
     const pagesRoot = path.join(root, 'pages-export'); await mkdir(pagesRoot);
     const target = githubTarget('https://github.com/sachi-smoke/sachi.git');
     await preparePagesBundle(root, built.directory, built.manifest, target, pagesRoot);
+    assert(!await exists(path.join(pagesRoot, '.blog-store')));
+    assert(!await exists(path.join(built.directory, '.git')));
     await symlink(path.join(project, 'node_modules'), path.join(pagesRoot, 'node_modules'), 'dir');
     const pagesOutput = await buildPages(pagesRoot);
     const pagesHtml = await readFile(path.join(pagesOutput, 'article/cli-integration/index.html'), 'utf8');

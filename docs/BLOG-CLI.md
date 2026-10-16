@@ -64,7 +64,7 @@ npm run blog -- build a-cup-of-tea --yes --export
 ## 写作契约
 
 ```text
-content/
+.blog-store/content/
   生活旁白/
     2026-10-02/
       index.md
@@ -86,7 +86,7 @@ featured: false
 ---
 ```
 
-栏目由目录映射为 play/life/learn。日期默认使用创建时间在配置时区的日期，发布后显示首次发布时间。阅读分钟数默认计算，也可用 `minutes` 覆盖；项目文章可设置 `status`，默认“记录”。`summary`、`tags`、`cover`、`featured` 均可选。原来的扁平 Markdown 与 fixture 仍能本地预览，但 fixture 明确禁止发布。新文章不复制头像；头像仍仅在 `src/assets/avatar/`。
+栏目由目录映射为 play/life/learn。日期默认使用创建时间在配置时区的日期，发布后显示首次发布时间。阅读分钟数默认计算，也可用 `minutes` 覆盖；项目文章可设置 `status`，默认“记录”。`summary`、`tags`、`cover`、`featured` 均可选。原来的扁平 Markdown 与 fixture 仍能本地预览，但 fixture 明确禁止发布。新文章不复制头像；通过 `storage avatar` 关联个人资料中的 Yandu 对象版本，原 `src/assets/avatar/` 保留为回退。
 
 图片和视频都采用 `![说明](./assets/文件名)`；视频使用原生控件、poster、`preload="metadata"`，不自动播放。下载附件使用 `[下载](./assets/文件.pdf)`。支持引用式 Markdown 图片/链接，不把代码块中的示例当成真实依赖，不启用任意 HTML。附件仅限本篇 assets，拒绝越界路径、符号链接和不允许的扩展名。
 
@@ -143,7 +143,7 @@ assets:
 {
   "schemaVersion": 1,
   "timezone": "Asia/Shanghai",
-  "contentDir": "content",
+  "contentDir": ".blog-store/content",
   "siteUrl": "https://blog.example.com",
   "codeRef": null,
   "git": {
@@ -207,7 +207,7 @@ npm run blog -- recover --destination /绝对路径/不存在的公开内容恢�
 
 `--dry-run` 不提交、不上传、不部署、不写 current；有部署配置时可以只读查询服务器。默认 status/history 标明缓存来源，不能据缓存声称已核实线上。`sync` 只备份全部写作文件及补记发布结果，不改变网站。撤回不删除本地原文，也不承诺删除互联网缓存；被其他公开文章链接的目标需先显式修改并发布这些链接。
 
-`.blog/` 是可重建缓存；**`.blog-store/` 是持久数据，不要当缓存删除**，其中保存 snapshots、code、plans、releases、receipts、current.json 和 Git 基线。它不放在 public，也不加入内容分支。Git 未启用时，发布包会把公开版本的源快照和冻结代码保存在服务器私有发布目录；`recover` 能从该包恢复，但无法恢复从未备份或发布的草稿。
+`.blog/` 是可重建缓存；**`.blog-store/` 是持久数据，不要当缓存删除**，其中保存 snapshots、code、plans、releases、receipts、current.json 和 Git 基线。它不放在 public，也不由旧 sync 整体上传；现在可通过 `npm run backup` 作为独立私有 Git 仓库完整备份，见[资料备份](../docs-site/backup/store.md)。Git 未启用时，发布包会把公开版本的源快照和冻结代码保存在服务器私有发布目录；`recover` 能从该包恢复，但无法恢复从未备份或发布的草稿。
 
 Git 内容分支保存原文备份、`.snapshots/<revisionHash>` 和 `.release/`。删除 `.blog/` 不会丢失 Git 基线；远端推送冲突不会用 force 解决。`restore` 只克隆到新目录，不覆盖现有写作目录；不恢复网站源代码。服务器 current 才是上线事实。
 

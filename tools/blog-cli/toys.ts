@@ -1,3 +1,4 @@
+import { physicalSourcePath, writingPath, writingDirectory } from '../../src/lib/blog/storage';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { link, lstat, mkdir, readFile, readdir, rmdir, unlink, writeFile } from 'node:fs/promises';
@@ -170,8 +171,8 @@ export function toyReceipt(plan: ToyPlan) {
 export async function saveToy(root: string, plan: ToyPlan) {
   await verifyToySources(plan);
   const id = plan.input.id ?? randomUUID();
-  await safeDirectory(root, 'content/toys');
-  const directory = path.join(root, 'content/toys', id);
+  await writingDirectory(root, 'content/toys');
+  const directory = await writingPath(root, `content/toys/${id}`);
   try { await mkdir(directory); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new BlogError(`作品 ID 已存在，拒绝覆盖：${id}`, 4, 'TOY_EXISTS'); throw error; }
   const file = path.join(directory, 'toy.yaml');
@@ -188,13 +189,13 @@ export async function saveToy(root: string, plan: ToyPlan) {
 }
 
 export async function toyCatalogue(root: string) {
-  const directory = path.join(root, 'content/toys');
+  const directory = await writingPath(root, 'content/toys');
   const toys: Array<{ id: string; title: string; file: string; state: 'pending-media' }> = [];
   const issues: Array<{ file: string; message: string }> = [];
   if (!await exists(directory)) return { toys, issues };
   if ((await lstat(directory)).isSymbolicLink()) throw new BlogError('作品资料目录不能是符号链接。', 3, 'INVALID_TOY');
   for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
-    const file = `content/toys/${entry.name}/toy.yaml`;
+    const file = await physicalSourcePath(root, `content/toys/${entry.name}/toy.yaml`);
     try {
       if (!entry.isDirectory() || !z.uuid().safeParse(entry.name).success) throw new BlogError('作品目录必须是 UUID 普通目录。');
       const record = await readToyRecord(root, entry.name);
@@ -205,7 +206,7 @@ export async function toyCatalogue(root: string) {
 }
 export async function readToyRecord(root: string, id: string): Promise<ToyRecord> {
   if (!z.uuid().safeParse(id).success) throw new BlogError('toy check 需要完整作品 UUID。', 2, 'INPUT_REQUIRED');
-  const file = await localToyFile(root, `content/toys/${id.toLowerCase()}/toy.yaml`);
+  const file = await localToyFile(root, await physicalSourcePath(root, `content/toys/${id.toLowerCase()}/toy.yaml`));
   if ((await lstat(file)).size > 1024 * 1024) throw new BlogError('作品资料文件超过 1 MiB。', 3, 'INVALID_TOY');
   const record = toyRecordSchema.parse(parseYaml(await readFile(file, 'utf8'), file));
   if (record.id !== id.toLowerCase()) throw new BlogError('作品 ID 与目录不一致。', 3, 'INVALID_TOY');
@@ -216,13 +217,13 @@ export async function checkToy(root: string, id: string) {
   const changes = await Promise.all((['cover', 'video'] as const).map(async (key) => ({ key, current: await toyDigest(record[key]) })));
   const changedSources = changes.filter(({ key, current }) => current.hash !== record.validation[key].hash);
   if (changedSources.length) throw new BlogError(`作品源文件已变化：${changedSources.map(({ key }) => key).join('、')}。登记摘要未修改；未继续联网与解码检查。`, 3, 'SOURCE_CHANGED', {
-    id: record.id, file: `content/toys/${record.id}/toy.yaml`, state: record.state,
+    id: record.id, file: await physicalSourcePath(root, `content/toys/${record.id}/toy.yaml`), state: record.state,
     changed: changedSources.map(({ key, current }) => ({ field: key, registered: record.validation[key].hash, current })), processing: record.processing,
   });
   const input = toyInputSchema.parse(Object.fromEntries(Object.keys(fields).map((key) => [key, record[key as keyof ToyRecord]])));
   const current = await prepareToy(root, input);
   const changed = (['cover', 'video'] as const).filter((key) => current[key].hash !== record.validation[key].hash);
-  const result = { ...toyReceipt(current), id: record.id, file: `content/toys/${record.id}/toy.yaml`, changed, checkedAt: new Date().toISOString(), registeredAt: record.validation.checkedAt };
+  const result = { ...toyReceipt(current), id: record.id, file: await physicalSourcePath(root, `content/toys/${record.id}/toy.yaml`), changed, checkedAt: new Date().toISOString(), registeredAt: record.validation.checkedAt };
   if (changed.length) throw new BlogError(`作品源文件已变化：${changed.join('、')}。登记摘要未修改；未来媒体处理前必须重新核对。`, 3, 'SOURCE_CHANGED', result);
   return result;
 }

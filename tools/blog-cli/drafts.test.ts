@@ -8,7 +8,8 @@ import { promisify } from 'node:util';
 import sharp from 'sharp';
 import { atomicWrite, exists, sha256, stableJson, walk } from '../../src/lib/blog/files';
 import { scanContent } from '../../src/lib/blog/content';
-import { defaultConfig } from '../../src/lib/blog/schema';
+
+import { legacyConfig as defaultConfig } from '../../tests/helpers/legacy-config';
 import { compareDrafts, draftArchivePath, draftCatalogue, draftDestination, exportDraft, listDrafts, migrateDrafts, prepareDraft, prepareDraftMigration, readDraft, saveDraft, verifyDraft, type DraftRecord } from './drafts';
 import { commitDraftRestore, commitDraftUndo, prepareDraftRestore } from './draft-restore';
 import { assertNoPendingWrites, prepareBinaryWritingTransaction, recoverWritingTransactions } from './writing-transactions';
@@ -322,8 +323,8 @@ describe('standalone full archives and direct restoration', () => {
     expect((await verifyDraft(target, a.id)).markdown).toBe(f.raw);
     expect((await listDrafts(target, a.articleId)).drafts).toHaveLength(1);
     await commitDraftRestore(target, await prepareDraftRestore(target, a.id));
-    expect(await readFile(path.join(target, f.file), 'utf8')).toBe(f.raw);
-    expect(await readFile(path.join(target, path.dirname(f.file), 'assets/插画.png'))).toEqual(f.image);
+    expect(await readFile(path.join(target, '.blog-store', f.file), 'utf8')).toBe(f.raw);
+    expect(await readFile(path.join(target, '.blog-store', path.dirname(f.file), 'assets/插画.png'))).toEqual(f.image);
   });
 
   it('restores a deleted article and can undo back to its absent state without leaving a phantom article folder', async () => {

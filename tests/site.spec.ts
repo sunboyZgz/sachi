@@ -463,6 +463,8 @@ test('renders complete article DOM and working anchors without JavaScript and ke
 });
 
 test('reveals the mounted gallery without preview clicks and restores the original article page', async ({ page }) => {
+  // Headless Chrome may rasterize the multi-step WebGL peel in software.
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/category/play/page/3/');
   const rope = page.locator('.mutou-rope-handle');

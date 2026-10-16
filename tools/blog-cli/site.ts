@@ -5,7 +5,8 @@ import sharp from 'sharp';
 import { BlogError, exists, inside, readJson, safeFile, sha256, stableJson, walk, writeJson } from '../../src/lib/blog/files';
 import { dayInTimezone } from '../../src/lib/blog/content';
 import { mappedPost } from '../../src/lib/blog/preview';
-import { manifestSchema, type BlogConfig, type BlogPost, type Manifest } from '../../src/lib/blog/schema';
+import { manifestSchema, type Asset, type BlogConfig, type BlogPost, type Manifest } from '../../src/lib/blog/schema';
+import { resourceRefSchema, resourceUrl, type ResourceRef } from '../../src/lib/blog/yandu';
 import { cachePath, storePath } from './config';
 import { prepareMedia } from './media';
 import { run } from './process';
@@ -14,6 +15,42 @@ import { validateArticleLinks } from './plan';
 import { withBasePath } from '../../src/lib/site-path';
 import { readSeriesSnapshot } from './series';
 import { assertNoPendingWrites } from './writing-transactions';
+
+export type ResourceAllowlist = {
+  schemaVersion: 1; releaseId: string; activeOwnerIds: string[];
+  resources: Array<ResourceRef & { path: string; ownerId: string }>;
+};
+export function releaseResourceAllowlist(manifest: Manifest, profileResources: ResourceRef[] = []): ResourceAllowlist {
+  const activeOwnerIds = [...manifest.entries.map((entry) => entry.id), 'profile'];
+  const active = new Set(activeOwnerIds);
+  const resources = new Map<string, ResourceAllowlist['resources'][number]>();
+  const identities = new Map<string, ResourceRef>();
+  const add = (ownerId: string, value: ResourceRef) => {
+    if (!active.has(ownerId)) return;
+    const resource = resourceRefSchema.parse(value);
+    const url = resourceUrl(resource);
+    const old = identities.get(url);
+    if (old && stableJson(old) !== stableJson(resource)) throw new BlogError(`公开资源路径对应多个版本身份：${url}`, 4);
+    identities.set(url, resource);
+    resources.set(`${ownerId}:${url}`, { ...resource, path: url, ownerId });
+  };
+  for (const item of manifest.retainedResources ?? []) add(item.ownerId, item.resource);
+  for (const entry of manifest.entries) for (const asset of Object.values(manifest.assets[entry.id] ?? {})) for (const resource of asset.resources ?? []) add(entry.id, resource);
+  for (const resource of profileResources) add('profile', resource);
+  return { schemaVersion: 1, releaseId: manifest.releaseId, activeOwnerIds, resources: [...resources.values()] };
+}
+
+function assetUrls(asset: Asset) {
+  return [asset.url, asset.poster, asset.contour, ...asset.srcSet?.split(',').map((variant) => variant.trim().split(/\s+/)[0]) ?? []].filter((url): url is string => !!url);
+}
+
+async function frozenProfileResources(codeDirectory: string) {
+  const file = path.join(codeDirectory, 'src/config/profile.json');
+  if (!await exists(file)) return [];
+  const profile = await readJson(file) as { avatars?: { head?: unknown; half?: unknown } };
+  if (!profile.avatars) return [];
+  return [profile.avatars.head, profile.avatars.half].filter((value) => value !== undefined).map((value) => resourceRefSchema.parse(value));
+}
 
 export async function buildRelease(root: string, config: BlogConfig, manifest: Manifest, options: { echo?: boolean } = {}) {
   await assertNoPendingWrites(root);
@@ -35,7 +72,7 @@ export async function buildRelease(root: string, config: BlogConfig, manifest: M
     const entry = manifest.series![index];
     if (snapshot.series.id !== entry.id || snapshot.series.slug !== entry.slug || snapshot.series.category !== entry.category || snapshot.series.title !== entry.title) throw new BlogError('系列快照与发布清单不一致。', 4);
   }
-  if (snapshots.some((snapshot) => snapshot.dependencies.some((dependency) => /\.(?:mp4|webm|mov|m4v)$/i.test(dependency.file)))) {
+  if (snapshots.some((snapshot) => !Object.values(manifest.assets[snapshot.post.id] ?? {}).some((asset) => asset.resources?.length) && snapshot.dependencies.some((dependency) => /\.(?:mp4|webm|mov|m4v)$/i.test(dependency.file)))) {
     const currentVersion = await run(['ffmpeg', '-version'], { cwd: root, code: 3 }).then((result) => result.stdout.split('\n')[0]);
     if (descriptor.ffmpeg !== currentVersion) throw new BlogError('冻结视频工具版本与当前 FFmpeg 不一致；不能重新编码旧计划。', 4);
   }
@@ -47,20 +84,34 @@ export async function buildRelease(root: string, config: BlogConfig, manifest: M
   const publicRoot = path.join(directory, 'public'); await mkdir(publicRoot, { recursive: true });
   const basePath = config.siteUrl ? new URL(config.siteUrl).pathname.replace(/\/$/, '') : '';
   const posts: BlogPost[] = [];
+  const profileResources = await frozenProfileResources(codeDirectory);
   for (const [index, snapshot] of snapshots.entries()) {
     const entry = manifest.entries[index];
-    const assets = await prepareMedia(root, config, snapshot, publicRoot);
+    const frozenAssets = manifest.assets[entry.id];
+    const reusable = frozenAssets && Object.values(frozenAssets).some((asset) => asset.resources?.length);
+    const assets = reusable ? structuredClone(frozenAssets) : await prepareMedia(root, config, snapshot, publicRoot);
+    // Internal links follow the current public collection even when media stays
+    // frozen to the previous publication of an unselected article.
+    for (const key of Object.keys(assets)) if (key.startsWith('blog:') || key.startsWith('series:')) delete assets[key];
     for (const target of manifest.entries) assets[`blog:${target.id}`] = { url: `/article/${target.slug}/`, type: 'file' };
     for (const target of manifest.series ?? []) if (manifest.entries.some((chapter) => chapter.series?.id === target.id)) assets[`series:${target.id}`] = { url: `/series/${target.slug}/`, type: 'file' };
     for (const asset of Object.values(assets)) {
-      asset.url = withBasePath(asset.url, basePath);
-      if (asset.poster) asset.poster = withBasePath(asset.poster, basePath);
-      if (asset.contour) asset.contour = withBasePath(asset.contour, basePath);
-      if (asset.srcSet) asset.srcSet = asset.srcSet.split(',').map((variant) => { const [url, size] = variant.trim().split(/\s+/); return `${withBasePath(url, basePath)} ${size}`; }).join(', ');
+      const rebase = (url: string) => {
+        const resource = asset.resources?.find((ref) => url === resourceUrl(ref) || url.endsWith(resourceUrl(ref)));
+        return withBasePath(resource ? resourceUrl(resource) : url, basePath);
+      };
+      asset.url = rebase(asset.url);
+      if (asset.poster) asset.poster = rebase(asset.poster);
+      if (asset.contour) asset.contour = rebase(asset.contour);
+      if (asset.srcSet) asset.srcSet = asset.srcSet.split(',').map((variant) => { const [url, size] = variant.trim().split(/\s+/); return `${rebase(url)} ${size}`; }).join(', ');
     }
     manifest.assets[entry.id] = assets;
     posts.push(mappedPost({ ...snapshot.post, category: entry.category, date: dayInTimezone(entry.publishedAt, config.timezone) }, assets));
   }
+  const resources = new Map<string, ResourceRef>();
+  for (const resource of [...Object.values(manifest.assets).flatMap((assets) => Object.values(assets).flatMap((asset) => asset.resources ?? [])), ...profileResources]) resources.set(`${resource.projectId}:${resourceUrl(resource)}`, resource);
+  if (resources.size) manifest.resources = [...resources.values()];
+  else delete manifest.resources;
   const input = path.join(directory, '.blog-input'); await mkdir(input);
   await writeJson(path.join(input, 'posts.json'), posts);
   await writeJson(path.join(input, 'series.json'), seriesSnapshots.map((snapshot) => snapshot.series));
@@ -77,6 +128,7 @@ export async function buildRelease(root: string, config: BlogConfig, manifest: M
   };
   // Release builds intentionally do not inherit arbitrary NEXT_PUBLIC_* variables.
   for (const key of Object.keys(process.env)) if (key.startsWith('NEXT_PUBLIC_') && !(key in environment)) environment[key] = undefined;
+  if (config.yandu) environment[config.yandu.credentialEnv] = undefined;
   await run(config.buildCommand, { cwd: directory, env: environment, echo: options.echo, code: 6, timeout: 600_000 });
   const output = path.join(directory, 'out');
   if (!await exists(path.join(output, 'index.html'))) throw new BlogError('构建命令没有生成 out/index.html。', 6);
@@ -104,6 +156,7 @@ export async function buildRelease(root: string, config: BlogConfig, manifest: M
   for (const snapshot of seriesSnapshots) await cp(storePath(root, 'series-snapshots', snapshot.revisionHash), path.join(packageDirectory, 'series-snapshots', snapshot.revisionHash), { recursive: true });
   await cp(storePath(root, 'code', manifest.codeHash), path.join(packageDirectory, 'code'), { recursive: true });
   await writeJson(path.join(packageDirectory, 'release.json'), manifest);
+  if (manifest.resources?.length || manifest.retainedResources?.length) await writeJson(path.join(packageDirectory, 'resource-allowlist.json'), releaseResourceAllowlist(manifest, profileResources));
   await checksums(packageDirectory);
   return { directory: packageDirectory, manifest };
 }
@@ -111,8 +164,15 @@ export async function buildRelease(root: string, config: BlogConfig, manifest: M
 export async function verifySite(site: string, manifest: Manifest, basePath = '') {
   const localPath = (url: string) => basePath && url.startsWith(`${basePath}/`) ? url.slice(basePath.length) : url;
   const names = await walk(site);
-  if (names.some((name) => name.endsWith('.map') || name.split('/').some((part) => part.startsWith('.') || ['content', 'snapshot.json', 'source.md', 'source.yaml', 'release.json', 'posts.json', 'series.json'].includes(part)))) throw new BlogError('公开构建产物包含源码、私有清单或 sourcemap。', 6);
+  if (names.some((name) => name.endsWith('.map') || name.split('/').some((part) => part.startsWith('.') || ['content', 'snapshot.json', 'source.md', 'source.yaml', 'release.json', 'posts.json', 'series.json', 'resource-allowlist.json'].includes(part)))) throw new BlogError('公开构建产物包含源码、私有清单或 sourcemap。', 6);
+  const resourcePaths = new Map<string, ResourceRef>();
+  for (const resource of manifest.resources ?? []) {
+    const url = resourceUrl(resource); const previous = resourcePaths.get(url);
+    if (previous && stableJson(previous) !== stableJson(resource)) throw new BlogError(`公开资源路径身份冲突：${url}`, 6);
+    resourcePaths.set(url, resource);
+  }
   const articleSlugs = new Set(manifest.entries.map((entry) => entry.slug));
+  if (Object.keys(manifest.assets).some((id) => !manifest.entries.some((entry) => entry.id === id))) throw new BlogError('发布媒体映射包含未公开文章。', 6);
   const seriesSlugs = new Set((manifest.series ?? []).filter((series) => manifest.entries.some((entry) => entry.series?.id === series.id)).map((series) => series.slug));
   for (const name of names) {
     const match = /^article\/([^/]+)\/index.html$/.exec(name);
@@ -121,14 +181,24 @@ export async function verifySite(site: string, manifest: Manifest, basePath = ''
     if (group && group[1] !== '__empty__' && !seriesSlugs.has(group[1])) throw new BlogError(`公开产物包含未公开的系列：${group[1]}`, 6);
   }
   for (const mapping of Object.values(manifest.assets)) for (const asset of Object.values(mapping)) {
-    const urls = [asset.url, asset.poster, asset.contour, ...asset.srcSet?.split(',').map((variant) => variant.trim().split(' ')[0]) ?? []].filter((url): url is string => !!url && localPath(url).startsWith('/media/'));
-    for (const url of urls) if (!await exists(inside(site, localPath(url).slice(1)))) throw new BlogError(`发布媒体缺失：${url}`, 6);
+    const urls = assetUrls(asset);
+    for (const resource of asset.resources ?? []) if (stableJson(resourcePaths.get(resourceUrl(resource))) !== stableJson(resource)) throw new BlogError(`媒体版本不在发布资源清单：${resourceUrl(resource)}`, 6);
+    for (const url of urls) {
+      const local = localPath(url);
+      if (local.startsWith('/resources/') && !resourcePaths.has(local)) throw new BlogError(`资源引用不在发布清单：${url}`, 6);
+      if (local.startsWith('/media/') && !await exists(inside(site, local.slice(1)))) throw new BlogError(`发布媒体缺失：${url}`, 6);
+    }
   }
   for (const relative of ['index.html', 'contents/index.html', ...manifest.entries.map((entry) => `article/${entry.slug}/index.html`), ...[...seriesSlugs].map((slug) => `series/${slug}/index.html`)]) {
     const html = await readFile(await safeFile(site, relative), 'utf8');
-    for (const match of html.matchAll(/(?:src|href|poster)="(\/[^"#?]*)(?:[?#][^"]*)?"/g)) {
-      const url = match[1].replaceAll('&amp;', '&');
+    const htmlUrls = [...html.matchAll(/\b(src|href|poster|srcset)="([^"]*)"/gi)].flatMap((match) => match[1].toLowerCase() === 'srcset' ? match[2].split(',').map((variant) => variant.trim().split(/\s+/)[0]) : [match[2]]);
+    for (const value of htmlUrls.filter((url) => url.startsWith('/') && !url.startsWith('//'))) {
+      const url = value.split(/[?#]/)[0].replaceAll('&amp;', '&');
       if (basePath && !url.startsWith(`${basePath}/`)) throw new BlogError(`产物链接缺少站点子路径：${relative} → ${url}`, 6);
+      if (localPath(url).startsWith('/resources/')) {
+        if (!resourcePaths.has(localPath(url))) throw new BlogError(`产物资源不在发布清单：${relative} → ${url}`, 6);
+        continue;
+      }
       if (!path.extname(url) || url === '/') continue;
       const local = decodeURIComponent(localPath(url).slice(1));
       if (!await exists(inside(site, local))) throw new BlogError(`产物资源不存在：${relative} → ${url}`, 6);
@@ -142,7 +212,7 @@ export async function verifySite(site: string, manifest: Manifest, basePath = ''
       response.end(await readFile(await safeFile(site, decodeURIComponent(relative))));
     } catch { response.writeHead(404); response.end(); }
   });
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   try {
     const address = server.address(); if (!address || typeof address === 'string') throw new BlogError('静态验收服务启动失败。', 6);
     for (const url of ['/', '/contents/', ...manifest.entries.map((entry) => `/article/${entry.slug}/`), ...[...seriesSlugs].map((slug) => `/series/${slug}/`), '/release-marker.json']) {

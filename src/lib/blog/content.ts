@@ -7,6 +7,7 @@ import { BlogError, exists, safeFile, sha256, stableJson } from './files';
 import { categoryNames, flowSpecs, mediaSchema, type BlogConfig, type BlogPost, type Dependency, type MediaSpec } from './schema';
 import { scanSeries, validateSeriesMembers } from './series';
 import { imageReferences, markdownReferences, postFromDocument, splitDocument } from './document';
+import { assertStorageReady, logicalSourcePath } from './storage';
 export { dayInTimezone, markdownReferences, splitDocument } from './document';
 
 export type SourcePost = {
@@ -17,6 +18,8 @@ export type SourcePost = {
 const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif', '.svg', '.mp4', '.webm', '.mov', '.m4v', '.pdf', '.txt', '.md', '.csv', '.json', '.zip']);
 
 export async function readSourcePost(root: string, sourcePath: string, config: BlogConfig, contentDir: string = config.contentDir): Promise<SourcePost> {
+  if (contentDir !== 'tests/fixtures/content') await assertStorageReady(root);
+  sourcePath = logicalSourcePath(sourcePath);
   const contentRoot = path.join(root, contentDir);
   const relative = sourcePath.replace(/^content\//, '');
   const file = await safeFile(contentRoot, relative);
@@ -71,6 +74,7 @@ export async function readSourcePost(root: string, sourcePath: string, config: B
 }
 
 export async function scanContent(root: string, config: BlogConfig, contentDir: string = config.contentDir) {
+  if (contentDir !== 'tests/fixtures/content') await assertStorageReady(root);
   const base = path.join(root, contentDir);
   const files: string[] = [];
   const issues: Array<{ file: string; message: string }> = [];
@@ -112,7 +116,7 @@ export async function scanContent(root: string, config: BlogConfig, contentDir: 
 }
 export function selectPosts(posts: SourcePost[], selectors: string[], options: { allowFixtures?: boolean } = {}) {
   return selectors.map((selector) => {
-    const normalized = selector.replaceAll('\\', '/').replace(/\/$/, '').replace(/^\.\//, '');
+    const normalized = logicalSourcePath(selector).replace(/\/$/, '');
     const found = posts.find(({ post, sourcePath }) => post.id === selector || post.slug === selector || sourcePath === normalized || sourcePath.replace(/\/index.md$/, '') === normalized);
     if (!found) throw new BlogError(`找不到文章：${selector}`);
     if (found.post.fixture && !options.allowFixtures) throw new BlogError('排版 fixture 不能发布；请新建正式文章。');

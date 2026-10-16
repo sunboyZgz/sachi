@@ -14,7 +14,7 @@ online: 不改变
 
 ## 开始前
 
-终端当前目录应是 sachi 根目录，能看到 `package.json`、`tools/` 和 `content/`。需要 Node.js 20.9 或更高版本，不要求根目录是 Git 仓库。
+终端当前目录应是 sachi 根目录，能看到 `package.json`、`tools/` 和 `blog.config.json`（私有资料可随后恢复到 `.blog-store/`）。需要 Node.js 20.9 或更高版本，不要求根目录是 Git 仓库。
 
 ## 操作步骤
 

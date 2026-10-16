@@ -12,7 +12,7 @@ import BlogExample from '../.vitepress/theme/BlogExample.vue'
 ## 文件放在哪里
 
 ```text
-content/
+.blog-store/content/
   生活旁白/
     2026-10-03/
       index.md
@@ -22,7 +22,7 @@ content/
       media.yaml     # 可选
 ```
 
-另两个栏目是“闲暇娱乐”“蘸豆！！”，精确保留两个感叹号。新建目录按配置时区计算日期，同日新增带 -02、-03。旧 `content/*.md` 文章格式继续兼容；排版样例已移到 `tests/fixtures/content/`，仅用于显式测试预览，fixture 禁止发布。
+另两个栏目是“闲暇娱乐”“蘸豆！！”，精确保留两个感叹号。新建目录按配置时区计算日期，同日新增带 -02、-03。旧 `.blog-store/content/*.md` 文章格式继续兼容；排版样例已移到 `tests/fixtures/content/`，仅用于显式测试预览，fixture 禁止发布。
 
 ## 元数据
 

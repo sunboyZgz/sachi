@@ -69,14 +69,14 @@ export async function codeBaseline(root: string, config: BlogConfig, freeze = fa
       files.push({ relative, bytes: await readFile(await safeFile(root, relative)) });
     }
   }
-  for (const folder of ['tools/blog-cli', 'bin']) {
+  for (const folder of ['tools/blog-cli', 'bin', 'vendor']) {
     for (const relative of await walk(path.join(root, folder))) {
       if (/\.test\.tsx?$/.test(relative)) continue;
       const name = `${folder}/${relative}`;
       files.push({ relative: name, bytes: await readFile(await safeFile(root, name)) });
     }
   }
-  files.push({ relative: 'blog.config.json', bytes: Buffer.from(JSON.stringify({ schemaVersion: 1, timezone: config.timezone, siteUrl: config.siteUrl, siteAssets: config.siteAssets, media: config.media, buildCommand: config.buildCommand })) });
+  files.push({ relative: 'blog.config.json', bytes: Buffer.from(JSON.stringify({ schemaVersion: 1, timezone: config.timezone, siteUrl: config.siteUrl, siteAssets: config.siteAssets, media: config.media, buildCommand: config.buildCommand, ...(config.yandu ? { yandu: { gateway: config.yandu.gateway, projectId: config.yandu.projectId, credentialEnv: config.yandu.credentialEnv } } : {}) })) });
   const hashes = files.map(({ relative, bytes }) => [relative, sha256(bytes)]).sort(([a], [b]) => a.localeCompare(b));
   const ffmpeg = await run(['ffmpeg', '-version'], { cwd: root, code: 3 }).then((result) => result.stdout.split('\n')[0]).catch(() => null);
   const hash = sha256(stableJson({ files: hashes, buildCommand: config.buildCommand, node: process.version, platform: process.platform, sharp: sharp.versions, ffmpeg }));

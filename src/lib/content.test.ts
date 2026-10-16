@@ -45,4 +45,20 @@ describe('working content and explicit fixture isolation', () => {
     await article('tests/fixtures/content', 'test-sample', true);
     expect(await getAllPosts()).toEqual([]);
   });
+
+  it('reads only configured unified originals even when legacy files remain elsewhere', async () => {
+    await writeFile(path.join(root, 'blog.config.json'), JSON.stringify({ schemaVersion: 1, timezone: 'Asia/Shanghai', contentDir: '.blog-store/content' }));
+    await article('.blog-store/content', 'stored-writing', false);
+    await article('content', 'unused-legacy-copy', false);
+    await article('tests/fixtures/content', 'test-sample', true);
+    expect((await getAllPosts()).map((post) => post.slug)).toEqual(['stored-writing']);
+  });
+
+  it('keeps explicit fixtures independent of an unfinished real storage migration', async () => {
+    await article('tests/fixtures/content', 'test-sample', true);
+    await mkdir(path.join(root, '.blog-store'), { recursive: true });
+    await writeFile(path.join(root, '.blog-store/storage-migration.json'), '{"id":"unfinished"}');
+    vi.stubEnv('INCLUDE_FIXTURES', 'true');
+    expect((await getAllPosts()).map((post) => post.slug)).toEqual(['test-sample']);
+  });
 });

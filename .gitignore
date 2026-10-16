@@ -10,6 +10,7 @@ __pycache__/
 *.tsbuildinfo
 .blog/
 .blog-store/
+.blog-archive/
 # Real writing stays out of the public development branch; fixtures live under tests/.
 content/*/
 content/*.md
@@ -23,3 +24,6 @@ docs-site/.vitepress/dist/
 docs-site/public/examples/katex/
 tools/vscode-preview/dist/
 tools/vscode-preview/.test-host/
+
+# Local private connection credentials; never freeze or back up as writing data.
+/.sachi/

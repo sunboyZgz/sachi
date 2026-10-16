@@ -5,7 +5,8 @@ import os from 'node:os';
 import { parse } from 'yaml';
 import { randomUUID } from 'node:crypto';
 import { atomicWrite, exists, sha256, writeJson } from '../../src/lib/blog/files';
-import { defaultConfig } from '../../src/lib/blog/schema';
+
+import { legacyConfig as defaultConfig } from '../../tests/helpers/legacy-config';
 import { newSeries } from './series';
 import { newPost } from './writing';
 import { prepareSeriesInsertion, commitSeriesInsertion } from './series-insertion';

@@ -64,14 +64,24 @@ npm run docs:preview
 
 ## 放在子路径
 
-例如文档部署到 /handbook/ 时：
+文档网站从 `docs-site/docs.config.json` 读取配置，两个字段都必填：`schemaVersion` 为数字 `1`，`base` 为公开 URL 的路径部分。站点根目录用 `/`，部署到 `/handbook/` 时改为：
 
-```sh
-DOCS_BASE=/handbook/ npm run docs:build
-DOCS_BASE=/handbook/ npm run docs:preview
+```json
+{
+  "schemaVersion": 1,
+  "base": "/handbook/"
+}
 ```
 
-在同一路径访问预览或服务器。域名、托管服务和生产发布由使用者决定，本步骤不会连接生产服务器。
+路径必须以 `/` 开始和结束，各段只用字母、数字、下划线或短横线；不填写域名、磁盘目录或博客 `siteUrl`。保存后照常运行 `npm run docs:build`、`npm run docs:preview`，访问 `http://127.0.0.1:4174/handbook/`；开发服务改配置后也需重启。
+
+只有该 JSON 文件不存在时才使用 `DOCS_BASE` 环境变量，变量也未设置则默认 `/`。文件存在但无效或缺字段会报错，不用环境变量补齐。仓库自带根路径配置，因此普通使用不需要设置环境变量。域名、托管服务和生产发布由使用者决定，本步骤不会连接生产服务器。
+
+## Yandu 文档和可运行示例
+
+[参数表](/reference/yandu-config)对应实际配置契约，[凭证教程](/setup/yandu-credentials)对应管理页权限与两端私密配置，[SDK 页](/reference/yandu-sdk)导入 `tools/examples/yandu-sdk-readonly.ts` 的真实源码，避免展示一份、运行另一份。修改 SDK 示例后使用固定包做类型检查及临时 HTTP 模拟验证，不拿真实凭证当测试数据。
+
+Yandu MIT 原文按固定来源提交保存在 `vendor/YANDU-LICENSE.txt`，手册的 `public/licenses/yandu-MIT.txt` 是同一文本的下载副本。变更来源版本时核对并同步两份，保留原版权；不改写归档以冒充原有 SHA256。具体软件许可范围见 SDK 页，不将 SDK 许可套用到文章和媒体。
 
 ## 本地搜索与隐私
 

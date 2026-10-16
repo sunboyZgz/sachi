@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-开发服务器固定监听 `http://127.0.0.1:4173`，只读取根目录 `content/` 的真实工作内容。没有文章时，目录和栏目显示空状态。20 篇旧排版样例已移到 `tests/fixtures/content/`，不再混入日常预览或 CLI 文章列表。
+开发服务器固定监听 `http://127.0.0.1:4173`，只读取`.blog-store/content/` 的真实工作内容。没有文章时，目录和栏目显示空状态。20 篇旧排版样例已移到 `tests/fixtures/content/`，不再混入日常预览或 CLI 文章列表。
 
 ```sh
 npm run check          # ESLint + TypeScript + Vitest
@@ -42,12 +42,24 @@ npm run preview:package
 
 ## 更换头像
 
-头像源文件单独放在 `src/assets/avatar/`，文件名固定：
+通过本地 CLI 的 Yandu 存储向导选择头像，核验入库后关联个人资料：
 
-- `avatar-head.png`：首页简介和目录右上角使用的头部头像。
-- `avatar-half.png`：文章正文末尾作者署名使用的半身场景图。
+```sh
+npm run blog -- storage avatar head --file ./head.png --yes
+npm run blog -- storage avatar half --file ./half.png --yes
+```
 
-更换时直接用新的透明 PNG 覆盖对应同名文件，然后重新运行开发服务器或执行 `npm run build`。代码通过静态导入使用头像；文件内容变化后，Next.js 会生成新的带哈希资源地址，因此部署新构建时不会继续命中旧头像缓存。不要改变文件名，也不要把头像复制到各个页面或 Markdown 中。
+首页和目录继续使用头部头像，文章末署名使用半身头像。原 `src/assets/avatar/` 文件保留为未迁移回退及历史资料；新头像原图和版本保存在 Yandu，公开引用随发布冻结。详见[头像教程](docs-site/writing/avatar.md)。
+
+## Yandu 与云服务器
+
+`npm run blog -- init` 在原配置向导绑定网关、专用项目和凭证文件路径；密钥默认从忽略的 `.sachi/yandu-upload.json` 加载，仅文件不存在时使用环境变量保底。云端代理独立读取 `/etc/sachi/resource-proxy.json`。`storage init` 重复建立逻辑目录，`storage sync` 保存私有原稿/稿件/资料，`storage restore` 校验后恢复到新目录。离线仍可本地写作和预览。
+
+正式发布把展示媒体保存为独立不可变对象，服务器只接收静态产物、发布与恢复引用。独立资源代理按已激活发布清单授权具体对象和版本，支持流式 HEAD/Range/条件请求。云端读取凭证与本地上传凭证分开；Yandu 模式需要同站代理，不支持 Pages 直托管。
+
+配置、迁移与恢复见 [Yandu 接入](docs-site/setup/yandu.md)；部署步骤见[SSH 服务器](docs-site/setup/server.md)及[代理安装说明](tools/resource-proxy/README.md)。[实际验收记录](docs-site/reference/yandu-deployment.md)列出已验证范围与尚缺真实参数，模板交付不表示公网部署完成。
+
+手册另有[逐项配置参数](docs-site/reference/yandu-config.md)、[凭证创建与轮换](docs-site/setup/yandu-credentials.md)、[SDK 示例与许可证](docs-site/reference/yandu-sdk.md)。文档站的子路径从 `docs-site/docs.config.json` 读取，文件不存在时才使用 `DOCS_BASE` 保底。
 
 ## 个人配置与 SEO
 
@@ -69,14 +81,16 @@ npm run preview:package
 | --- | --- |
 | `src/app/`、`src/components/`、`src/lib/`、`src/styles/` | 路由、界面、内容/SEO/环绕逻辑、样式 |
 | `src/config/profile.json` | 公开个人资料；栏目契约仍在 `site.ts` |
-| `src/assets/avatar/` | 固定文件名头像，不放在 public 或文章中 |
-| `content/<栏目>/<日期[-序号]>/` | 真实工作文章：每篇 index.md、本篇 assets、可选 media.yaml |
+| `src/assets/avatar/` | 原头像回退与历史源文件；新头像由个人资料引用 Yandu |
+| `.blog-store/content/<栏目>/<日期[-序号]>/` | 真实工作文章：每篇 index.md、本篇 assets、可选 media.yaml |
 | `tests/fixtures/content/` | 显式排版验收与浏览器回归使用的测试正文 |
 | `public/assets/`、`public/media/` | 共享视觉素材、开发预览的派生哈希资源 |
 | `tools/blog-cli/`、`bin/`、`templates/` | CLI 实现、命令入口、可选文章模板 |
 | `docs-site/`、`tools/docs/` | 独立手册、参数生成与校验 |
 | `.blog/` | 缓存与临时构建；其中 export-backups 保留旧导出 |
-| `.blog-store/` | 持久不可变快照、计划、发布包与回执，**不是缓存** |
+| `.sachi/` | 本地私密连接配置；Git 忽略，不进入构建或写作备份 |
+| `.blog-store/` | 真实原稿、稿件历史、快照、计划及发布包；可作为独立私有 Git 仓库，**不是缓存** |
+| `.blog-archive/` | 已分离的历史验收包及迁移校验记录；不进入两个 Git 仓库 |
 | `out/` | 博客静态导出；只部署它，不公开源码/私有快照 |
 
 ## 内容写作
@@ -85,16 +99,32 @@ npm run preview:package
 
 运行 `npm run blog` 可进入分步菜单，完成新建、文章信息修改、检查、构建、发布、回滚和恢复，无需记参数。执行一次 `npm link` 注册本机命令后，直接运行 `blog` 也会打开同一菜单；不想改变全局环境可继续使用 npm 入口。常用顺序为新建 → 预览 → 检查 → 发布，再到信息修改、状态、构建和备份等操作。
 
-`npm run blog -- new` 也可直接选择三个固定栏目之一，再输入标题，生成 `content/<栏目>/<日期[-序号]>/index.md` 和独立 assets 目录。参数与 `--json` 模式保留供脚本使用。发布不默认勾选任何文章，执行确认默认取消；根项目没有 Git 仓库也能使用，Git/服务器配置后才启用同步和发布。详细操作教程见下方独立手册网站；原 [Blog CLI 使用说明](docs/BLOG-CLI.md) 保留作为总览。
+`npm run blog -- new` 也可直接选择三个固定栏目之一，再输入标题，生成 `.blog-store/content/<栏目>/<日期[-序号]>/index.md` 和独立 assets 目录。参数与 `--json` 模式保留供脚本使用。发布不默认勾选任何文章，执行确认默认取消；根项目没有 Git 仓库也能使用，Git/服务器配置后才启用同步和发布。详细操作教程见下方独立手册网站；原 [Blog CLI 使用说明](docs/BLOG-CLI.md) 保留作为总览。
+
+## 私有资料备份
+
+真实写作在 `.blog-store/content/`；`.blog-store/` 可拥有自己的 `.git`，外层代码仓库继续忽略它，不使用 submodule。备份整个资料仓库会保留原稿、篇内素材、完整稿件历史及后续发布记录，不会发布网页。
+
+```sh
+npm run backup -- init --remote git@github.com:OWNER/PRIVATE-REPO.git
+npm run backup -- --dry-run
+npm run backup
+```
+
+先自行准备私有 GitHub 仓库与 Git/`gh` 认证。初始化只配置资料仓库，不提交、不推送；实际备份会核实仓库为私有，并只操作 `.blog-store` 的 `codex/writing-backup` 分支。`--dry-run` 仅列变化与体积。推送失败保留提交，重试不生成空提交；远端新提交会停止自动操作。
+
+新机器先克隆代码仓库，再执行 `git clone --branch codex/writing-backup <私有仓库地址> .blog-store`。模板、头像、个人资料和视觉素材来自代码仓库，预览派生的 `public/media/` 不需要备份。
+
+旧项目可用 `npm run backup -- migrate --dry-run` 查看迁移，随后执行 `npm run backup -- migrate`；只有已确认无发布引用的空站验收历史才使用 `--archive-empty-builds`。迁移中断重试原命令，按实际返回 ID 使用 `undo-migration <ID>` 撤销，额外编辑或目标冲突时停止。完整步骤见[私有资料仓库](docs-site/backup/store.md)。原 `blog sync/restore` 的内容分支备份继续兼容，但不替代完整资料备份。
 
 ## CLI 使用手册网站
 
-基于 VitePress 1.6.4 的独立静态文档站位于 `docs-site/`，与博客构建、内容和资源隔离。62 页按任务组织，每项操作包含前置条件、菜单入口、逐步输入、结果验证、影响范围、常见问题和参数示例；支持中文本地搜索。博客站点本身不增加搜索或导航。
+基于 VitePress 1.6.4 的独立静态文档站位于 `docs-site/`，与博客构建、内容和资源隔离。按任务组织，每项操作包含前置条件、菜单入口、逐步输入、结果验证、影响范围、常见问题和参数示例；支持中文本地搜索。博客站点本身不增加搜索或导航。
 
 ```sh
 npm run docs:install   # 文档站依赖单独安装，根 npm ci 不包含它
 npm run docs:dev       # http://127.0.0.1:4174
-npm run docs:generate  # CLI 参数变化时，重新生成 19 条命令参考
+npm run docs:generate  # CLI 参数变化时，重新生成命令参考
 npm run docs:check     # 页面章节、链接、参数同步和 Vue/TS 检查
 npm run docs:build     # 输出 docs-site/.vitepress/dist/
 npm run docs:preview   # 在 4174 预览生成后的静态站
@@ -118,7 +148,7 @@ npm run blog -- status --remote
 
 普通仓库使用 `https://OWNER.github.io/REPO/`，`OWNER.github.io` 同名仓库使用根 URL。已适配文章链接、媒体、头像、环绕与 SEO 的仓库子路径。免费方案需公开仓库，首次设置需 `gh auth login` 和仓库管理权限。完整步骤见[GitHub Pages 手册](docs-site/setup/github-pages.md)；当前自动回滚/服务器恢复仅适用于服务器部署，不会静默只回滚双目标中的一端。
 
-原 `content/*.md` 格式继续兼容。元数据由 Zod 验证：
+原 `.blog-store/content/*.md`（旧项目也兼容根目录 `content/*.md`） 格式继续兼容。元数据由 Zod 验证：
 
 ```yaml
 ---
