@@ -6,6 +6,12 @@
   "copyrightStartYear": 2026,
   "authorUrl": null,
   "sameAs": [],
+  "about": {
+    "introduction": [],
+    "interests": [],
+    "updates": [],
+    "links": []
+  },
   "seo": {
     "description": null,
     "allowIndexing": true

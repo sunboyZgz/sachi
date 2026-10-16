@@ -88,7 +88,10 @@ async function smoke() {
     assert(!seriesHtml.includes('PRIVATE_SERIES')); assert(!await exists(path.join(site, 'article/series-private-second')));
     assert(html.includes('class="heading-link" href="#%E6%AD%A3%E6%96%87"'));
     assert(/<button[^>]*class="code-copy"[^>]*hidden=""[^>]*disabled=""/.test(html));
-    assert(html.includes('<pre><code class="language-ts">const note = &quot;&lt;静态&gt;&amp;&quot;;\n\nconsole.log(note);\n</code></pre>'));
+    const codeHtml = /<pre[^>]*><code[^>]*class="[^"]*\blanguage-ts\b[^"]*"[^>]*>([\s\S]*?)<\/code><\/pre>/.exec(html);
+    assert(codeHtml, 'TypeScript code remains a real pre/code block.');
+    const codeText = codeHtml[1].replace(/<[^>]*>/g, '').replaceAll('&quot;', '"').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
+    assert.equal(codeText, 'const note = "<静态>&";\n\nconsole.log(note);\n');
     assert(html.includes('avatar-half')); assert(html.includes(`/versions/${plan.manifest.releaseId}/_next/`));
     assert(html.includes('验收作者')); assert(!html.includes('不应混入的后续名字'));
     assert(html.includes('<link rel="canonical" href="https://sachi-smoke.example.org/article/cli-integration/"'));
@@ -100,6 +103,14 @@ async function smoke() {
     const home = await readFile(path.join(site, 'index.html'), 'utf8');
     assert(home.includes('cover-title-text')); assert(home.includes('验收签名')); assert(home.includes('验收简介'));
     assert(!home.includes('<img alt="" width="590"'));
+    assert(home.includes('class="home-avatar-link" href="/about/"'));
+    assert(html.includes('class="author-about-link" href="/about/"'));
+    const about = await readFile(path.join(site, 'about/index.html'), 'utf8');
+    assert(about.includes('验收作者')); assert(!about.includes('不应混入的后续名字'));
+    assert(!about.includes('不可发布草稿')); assert(!about.includes('PRIVATE_SERIES_CHAPTER'));
+    assert(about.includes('writing-calendar'));
+    assert(about.includes('CLI 真文章环绕验收')); assert(about.includes('公开的第三章'));
+    assert(about.includes(`/versions/${plan.manifest.releaseId}/_next/static/media/bamboo-left`));
     const genericHtml = await readFile(path.join(site, 'article/generic-flow/index.html'), 'utf8');
     assert(genericHtml.includes('alt="横向插画"')); assert(genericHtml.includes('width="600" height="300"'));
     const contour = built.manifest.assets[generic.id]['./assets/landscape.png'].contour;
@@ -119,6 +130,10 @@ async function smoke() {
     await symlink(path.join(project, 'node_modules'), path.join(pagesRoot, 'node_modules'), 'dir');
     const pagesOutput = await buildPages(pagesRoot);
     const pagesHtml = await readFile(path.join(pagesOutput, 'article/cli-integration/index.html'), 'utf8');
+    const pagesAbout = await readFile(path.join(pagesOutput, 'about/index.html'), 'utf8');
+    assert(pagesAbout.includes('href="/sachi/article/cli-integration/"'));
+    assert(pagesAbout.includes(`/sachi/versions/${plan.manifest.releaseId}/_next/static/media/bamboo-left`));
+    assert(pagesHtml.includes('class="author-about-link" href="/sachi/about/"'));
     assert(pagesHtml.includes('href="/sachi/contents/"'));
     assert(pagesHtml.includes('href="/sachi/series/cli-series/"')); assert(pagesHtml.includes('href="/sachi/article/series-third/"'));
     assert((await readFile(path.join(pagesOutput, 'series/cli-series/index.html'), 'utf8')).includes('冻结的公开系列简介'));

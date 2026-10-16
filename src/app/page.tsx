@@ -34,7 +34,10 @@ export default async function HomePage() {
           </p>
           <div className="cover-rule" aria-hidden="true" />
           <div className="home-profile">
-            <AvatarImage placement="home" />
+            <Link className="home-avatar-link" href="/about/" aria-label="关于我">
+              <AvatarImage placement="home" />
+              <span className="home-avatar-tip" aria-hidden="true">关于我</span>
+            </Link>
             <p className="cover-bio">{identity.bio}</p>
           </div>
           <Link className="text-link cover-entry" href="/contents/">

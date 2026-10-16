@@ -103,7 +103,7 @@ export function createSitemap(context: SeoContext, posts: BlogPost[], series: Se
   if (!context.indexable) return [];
   const published = posts.filter((post) => !post.fixture);
   const result: MetadataRoute.Sitemap = [
-    { url: publicUrl(context, '/')! }, { url: publicUrl(context, '/contents/')! },
+    { url: publicUrl(context, '/')! }, { url: publicUrl(context, '/contents/')! }, { url: publicUrl(context, '/about/')! },
   ];
   for (const category of categories) {
     const entries = published.filter((post) => post.category === category.id);

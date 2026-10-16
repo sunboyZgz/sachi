@@ -57,6 +57,12 @@ npm run preview:package
 
 详见[个人配置](docs-site/setup/profile.md)、[SEO 验收](docs-site/setup/seo.md)和[项目目录职责](docs-site/reference/project-structure.md)。
 
+「关于我」页面位于 `/about/`，从首页头像和文章末尾署名区进入。竹景与书茶素材来自 `bamboo-about-ui` 交接包，样式仅作用于个人页；首页封面和目录保持原构图。扩展介绍、兴趣、近况和公开链接集中维护在 `src/config/profile.json` 的 `about` 字段中，默认留空，未填写的区域不显示；填写真实资料后自动展示。
+
+手动维护的字段为 `bio`（简短简介）、`about.introduction`（多段详细介绍）、`about.interests`（兴趣）、`about.updates`（带日期的近况）和 `about.links`（公开链接）。文章篇数、发文天数、热点图及日期文章列表自动从发布记录生成，不写入个人配置。完整字段和自动统计规则见[配置个人信息](docs-site/setup/profile.md)。
+
+写作日历按博客时区统计当前公开文章的首次发布日期，桌面显示全年，手机显示月历，支持选择日期查看真实文章。日常预览只读取 `.blog-store/current.json` 中的公开清单，没有发布记录时为零，不计入工作区草稿；正式构建只读取冻结发布清单。fixture 预览使用独立测试文章，并明确标注为排版示例。页面支持无 JavaScript 和打印时的完整日期文章列表，不使用交接包的演示发文记录或演示 RSS。
+
 ## 目录职责
 
 | 目录/文件 | 职责 |

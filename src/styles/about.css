@@ -1,0 +1,264 @@
+/* Migrated from bamboo-about-ui; all rules are confined to the author page. */
+.about-page { --zero: #e5e9dd; --level-1: #c8d4bf; --level-2: #a2b58e; --level-3: #7c9468; --level-4: #596b50; --serif: var(--font-body); --sans: var(--font-ui); --hand: "Kaiti SC", "STKaiti", "KaiTi", var(--font-body); --content: 960px; --cell: 11px; --gap: 3px; --ease: 160ms ease; font: 17px/1.95 var(--serif); overflow-wrap: anywhere; }
+.about-page :is(p,h1,h2,h3,figure) { margin: 0; }
+.about-page p + p { margin-top: 16px; }
+.about-page [hidden] { display: none !important; }
+.about-page button, .about-page input, .about-page select { font: inherit; color: inherit; }
+.about-page button { cursor: pointer; border-radius: 0; }
+.about-page button:disabled { cursor: default; }
+.about-page::before { content: ""; position: absolute; inset: 0; background-image: var(--about-grain); background-repeat: repeat; opacity: .2; mix-blend-mode: multiply; pointer-events: none; z-index: 0; }
+.about-page .avatar-slot--about { width: 84px; flex: none; }
+.about-page .page-top { padding-top: 18px; min-height: 76px; gap: 20px; }
+.about-page .small-brand { font-size: 15px; letter-spacing: 1px; }
+.about-page .backlink { font-size: 13px; }
+.about-page .page-footer { align-items: center; border-top: 1px solid var(--rule); padding: 11px 0 20px; margin-top: 24px; font: 11px/1.6 var(--sans); }
+.about-page .page-footer a { display: flex; align-items: center; gap: 7px; min-height: 44px; }
+.about-page .text-link { border: 0; padding: 0; width: auto; }
+.about-page .fallback-calendar { display: none; }
+.about-page .calendar-fixture-note { color: var(--muted); font: 12px/1.8 var(--sans); margin-top: 8px; }
+.about-page .date-jump summary { min-height: 44px; }
+.about-page{position:relative;min-height:100vh;isolation:isolate;overflow:clip}
+.about-page .page{position:relative;z-index:2;width:min(var(--content),calc(100% - 104px));margin-inline:auto}
+.about-page .decoration{position:absolute;z-index:0;pointer-events:none;user-select:none;height:auto}
+.about-page .bamboo-left{top:0;left:0;width:clamp(192px,15.25vw,254px);height:auto;opacity:.88}
+.about-page .bamboo-right{top:0;right:0;width:clamp(198px,15.8vw,274px);height:auto;opacity:.91}
+.about-page .falling-leaf{top:694px;right:clamp(45px,6.6vw,112px);width:104px;opacity:.86}
+.about-page .faint-leaf{top:950px;right:clamp(70px,9vw,170px);width:41px;opacity:.75}
+.about-page .aside-poem{position:absolute;top:150px;right:max(164px,calc((100% - 960px)/2 - 59px));z-index:1;color:#566052;pointer-events:none;display:flex;align-items:center;gap:10px;flex-direction:column}
+.about-page .aside-poem p{writing-mode:vertical-rl;font:15px/1.7 var(--hand);letter-spacing:3px;height:124px}
+.about-page .aside-poem img{width:19px;height:auto}
+.about-page .site-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-top:18px;min-height:76px;font-size:14px}
+.about-page .back-link{min-height:44px;display:inline-flex;align-items:center;gap:10px;color:var(--muted);font-family:var(--sans);font-size:13px}
+.about-page .back-link .arrow{font-family:var(--serif);font-size:20px;transition:transform var(--ease)}
+.about-page .back-link:hover .arrow{transform:translateX(-3px)}
+.about-page .site-name{font-size:15px;letter-spacing:1px;min-height:44px;display:flex;align-items:center}
+.about-page .page-title{font-size:46px;font-weight:400;line-height:1.5;letter-spacing:4px;margin-top:24px;margin-bottom:29px}
+.about-page .identity{display:grid;grid-template-columns:326px minmax(0,1fr);gap:48px;padding-bottom:45px}
+.about-page .profile-person{display:flex;align-items:center;gap:19px;padding-top:2px}
+.about-page .profile-person > div{min-width:0}
+.about-page .avatar-head{display:block;width:84px;height:auto;flex:none}
+.about-page .author-name{font-size:25px;font-weight:400;line-height:1.6;letter-spacing:1px}
+.about-page .signature{font:18px/1.9 var(--hand);letter-spacing:1px;margin-top:8px;white-space:normal}
+.about-page .profile-bio{font-size:17px;line-height:1.95;margin-left:103px;margin-top:18px}
+.about-page .introduction{border-left:1px solid var(--rule);padding-left:38px}
+.about-page .small-heading{font-size:23px;line-height:1.6;font-weight:400;letter-spacing:1px}
+.about-page .small-heading::after{content:"";display:block;width:23px;height:1px;background:var(--moss);margin-top:9px;margin-bottom:17px}
+.about-page .introduction p{font-size:17px;line-height:1.95}
+.about-page .introduction p+p{margin-top:12px}
+.about-page .calendar-section{border-block:1px solid var(--rule);padding-top:25px;padding-bottom:23px}
+.about-page .calendar-heading{display:grid;grid-template-columns:190px 1fr auto;gap:22px;align-items:start;margin-bottom:26px}
+.about-page .section-title{font-size:27px;font-weight:400;letter-spacing:1px;line-height:1.65}
+.about-page .section-subtitle{font-size:14px;line-height:1.8;color:var(--muted);margin-top:1px}
+.about-page .annual-summary{font-size:17px;line-height:1.8;padding-top:10px;white-space:nowrap}
+.about-page .annual-summary strong{font-weight:500;font-variant-numeric:tabular-nums}
+.about-page .summary-year{margin-right:7px}
+.about-page .calendar-meta{text-align:right;min-width:0}
+.about-page .year-control{font-size:16px;line-height:1.65;min-height:33px;display:flex;align-items:flex-start;justify-content:flex-end}
+.about-page .year-control select{background:transparent;border:0;border-bottom:1px solid var(--rule);font:15px/1.5 var(--serif);padding:4px 20px 5px 6px;min-height:40px;max-width:160px}
+.about-page .calendar-chart{display:flex;align-items:center;gap:24px}
+.about-page .year-calendar{display:flex;align-items:flex-end;gap:10px;min-width:0}
+.about-page .weekday-labels{display:grid;grid-template-rows:repeat(7,var(--cell));gap:var(--gap);font:10px/var(--cell) var(--sans);color:var(--muted);flex:none;width:25px;padding-bottom:0}
+.about-page .year-board{min-width:0}
+.about-page .month-labels{height:26px;display:grid;grid-template-columns:repeat(var(--weeks,53),var(--cell));column-gap:var(--gap);font:11px/1.5 var(--sans);color:var(--muted);white-space:nowrap}
+.about-page .month-labels span{overflow:visible;align-self:start}
+.about-page .day-grid{display:grid;grid-template-rows:repeat(7,var(--cell));grid-auto-flow:column;grid-auto-columns:var(--cell);gap:var(--gap);width:max-content}
+.about-page .day-cell{display:block;margin:0;padding:0;appearance:none;border:1px solid transparent;background:var(--zero);border-radius:1px;width:var(--cell);height:var(--cell);position:relative;transition:outline-color var(--ease),filter var(--ease)}
+.about-page .day-cell[data-count="1"]{background:var(--level-1)}
+.about-page .day-cell[data-count="2"]{background:var(--level-2)}
+.about-page .day-cell[data-count="3"]{background:var(--level-3);color:#172415}
+.about-page .day-cell[data-count="4"]{background:var(--level-4);color:var(--paper)}
+.about-page .day-cell:not(:disabled):hover{outline:1px solid var(--moss);outline-offset:1px}
+.about-page .day-cell[aria-pressed="true"]{outline:1px solid #344a2c;outline-offset:2px;z-index:1}
+.about-page .day-cell:focus-visible{outline:2px solid #344a2c;outline-offset:2px;z-index:3}
+.about-page .day-cell.is-future{border:1px dashed #d8dccf;background:transparent;color:#909689}
+.about-page .day-cell.is-pad{visibility:hidden}
+.about-page .month-view{width:min(364px,100%);margin-inline:auto}
+.about-page .month-controls{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:16px;font:14px/1.6 var(--sans)}
+.about-page .month-controls button{border:0;background:transparent;min-height:44px;padding:0 7px;color:var(--moss);font-size:13px}
+.about-page .month-controls button:disabled{opacity:.42}
+.about-page .month-title{font:17px/1.6 var(--serif);white-space:nowrap}
+.about-page .month-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center;font:12px/1.8 var(--sans);color:var(--muted);margin-bottom:10px}
+.about-page .month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.about-page .month-grid .day-cell{height:auto;width:100%;aspect-ratio:1;border-radius:2px;font:13px/1.2 var(--sans);display:flex;align-items:center;justify-content:center}
+.about-page .calendar-bottom{margin-top:12px;display:flex;justify-content:space-between;align-items:start;gap:20px}
+.about-page .date-jump{font:12px/1.65 var(--sans);color:var(--muted)}
+.about-page .date-jump summary{cursor:pointer;min-height:36px;display:flex;align-items:center;gap:7px;width:fit-content}
+.about-page .date-jump summary::after{content:'＋';font-size:14px}
+.about-page .date-jump[open] summary::after{content:'−'}
+.about-page .date-jump form{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:5px 0 16px}
+.about-page .date-jump label{font-size:12px}
+.about-page .date-jump input{min-height:44px;background:transparent;border:1px solid var(--rule);padding:5px 10px;font:13px var(--sans);max-width:180px}
+.about-page .date-jump button{min-height:44px;padding:0 15px;background:transparent;border:1px solid var(--moss);color:var(--moss);font:13px var(--sans)}
+.about-page .date-error{width:100%;color:#7c4b3c;max-width:400px}
+.about-page .selected-entries{margin-top:6px;min-height:130px}
+.about-page .selected-date{font-size:16px;font-weight:400;line-height:1.8;margin-bottom:7px}
+.about-page .selected-date time{font-weight:500;letter-spacing:.3px}
+.about-page .entry-list{list-style:none;margin:0;padding:0}
+.about-page .entry-list li{border-top:1px solid #e6e8df}
+.about-page .entry-link{display:flex;align-items:baseline;gap:14px;min-height:47px;padding:8px 7px 8px 0;font-size:16px;line-height:1.85;transition:color var(--ease),background var(--ease)}
+.about-page .entry-link::before{content:'›';color:#809075;flex:none;font:21px/1 var(--serif);align-self:center;margin-left:2px}
+.about-page .entry-link:hover{background:rgba(229,233,221,.35)}
+.about-page .entry-title{flex:1;min-width:0}
+.about-page .entry-category{font-size:14px;color:var(--muted);display:flex;gap:12px;align-items:baseline;white-space:nowrap}
+.about-page .entry-arrow{transition:transform var(--ease)}
+.about-page .entry-link:hover .entry-arrow{transform:translateX(3px)}
+.about-page .tooltip{position:fixed;z-index:60;background:#faf8f2;border:1px solid #b5c2aa;box-shadow:0 3px 12px #343a3410;padding:7px 11px;font:12px/1.7 var(--sans);pointer-events:none;max-width:calc(100vw - 24px);color:var(--ink)}
+.about-page .life-section{display:grid;grid-template-columns:1fr 1fr;gap:39px;padding-top:32px}
+.about-page .life-section > :only-child{grid-column:1/-1;border-left:0;padding-left:0}
+.about-page .life-copy p{font-size:17px;line-height:1.95}
+.about-page .life-copy p+p{margin-top:8px}
+.about-page .life-still-life{display:flex;justify-content:flex-end;align-items:flex-end;gap:0;margin-top:7px;max-width:100%}
+.about-page .life-still-life .leaves-pair{width:100px;height:auto;transform:translate(17px,-4px)}
+.about-page .life-still-life .tea-books{width:167px;height:auto}
+.about-page .updates-section{border-left:1px solid var(--rule);padding-left:38px}
+.about-page .updates-list{list-style:none;margin:0;padding:0}
+.about-page .updates-list li{display:flex;align-items:baseline;gap:14px;padding-block:9px 15px}
+.about-page .updates-list li:first-child{padding-top:0}
+.about-page .updates-list p{flex:1;font-size:16px;line-height:1.95}
+.about-page .updates-list time{font:11px/1.8 var(--sans);color:var(--muted);white-space:nowrap;border-left:1px solid var(--rule);padding-left:14px}
+.about-page .public-links{display:flex;gap:30px;align-items:baseline;flex-wrap:wrap;padding-top:15px;padding-bottom:22px}
+.about-page .public-links h2{font-size:22px;font-weight:400;line-height:1.8;letter-spacing:1px}
+.about-page .public-links nav{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.about-page .text-link{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:14px;color:var(--moss);transition:color var(--ease)}
+.about-page .text-link:hover{text-decoration:underline}
+.about-page .icon{width:17px;height:17px;display:inline-block;fill:none;stroke:currentColor;stroke-width:1.6;flex:none;stroke-linecap:round;stroke-linejoin:round}
+.about-page .site-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;border-top:1px solid var(--rule);padding:11px 0 20px;font:11px/1.6 var(--sans);color:var(--muted);margin-top:6px}
+.about-page .site-footer a{min-height:44px;display:flex;align-items:center;gap:7px}
+.about-page .fallback-calendar{padding-block:12px}
+.about-page .fallback-calendar summary{min-height:44px;cursor:pointer;font-size:16px;color:var(--moss)}
+.about-page .fallback-day{margin-top:20px}
+.about-page .fallback-calendar .fallback-note{font:13px/1.8 var(--sans);color:var(--muted);margin-bottom:12px}
+.about-page .fallback-day h3{font:15px/1.8 var(--sans);font-weight:500;margin-bottom:8px}
+@media(min-width:1700px){
+.about-page .bamboo-left{width:276px}
+.about-page .bamboo-right{width:278px}
+.about-page .falling-leaf{right:130px}
+}
+@media(max-width:1279px){
+.about-page .bamboo-left{width:157px;opacity:.27;left:-33px}
+.about-page .bamboo-right{width:170px;opacity:.25;right:-24px}
+.about-page .aside-poem{display:none}
+.about-page .falling-leaf{right:15px;width:68px;opacity:.27}
+.about-page .faint-leaf{display:none}
+}
+@media(min-width:1024px) and (max-width:1100px){
+.about-page{--cell:10px}
+.about-page .calendar-chart{gap:20px}
+.about-page .identity{grid-template-columns:308px minmax(0,1fr);gap:35px}
+.about-page .introduction{padding-left:30px}
+}
+@media(max-width:1023px),(hover:none) and (pointer:coarse){
+.about-page .calendar-heading{grid-template-columns:1fr auto;column-gap:20px;row-gap:9px;margin-bottom:22px}
+.about-page .calendar-heading>div:first-child{grid-column:1;grid-row:1}
+.about-page .annual-summary{grid-column:1/-1;grid-row:2;padding-top:0;font-size:15px}
+.about-page .summary-year{display:none}
+.about-page .calendar-meta{grid-column:2;grid-row:1;min-width:0}
+.about-page .calendar-chart{display:flex;flex-direction:column;gap:15px}
+.about-page .calendar-bottom{width:min(364px,100%);margin-inline:auto}
+.about-page .selected-entries{margin-top:7px}
+.about-page .year-control{min-height:33px}
+}
+@media(max-width:900px){
+.about-page .identity{grid-template-columns:1fr;gap:29px;padding-bottom:34px}
+.about-page .introduction{padding:0;border:0}
+.about-page .profile-person{align-items:center}
+.about-page .profile-bio{margin-left:103px;margin-top:13px;max-width:490px}
+.about-page .life-section{grid-template-columns:1fr;gap:31px}
+.about-page .updates-section{border-left:0;padding-left:0;border-top:1px solid var(--rule);padding-top:26px}
+.about-page .life-still-life{margin-top:0;max-width:350px;margin-left:auto}
+.about-page .public-links{padding-top:30px}
+}
+@media(max-width:600px){
+.about-page{font-size:17px}
+.about-page .page{width:calc(100% - 52px)}
+.about-page .site-header{padding-top:14px;min-height:66px;gap:14px}
+.about-page .site-name{font-size:13px;letter-spacing:.4px}
+.about-page .back-link{font-size:12px;gap:6px}
+.about-page .page-title{font-size:34px;line-height:1.6;margin-top:23px;margin-bottom:28px;letter-spacing:3px}
+.about-page .bamboo-left{width:113px;left:-49px;top:490px;opacity:.21}
+.about-page .bamboo-right{width:154px;right:-48px;top:0;opacity:.35}
+.about-page .falling-leaf{top:1530px;width:69px;right:-16px;opacity:.45}
+.about-page .faint-leaf{display:none}
+.about-page .profile-person{gap:16px;align-items:center}
+.about-page .avatar-head{width:73px}
+.about-page .author-name{font-size:23px;letter-spacing:.5px}
+.about-page .signature{font-size:17px;letter-spacing:0;line-height:1.9;margin-top:4px;white-space:normal}
+.about-page .profile-bio{margin-left:0;margin-top:19px;font-size:17px;line-height:1.95;max-width:none}
+.about-page .identity{gap:28px;padding-bottom:34px}
+.about-page .introduction p{font-size:17px;line-height:1.95}
+.about-page .introduction p+p{margin-top:16px}
+.about-page .small-heading{font-size:23px}
+.about-page .small-heading::after{margin-bottom:16px;margin-top:9px;width:22px}
+.about-page .calendar-section{padding-top:25px;padding-bottom:20px}
+.about-page .section-title{font-size:26px}
+.about-page .section-subtitle{font-size:13px}
+.about-page .calendar-heading{row-gap:14px;column-gap:10px;margin-bottom:22px}
+.about-page .calendar-meta{max-width:141px}
+.about-page .year-control{font-size:15px;min-height:37px}
+.about-page .year-control select{font-size:14px}
+.about-page .annual-summary{font-size:14px}
+.about-page .calendar-bottom{margin-top:12px}
+.about-page .date-jump summary{min-height:40px}
+.about-page .selected-date{font-size:15px;margin-bottom:11px;line-height:1.9}
+.about-page .selected-entries{min-height:143px}
+.about-page .entry-link{flex-wrap:wrap;gap:0;padding:11px 0;line-height:1.9;font-size:17px;align-items:flex-start}
+.about-page .entry-link::before{display:none}
+.about-page .entry-title{flex-basis:100%;width:100%}
+.about-page .entry-category{width:100%;display:flex;justify-content:space-between;font-size:12px;line-height:1.8;margin-top:4px;white-space:normal}
+.about-page .entry-arrow{font-size:19px;line-height:1}
+.about-page .life-section{padding-top:28px;gap:24px}
+.about-page .life-copy p{font-size:17px;line-height:1.95}
+.about-page .life-copy p+p{margin-top:11px}
+.about-page .life-still-life{margin-top:13px}
+.about-page .life-still-life .tea-books{width:151px}
+.about-page .life-still-life .leaves-pair{width:88px}
+.about-page .updates-section{padding-top:25px}
+.about-page .updates-list li{display:block;padding-bottom:19px;padding-top:0}
+.about-page .updates-list p{font-size:17px}
+.about-page .updates-list time{border:0;padding:0;font-size:11px;display:block;margin-top:4px}
+.about-page .public-links{gap:14px;padding-top:20px;padding-bottom:19px}
+.about-page .public-links h2{font-size:22px}
+.about-page .public-links nav{gap:17px}
+.about-page .site-footer{font-size:10px;padding-top:11px;padding-bottom:16px;gap:10px}
+.about-page .text-link{font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+.about-page *, .about-page *::before, .about-page *::after{transition:none!important;animation:none!important}
+}
+@media print{
+.about-page{font-size:12pt;background:white;color:#111}
+.about-page::before, .about-page .decoration, .about-page .aside-poem, .about-page .skip-link, .about-page .js-calendar, .about-page .calendar-meta, .about-page .public-links, .about-page .site-header, .about-page .site-footer a{display:none!important}
+.about-page{overflow:visible}
+.about-page .page{width:100%;max-width:none}
+.about-page .page-title{font-size:25pt;margin-top:0}
+.about-page .identity{display:block}
+.about-page .introduction{border:0;padding:20px 0 0}
+.about-page .profile-bio{margin-left:103px}
+.about-page .fallback-calendar{display:block!important}
+.about-page .fallback-calendar details>*{display:block!important}
+.about-page .fallback-calendar details>summary{display:none}
+.about-page .fallback-calendar details{display:block!important}
+.about-page .life-section{display:block}
+.about-page .updates-section{border:0;padding:20px 0}
+.about-page .life-still-life{display:none}
+.about-page .calendar-heading{display:block}
+.about-page .annual-summary{font-size:13pt}
+.about-page .entry-link{font-size:12pt;min-height:0}
+.about-page .entry-category{font-size:10pt}
+.about-page .fallback-day{break-inside:avoid}
+.about-page .site-footer{margin-top:20px}
+.about-page .calendar-section{border:0;padding:10px 0}
+}
+.about-page{position:relative}
+.about-page::before{position:absolute}
+@media (max-width: 600px) {
+  .about-page .avatar-slot--about { width: 73px; }
+  .about-page .page-top { padding-top: 14px; min-height: 66px; gap: 14px; }
+  .about-page .small-brand { font-size: 13px; letter-spacing: .4px; }
+  .about-page .backlink { font-size: 12px; gap: 6px; }
+  .about-page .page-footer { font-size: 10px; }
+}
+@media print {
+  .about-page .page-top, .about-page .page-footer a { display: none !important; }
+  .about-page .page-footer { margin-top: 20px; }
+}

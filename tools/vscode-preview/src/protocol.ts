@@ -16,7 +16,7 @@ export type NavigationReceipt = {
 
 export type PreviewData = {
   type: 'update'; layoutMode?: 'responsive' | 'desktop'; revision: number; document: string; dirty: boolean;
-  post: BlogPost; profile: z.infer<typeof profileSchema>;
+  post: BlogPost; profile: z.input<typeof profileSchema>;
   warnings: string[]; styles: string[]; avatar: string;
   source: { origin: SourceOrigin; version: number; totalLines: number; syncEnabled: boolean; clickEnabled: boolean; title?: SourcePoint; navigation?: RevealLine };
 };

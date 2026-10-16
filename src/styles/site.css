@@ -27,6 +27,11 @@ a:hover .arrow { transform: translateX(4px); }
 .avatar-slot--home { width: 56px; height: 64px; }
 .avatar-slot--directory { width: 32px; height: 36px; }
 .avatar-slot--signature { width: 120px; height: 120px; }
+.home-avatar-link { position: relative; display: block; flex: 0 0 auto; }
+.home-avatar-tip { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); padding: 3px 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--muted); white-space: nowrap; font: 12px/1.6 var(--font-ui); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--duration); }
+.home-avatar-link:hover .home-avatar-tip, .home-avatar-link:focus-visible .home-avatar-tip { opacity: 1; visibility: visible; }
+.author-about-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 12px; color: var(--moss); font: 14px/1.6 var(--font-body); }
+.author-about-link:hover { color: var(--moss-dark); text-decoration: underline; text-underline-offset: 4px; }
 .page-footer { display: flex; justify-content: space-between; gap: 24px; color: var(--muted); font-size: 11px; padding-block: 26px; margin-top: auto; }
 .text-link { display: inline-flex; align-items: center; gap: 18px; min-height: 44px; border-bottom: 1px solid var(--moss); font: 18px/1.4 var(--font-body); padding: 8px 0; width: fit-content; }
 .text-link:hover { color: var(--moss-dark); }
